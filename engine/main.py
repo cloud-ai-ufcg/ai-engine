@@ -6,7 +6,6 @@ import yaml
 from agents import label_workloads_with_gemini
 from util import get_logger
 
-# Initialize logger
 logger = get_logger("main")
 
 
@@ -54,7 +53,7 @@ def predict_with_models(input_csv, models=None, output_dir=ACTUATOR_DIR):
             logger.error(f"Prediction failed for {model_name}: {e}")
 
 
-def predict_from_json(
+def predict_with_machine_learning(
     json_path, model=None, output_csv=os.path.join(ACTUATOR_DIR, 'recommendations.csv')
 ):
     """
@@ -117,37 +116,43 @@ def load_config(config_path=None):
     """
     if config_path is None:
         config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
-    
+
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
-    
+
     return config
+
+
+def write_recommendations(result_df, output_dir=ACTUATOR_DIR):
+    output_csv = os.path.join(output_dir, 'recommendations.csv')
+    result_df.to_csv(output_csv, index=False)
+    logger.info(f"Recommendations written to {output_csv}")
+    return output_csv
 
 
 def main():
     import pandas as pd
-    
+
     # Load configuration from YAML file
     config = load_config()
-    
+
     # Get input JSON file path from configuration
     json_input = config.get('data', {}).get('input_json')
-    
+
     if json_input:
         # Make sure the path is absolute or relative to the current directory
         if not os.path.isabs(json_input):
             json_input = os.path.join(os.path.dirname(__file__), json_input)
-            
+
         with open(json_input, 'r') as f:
             workloads = json.load(f)
         labels = label_workloads_with_gemini(workloads)
-        # Salvar CSV com (workload_id, kind, label)
+        # Save CSV with (workload_id, kind, label)
         df = pd.DataFrame(workloads)
         result = df[['workload_id', 'kind']].copy()
         result['label'] = labels
-        output_csv = os.path.join(ACTUATOR_DIR, 'recommendations.csv')
-        result.to_csv(output_csv, index=False)
-        logger.info(f"Recommendations written to {output_csv}")
+
+        write_recommendations(result)
     else:
         logger.error('No input JSON file specified in the configuration')
 
