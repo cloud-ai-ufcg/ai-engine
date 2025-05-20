@@ -12,7 +12,7 @@ ACTUATOR_DIR = actuator
 CONFIG_FILE = $(ENGINE_DIR)/config.yaml
 
 # Default target
-all: run
+all: install run
 
 # Install dependencies
 install:
