@@ -1,6 +1,7 @@
 import os
 import logging
 import logging.handlers
+import yaml
 from typing import Optional
 
 
@@ -88,4 +89,26 @@ def configure_logging(
         log_format: Optional custom log format
     """
     global logger
+    level = config.get('logging', {}).get('level', logging.INFO)
+    log_file = config.get('logging', {}).get('file', None)
     logger = setup_logger(level=level, log_file=log_file, log_format=log_format)
+
+
+def load_config(config_path=None):
+    """
+    Loads configuration from a YAML file
+
+    Args:
+        config_path: Path to the configuration file. If None, uses the default config.yaml
+
+    Returns:
+        dict: Configuration dictionary
+    """
+    global config
+    if config_path is None:
+        config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
+
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+
+    return config

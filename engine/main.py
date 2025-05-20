@@ -2,9 +2,8 @@ import os
 import joblib
 import pandas as pd
 import json
-import yaml
 from agents import label_workloads_with_gemini
-from util import get_logger
+from util import get_logger, load_config
 
 logger = get_logger("main")
 
@@ -110,23 +109,37 @@ def predict_with_machine_learning(
     print(f"Recommendations written to {output_csv}")
 
 
-def load_config(config_path=None):
-    """
-    Loads configuration from a YAML file
-    """
-    if config_path is None:
-        config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
-
-    with open(config_path, 'r') as f:
-        config = yaml.safe_load(f)
-
-    return config
-
 
 def write_recommendations(result_df, output_dir=ACTUATOR_DIR):
+    # Log detailed information about workload migrations
+    migrated_workloads = result_df[result_df['label'] == 1]
+    non_migrated_workloads = result_df[result_df['label'] == 0]
+    
+    # Log summary statistics
+    total_workloads = len(result_df)
+    migrated_count = len(migrated_workloads)
+    non_migrated_count = len(non_migrated_workloads)
+    
+    logger.info(f"Total workloads processed: {total_workloads}")
+    logger.info(f"Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)")
+    logger.info(f"Workloads remaining in private cluster: {non_migrated_count} ({non_migrated_count/total_workloads*100:.1f}%)")
+    
+    # Log detailed information about each workload
+    if not migrated_workloads.empty:
+        logger.info("Workloads to be migrated to public cluster:")
+        for _, row in migrated_workloads.iterrows():
+            logger.info(f"  - Workload ID: {row['workload_id']}, Kind: {row['kind']}")
+    
+    if not non_migrated_workloads.empty:
+        logger.info("Workloads remaining in private cluster:")
+        for _, row in non_migrated_workloads.iterrows():
+            logger.info(f"  - Workload ID: {row['workload_id']}, Kind: {row['kind']}")
+    
+    # Write recommendations to CSV
     output_csv = os.path.join(output_dir, 'recommendations.csv')
     result_df.to_csv(output_csv, index=False)
     logger.info(f"Recommendations written to {output_csv}")
+    
     return output_csv
 
 
