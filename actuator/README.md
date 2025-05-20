@@ -21,7 +21,7 @@ cd ai-engine/actuator
 go mod download
 ```
 
-3. Make sure the simulator-experiments repository is configured and accessible, as it is responsible for creating the necessary jobs and deploys for the system to function.
+3. Make sure the `simulator-experiments repository` is configured and accessible, as it is responsible for creating the necessary jobs and deploys for the system to function.
 Example of `csv` for the creation script:
 ```csv
 timestamp,id,kind,job_duration,action,replicas,cpu,memory,label
@@ -54,7 +54,7 @@ workload_id,label,kind
 
 ## Execution
 
-1. First, run the necessary scripts from the simulator-experiments repository to create the jobs and deploys:
+1. First, run the necessary scripts from the `simulator-experiments repository` to create the jobs and deploys:
 
 2. Return to the actuator directory and run:
 ```bash
