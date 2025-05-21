@@ -1,0 +1,9 @@
+data:
+  input_json: monitor_outputs_fake.json
+
+logging:
+  level: INFO
+  file: ai_engine.log
+
+api-key:
+  google: KEY_VALUE

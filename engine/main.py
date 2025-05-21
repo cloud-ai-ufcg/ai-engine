@@ -1,0 +1,174 @@
+import os
+import joblib
+import pandas as pd
+import json
+from agents import label_workloads_with_gemini
+from util import get_logger, load_config
+
+logger = get_logger("main")
+
+
+MODELS_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../model-pipeline/models')
+)
+ACTUATOR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../actuator'))
+
+
+def load_models(models_dir=MODELS_DIR):
+    """
+    Loads all sklearn models from the given directory.
+    Returns a dict of {model_filename: model_object}
+    """
+    models = {}
+    for fname in os.listdir(models_dir):
+        fpath = os.path.join(models_dir, fname)
+        if os.path.isfile(fpath):
+            try:
+                model = joblib.load(fpath)
+                models[fname] = model
+            except Exception as e:
+                logger.warning(f"Skipping {fname}: {e}")
+    return models
+
+
+def predict_with_models(input_csv, models=None, output_dir=ACTUATOR_DIR):
+    """
+    Loads input data from CSV, runs predictions for each model, and writes CSV outputs.
+    Each output is named <model_filename>_predictions.csv in the actuator directory.
+    """
+    if models is None:
+        models = load_models()
+    df = pd.read_csv(input_csv)
+    for model_name, model in models.items():
+        try:
+            preds = model.predict(df)
+            out_df = df.copy()
+            out_df['prediction'] = preds
+            out_name = f"{model_name}_predictions.csv"
+            out_path = os.path.join(output_dir, out_name)
+            out_df.to_csv(out_path, index=False)
+            logger.info(f"Predictions written to {out_path}")
+        except Exception as e:
+            logger.error(f"Prediction failed for {model_name}: {e}")
+
+
+def predict_with_machine_learning(
+    json_path, model=None, output_csv=os.path.join(ACTUATOR_DIR, 'recommendations.csv')
+):
+    """
+    Reads workload info from JSON, prepares features, uses model to predict migration,
+    and writes (workload_id, kind, label) to output_csv.
+    """
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    df = pd.json_normalize(data)
+    # Feature engineering: select and convert relevant columns
+    feature_cols = [
+        'resources.cpu',
+        'resources.memory',
+        'pods_total',
+        'pods_pending',
+        'percent_pending',
+        'timestamp',
+        'cluster_load',
+        'cluster_label',
+        'cluster_cpu_capacity',
+        'cluster_memory_capacity',
+    ]
+    X = df[feature_cols].copy()
+
+    # Convert cpu/memory to numeric (e.g., '500m' -> 0.5, '1024Mi' -> 1024)
+    def cpu_to_float(cpu):
+        if isinstance(cpu, str) and cpu.endswith('m'):
+            return float(cpu[:-1]) / 1000.0
+        return float(cpu)
+
+    def mem_to_float(mem):
+        if isinstance(mem, str) and mem.endswith('Mi'):
+            return float(mem[:-2])
+        return float(mem)
+
+    X['resources.cpu'] = X['resources.cpu'].apply(cpu_to_float)
+    X['resources.memory'] = X['resources.memory'].apply(mem_to_float)
+    X['cluster_cpu_capacity'] = X['cluster_cpu_capacity'].apply(cpu_to_float)
+    X['cluster_memory_capacity'] = X['cluster_memory_capacity'].apply(mem_to_float)
+    # Encode cluster_label
+    X['cluster_label'] = X['cluster_label'].map({'private': 0, 'public': 1})
+    # If model is not provided, load the first available model
+    if model is None:
+        models = load_models()
+        if not models:
+            raise RuntimeError('No models found in models directory')
+        model = list(models.values())[0]
+    # Predict
+    y_pred = model.predict(X)
+    # Output (workload_id, kind, label)
+    result = df[['workload_id', 'kind']].copy()
+    result['label'] = y_pred
+    result.to_csv(output_csv, index=False)
+    print(f"Recommendations written to {output_csv}")
+
+
+
+def write_recommendations(result_df, output_dir=ACTUATOR_DIR):
+    # Log detailed information about workload migrations
+    migrated_workloads = result_df[result_df['label'] == 1]
+    non_migrated_workloads = result_df[result_df['label'] == 0]
+    
+    # Log summary statistics
+    total_workloads = len(result_df)
+    migrated_count = len(migrated_workloads)
+    non_migrated_count = len(non_migrated_workloads)
+    
+    logger.info(f"Total workloads processed: {total_workloads}")
+    logger.info(f"Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)")
+    logger.info(f"Workloads remaining in private cluster: {non_migrated_count} ({non_migrated_count/total_workloads*100:.1f}%)")
+    
+    # Log detailed information about each workload
+    if not migrated_workloads.empty:
+        logger.info("Workloads to be migrated to public cluster:")
+        for _, row in migrated_workloads.iterrows():
+            logger.info(f"  - Workload ID: {row['workload_id']}, Kind: {row['kind']}")
+    
+    if not non_migrated_workloads.empty:
+        logger.info("Workloads remaining in private cluster:")
+        for _, row in non_migrated_workloads.iterrows():
+            logger.info(f"  - Workload ID: {row['workload_id']}, Kind: {row['kind']}")
+    
+    # Write recommendations to CSV
+    output_csv = os.path.join(output_dir, 'recommendations.csv')
+    result_df.to_csv(output_csv, index=False)
+    logger.info(f"Recommendations written to {output_csv}")
+    
+    return output_csv
+
+
+def main():
+    import pandas as pd
+
+    # Load configuration from YAML file
+    config = load_config()
+
+    # Get input JSON file path from configuration
+    json_input = config.get('data', {}).get('input_json')
+
+    if json_input:
+        # Make sure the path is absolute or relative to the current directory
+        if not os.path.isabs(json_input):
+            json_input = os.path.join(os.path.dirname(__file__), json_input)
+
+        with open(json_input, 'r') as f:
+            workloads = json.load(f)
+        labels = label_workloads_with_gemini(workloads)
+        # Save CSV with (workload_id, kind, label)
+        df = pd.DataFrame(workloads)
+        result = df[['workload_id', 'kind']].copy()
+        result['label'] = labels
+
+        write_recommendations(result)
+    else:
+        logger.error('No input JSON file specified in the configuration')
+
+
+if __name__ == "__main__":
+    main()
