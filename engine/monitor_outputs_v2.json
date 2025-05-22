@@ -1,0 +1,3434 @@
+{
+  "1747936314": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936317": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936320": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936323": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936326": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936329": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936332": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936335": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936338": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936341": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936344": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936347": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936350": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936353": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936356": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936359": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936362": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936365": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936368": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936371": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936374": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936377": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936380": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936383": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936386": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  },
+  "1747936389": {
+    "workloads": [
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/stress",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "60000m",
+          "memory": "7680Mi"
+        },
+        "pods_total": 30,
+        "pods_pending": 25,
+        "percent_pending": 83.33333333333334,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/test-monitor-job",
+        "kind": "job",
+        "resources": {
+          "cpu": "1500m",
+          "memory": "1920Mi"
+        },
+        "pods_total": 15,
+        "pods_pending": 6,
+        "percent_pending": 40,
+        "cluster_label": "private"
+      },
+      {
+        "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-kube-state-metrics",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-prometheus-pushgateway",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      },
+      {
+        "workload_id": "default/prometheus-server",
+        "kind": "deployment",
+        "resources": {
+          "cpu": "0m",
+          "memory": "0Mi"
+        },
+        "pods_total": 1,
+        "pods_pending": 0,
+        "percent_pending": 0,
+        "cluster_label": "public"
+      }
+    ],
+    "cluster_info": [
+      {
+        "cluster_label": "private",
+        "cluster_load": {
+          "cpu": 5.212,
+          "memory": 0.317
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      },
+      {
+        "cluster_label": "public",
+        "cluster_load": {
+          "cpu": 0.087,
+          "memory": 0.015
+        },
+        "cluster_cpu_capacity": "12000m",
+        "cluster_memory_capacity": "31782Mi"
+      }
+    ]
+  }
+}
