@@ -1,5 +1,8 @@
 data:
-  input_json: monitor_outputs_fake.json
+  input_json: monitor_outputs_v2.json
+
+ai:
+  model: gemini
 
 logging:
   level: INFO
