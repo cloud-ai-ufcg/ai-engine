@@ -1,7 +1,7 @@
 {
   "explanation": "Migration decisions based on AI analysis of workload characteristics",
   "workload_explanations": [
-    "Workload 'default/stress' has very high CPU usage (60000m) which exceeds the private cluster's CPU capacity (12000m), and a high percentage of pending pods (83.33%). Therefore, it should be migrated to the public cluster to ensure it can be scheduled and run effectively.",
-    "Workload 'default/test-monitor-job' has moderate CPU and memory usage. While the percent_pending is somewhat elevated (40%), the cluster_load is relatively low. Given these factors, keeping it in the private cluster is appropriate."
+    "The 'stress' workload has a very high CPU demand (60000m) and a high percentage of pending pods (83.33%). The private cluster is overloaded (cluster_load 5.212, cpu_capacity 12000m, memory_capacity 31782Mi), making it beneficial to migrate this workload to the public cluster.",
+    "The 'test-monitor-job' has a relatively high percentage of pending pods (40.0%) and the private cluster is overloaded (cluster_load 5.212, cpu_capacity 12000m, memory_capacity 31782Mi). Migrating this workload to the public cluster will reduce the load on the private cluster."
   ]
 }

@@ -4,6 +4,12 @@ data:
 ai:
   model: gemini
 
+# Diretórios para diferentes componentes do sistema
+paths:
+  models_dir: ../model-pipeline/models
+  actuator_dir: ../actuator
+  log_dir: ../logs
+
 logging:
   level: INFO
   file: ai_engine.log
