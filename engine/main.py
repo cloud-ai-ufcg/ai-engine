@@ -4,17 +4,18 @@ import json
 import pandas as pd
 from typing import Dict, List, Any, Tuple, Union
 
-from util import get_logger, load_config, format_message, COLORS
+from util import (
+    get_logger,
+    load_config,
+    format_message,
+    COLORS,
+    MODELS_DIR,
+    ACTUATOR_DIR,
+    ENGINE_LOG_DIR,
+)
 from agents import label_workloads_with_gemini, label_workloads_with_crewai
 
 logger = get_logger("main")
-
-
-MODELS_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../model-pipeline/models')
-)
-ACTUATOR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../actuator'))
-ENGINE_LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../logs'))
 
 
 def load_models(models_dir=MODELS_DIR):
@@ -136,7 +137,9 @@ def process_monitoring_data(data, timestamp_lookback_seconds=30):
             return []
 
         latest_timestamp = str(timestamps[0])
-        logger.info(format_message(f"Latest timestamp: {latest_timestamp}", color="CYAN"))
+        logger.info(
+            format_message(f"Latest timestamp: {latest_timestamp}", color="CYAN")
+        )
 
         # Select timestamps from the last timestamp_lookback_seconds seconds
         cutoff_timestamp = timestamps[0] - timestamp_lookback_seconds
@@ -144,9 +147,9 @@ def process_monitoring_data(data, timestamp_lookback_seconds=30):
 
         logger.info(
             format_message(
-                f"Processing data from {len(recent_timestamps)} timestamps in the last {timestamp_lookback_seconds} seconds",
+                f" Processing data from {len(recent_timestamps)} timestamps in the last {timestamp_lookback_seconds} seconds",
                 icon="⏱️",
-                color="MAGENTA"
+                color="MAGENTA",
             )
         )
 
@@ -171,7 +174,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=30):
             format_message(
                 f"Found {len(cluster_data)} clusters: {', '.join(cluster_data.keys())}",
                 icon="🔍",
-                color="CYAN"
+                color="CYAN",
             )
         )
 
@@ -225,7 +228,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=30):
             format_message(
                 f"Filtered to {len(workloads)} unique workloads with non-zero resources from the last {timestamp_lookback_seconds} seconds",
                 icon="🔄",
-                color="CYAN"
+                color="CYAN",
             )
         )
     else:
@@ -247,45 +250,74 @@ def write_recommendations(result_df, output_dir=ACTUATOR_DIR):
     non_migrated_count = len(non_migrated_workloads)
 
     # Use formatted messages with colors and icons
-    logger.info(format_message(f"Total workloads processed: {total_workloads}", icon="📊", color="CYAN", bold=True))
     logger.info(
         format_message(
-            f"Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)",
-            icon="☁️", 
-            color="BLUE", 
-            bold=True
+            f"Total workloads processed: {total_workloads}",
+            icon="📊",
+            color="CYAN",
+            bold=True,
+        )
+    )
+    logger.info(
+        format_message(
+            f" Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)",
+            icon="☁️",
+            color="BLUE",
+            bold=True,
         )
     )
     logger.info(
         format_message(
             f"Workloads remaining in private cluster: {non_migrated_count} ({non_migrated_count/total_workloads*100:.1f}%)",
-            icon="🔁", 
-            color="GREEN", 
-            bold=True
+            icon="🔁",
+            color="GREEN",
+            bold=True,
         )
     )
 
     # Log detailed information about each workload
     if not migrated_workloads.empty:
-        logger.info(format_message("Workloads to be migrated to public cluster:", icon="☁️", color="BLUE", bold=True))
+        logger.info(
+            format_message(
+                " Workloads to be migrated to public cluster:",
+                icon="☁️",
+                color="BLUE",
+                bold=True,
+            )
+        )
         for _, row in migrated_workloads.iterrows():
-            logger.info(format_message(
-                f"Workload ID: {row['workload_id']}, Kind: {row['kind']}", 
-                color="BLUE"
-            ))
+            logger.info(
+                format_message(
+                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}",
+                    color="BLUE",
+                )
+            )
 
     if not non_migrated_workloads.empty:
-        logger.info(format_message("Workloads remaining in private cluster:", icon="🔁", color="GREEN", bold=True))
+        logger.info(
+            format_message(
+                "Workloads remaining in private cluster:",
+                icon="🔁",
+                color="GREEN",
+                bold=True,
+            )
+        )
         for _, row in non_migrated_workloads.iterrows():
-            logger.info(format_message(
-                f"Workload ID: {row['workload_id']}, Kind: {row['kind']}", 
-                color="GREEN"
-            ))
+            logger.info(
+                format_message(
+                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}",
+                    color="GREEN",
+                )
+            )
 
     # Write recommendations to CSV
     output_csv = os.path.join(output_dir, 'recommendations.csv')
     result_df.to_csv(output_csv, index=False)
-    logger.info(format_message(f"Recommendations written to {output_csv}", icon="📝", color="MAGENTA"))
+    logger.info(
+        format_message(
+            f"Recommendations written to {output_csv}", icon="📝", color="MAGENTA"
+        )
+    )
 
     return output_csv
 
@@ -337,21 +369,25 @@ def analyze_workloads(workloads, config):
 
     # Analyze workloads with the selected model
     if model_type == 'gemini':
-        logger.info(format_message(
-            "Using Gemini model for workload analysis",
-            icon="🧠",
-            color="MAGENTA",
-            bold=True
-        ))
+        logger.info(
+            format_message(
+                "Using Gemini model for workload analysis",
+                icon="🧠",
+                color="MAGENTA",
+                bold=True,
+            )
+        )
         # Unpack the tuple returned by label_workloads_with_gemini
         labels, explanations = label_workloads_with_gemini(workloads)
     else:
-        logger.info(format_message(
-            "Using CrewAI for workload analysis",
-            icon="🧠",
-            color="MAGENTA",
-            bold=True
-        ))
+        logger.info(
+            format_message(
+                "Using CrewAI for workload analysis",
+                icon="🧠",
+                color="MAGENTA",
+                bold=True,
+            )
+        )
         # Unpack the tuple returned by label_workloads_with_crewai
         labels, explanations = label_workloads_with_crewai(workloads)
 
@@ -388,7 +424,7 @@ def save_and_log_explanations(result_df, explanations):
             f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
             icon="💡",
             color="YELLOW",
-            bold=True
+            bold=True,
         )
     )
     logger.info(format_message("Detailed explanations for each workload:", bold=True))
@@ -404,11 +440,17 @@ def save_and_log_explanations(result_df, explanations):
                 format_message(
                     f"Workload {workload_id} ({kind}) → {cluster}: {explanation}",
                     icon="💡",
-                    color=color
+                    color=color,
                 )
             )
         else:
-            logger.info(format_message(f"Additional explanation {idx}: {explanation}", icon="💡", color="YELLOW"))
+            logger.info(
+                format_message(
+                    f"Additional explanation {idx}: {explanation}",
+                    icon="💡",
+                    color="YELLOW",
+                )
+            )
 
     # If there are any additional explanation fields, log them too
     for key, value in explanations.items():
