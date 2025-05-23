@@ -42,8 +42,8 @@ def label_workloads_with_gemini(
     load_dotenv()
 
     config = load_config()
-    api_key = os.environ.get('GOOGLE_API_KEY') or config.get('api-key', {}).get(
-        'google'
+    api_key = config.get('api-key', {}).get('google') or os.environ.get(
+        'GOOGLE_API_KEY'
     )
     if not api_key:
         logger.warning(
@@ -86,7 +86,7 @@ def label_workloads_with_gemini(
 
         text_response = response.text
         logger.debug(f"Complete Gemini response: {text_response}")
-        
+
         # Try to parse the JSON response
         try:
             # Extract JSON from the response (in case there's any surrounding text)
@@ -94,22 +94,22 @@ def label_workloads_with_gemini(
             if json_match:
                 json_str = json_match.group(0)
                 response_data = json.loads(json_str)
-                
+
                 # Extract decisions and explanations
                 decisions = response_data.get('decisions', [])
                 explanations = response_data.get('explanations', [])
-                
+
                 # Ensure we have the right number of decisions
                 if len(decisions) == len(df):
                     logger.info(f"Migration decisions extracted from JSON response")
                     labels = [int(decision) for decision in decisions]
-                    
+
                     # Create explanation output
                     explanation_output = {
                         "explanation": "Migration decisions based on AI analysis of workload characteristics",
-                        "workload_explanations": []
+                        "workload_explanations": [],
                     }
-                    
+
                     # Log the decision for each workload
                     for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
                         workload_id = workload[1].get('workload_id', f'workload-{idx}')
@@ -118,16 +118,19 @@ def label_workloads_with_gemini(
                         logger.info(
                             f"Decision for {workload_id} ({kind}): Cluster {destination}"
                         )
-                        
+
                         # Add explanation for this workload
-                        explanation = explanations[idx] if idx < len(explanations) else \
-                            f"Workload {workload_id} recommended for {destination} cluster based on resource requirements"
+                        explanation = (
+                            explanations[idx]
+                            if idx < len(explanations)
+                            else f"Workload {workload_id} recommended for {destination} cluster based on resource requirements"
+                        )
                         explanation_output["workload_explanations"].append(explanation)
-                    
+
                     return labels, explanation_output
         except Exception as e:
             logger.warning(f"Error parsing JSON response: {e}")
-            
+
         # Fallback: try to extract just the decisions if JSON parsing failed
         pattern = r'[01]+'
         matches = re.findall(pattern, text_response)
@@ -137,100 +140,104 @@ def label_workloads_with_gemini(
             if len(longest_match) == len(df):
                 logger.info(f"Migration pattern identified: {longest_match}")
                 labels = [int(digit) for digit in longest_match]
-                
+
                 # Create a basic explanation output
                 explanation_output = {
                     "explanation": "Migration decisions based on resource usage patterns",
-                    "workload_explanations": []
+                    "workload_explanations": [],
                 }
-                
+
                 # Log the decision for each workload
                 for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
                     workload_id = workload[1].get('workload_id', f'workload-{idx}')
                     kind = workload[1].get('kind', 'unknown')
                     destination = "public" if label == 1 else "private"
-                    logger.info(f"Decision for {workload_id} ({kind}): Cluster {destination}")
-                    
+                    logger.info(
+                        f"Decision for {workload_id} ({kind}): Cluster {destination}"
+                    )
+
                     # Add a generic explanation
                     if label == 1:
                         explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
                     else:
                         explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
                     explanation_output["workload_explanations"].append(explanation)
-                
+
                 return labels, explanation_output
 
         all_digits = re.findall(r'[01]', text_response)
         if len(all_digits) >= len(df):
             logger.info(f"Extracting labels from Gemini response: {text_response}")
             labels = [int(digit) for digit in all_digits[: len(df)]]
-            
+
             # Create a basic explanation output
             explanation_output = {
                 "explanation": "Migration decisions based on resource usage patterns",
-                "workload_explanations": []
+                "workload_explanations": [],
             }
-            
+
             # Log the decision for each workload
             for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
                 workload_id = workload[1].get('workload_id', f'workload-{idx}')
                 kind = workload[1].get('kind', 'unknown')
                 destination = "public" if label == 1 else "private"
-                logger.info(f"Decision for {workload_id} ({kind}): Cluster {destination}")
-                
+                logger.info(
+                    f"Decision for {workload_id} ({kind}): Cluster {destination}"
+                )
+
                 # Add a generic explanation
                 if label == 1:
                     explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
                 else:
                     explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
                 explanation_output["workload_explanations"].append(explanation)
-            
+
             return labels, explanation_output
 
         logger.warning(
             f"Could not extract labels from Gemini response: {text_response}"
         )
         labels = _label_workloads_with_heuristics(workloads)
-        
+
         # Create a fallback explanation output
         explanation_output = {
             "explanation": "Migration decisions based on heuristic rules (fallback)",
-            "workload_explanations": []
+            "workload_explanations": [],
         }
-        
+
         # Add generic explanations
         for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
             workload_id = workload[1].get('workload_id', f'workload-{idx}')
             kind = workload[1].get('kind', 'unknown')
-            
+
             if label == 1:
                 explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
             else:
                 explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
             explanation_output["workload_explanations"].append(explanation)
-        
+
         return labels, explanation_output
     except Exception as e:
         logger.warning(f"Error using Gemini API: {e}")
         labels = _label_workloads_with_heuristics(workloads)
-        
+
         # Create a fallback explanation output
         explanation_output = {
             "explanation": f"Migration decisions based on heuristic rules due to API error: {str(e)}",
-            "workload_explanations": []
+            "workload_explanations": [],
         }
-        
+
         # Add generic explanations
         for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
             workload_id = workload[1].get('workload_id', f'workload-{idx}')
             kind = workload[1].get('kind', 'unknown')
-            
+
             if label == 1:
                 explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
             else:
                 explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
             explanation_output["workload_explanations"].append(explanation)
-        
+
         return labels, explanation_output
 
 
