@@ -62,6 +62,18 @@ cd ../actuator
 go run main.go
 ```
 
+## Docker Usage
+
+You can also run the Actuator using Docker. The container needs access to your Kubernetes configuration and KWOK directory. Here's how to run it:
+
+```bash
+sudo docker run --rm \
+  --network host \
+  -v $HOME/.kube/config:/root/.kube/config \
+  -v $HOME/.kwok:/home/anandavidal/.kwok \
+  actuator
+```
+
 ## How it Works
 
 The Actuator:
