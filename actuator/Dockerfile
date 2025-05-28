@@ -24,7 +24,7 @@ RUN mkdir -p /root/.kube
 COPY --from=builder /app/actuator .
 
 # Copy example CSV file if needed (optional)
-COPY recommendations.csv ./recommendations.csv
+COPY recommendations_example.csv ./recommendations.csv
 
 # Create volume mount point for kubeconfig
 VOLUME ["/root/.kube"]
