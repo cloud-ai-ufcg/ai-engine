@@ -6,31 +6,32 @@ import yaml
 from typing import Optional, Dict, Any
 
 # Default directory paths
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-MODELS_DIR = os.path.abspath(os.path.join(BASE_DIR, 'model-pipeline/models'))
-ACTUATOR_DIR = os.path.abspath(os.path.join(BASE_DIR, 'actuator'))
-ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, 'logs'))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+MODELS_DIR = os.path.abspath(os.path.join(BASE_DIR, "model-pipeline/models"))
+ACTUATOR_DIR = os.path.abspath(os.path.join(BASE_DIR, "actuator"))
+ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "logs"))
 
 # Ensure log directory exists
 os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
 
 # ANSI color codes
 COLORS = {
-    'RESET': '\033[0m',
-    'BOLD': '\033[1m',
-    'BLUE': '\033[34m',
-    'GREEN': '\033[32m',
-    'YELLOW': '\033[33m',
-    'RED': '\033[31m',
-    'MAGENTA': '\033[35m',
-    'CYAN': '\033[36m',
-    'WHITE': '\033[37m',
-    'BG_BLUE': '\033[44m',
-    'BG_GREEN': '\033[42m',
-    'BG_YELLOW': '\033[43m',
-    'BG_RED': '\033[41m',
-    'BG_MAGENTA': '\033[45m'
+    "RESET": "\033[0m",
+    "BOLD": "\033[1m",
+    "BLUE": "\033[34m",
+    "GREEN": "\033[32m",
+    "YELLOW": "\033[33m",
+    "RED": "\033[31m",
+    "MAGENTA": "\033[35m",
+    "CYAN": "\033[36m",
+    "WHITE": "\033[37m",
+    "BG_BLUE": "\033[44m",
+    "BG_GREEN": "\033[42m",
+    "BG_YELLOW": "\033[43m",
+    "BG_RED": "\033[41m",
+    "BG_MAGENTA": "\033[45m",
 }
+
 
 # Custom formatter with colors
 class ColoredFormatter(logging.Formatter):
@@ -39,7 +40,7 @@ class ColoredFormatter(logging.Formatter):
         logging.INFO: f"{COLORS['GREEN']}[%(asctime)s] {COLORS['BOLD']}INFO{COLORS['RESET']}{COLORS['GREEN']} [%(name)s] - %(message)s{COLORS['RESET']}",
         logging.WARNING: f"{COLORS['YELLOW']}[%(asctime)s] {COLORS['BOLD']}WARNING{COLORS['RESET']}{COLORS['YELLOW']} [%(name)s] - %(message)s{COLORS['RESET']}",
         logging.ERROR: f"{COLORS['RED']}[%(asctime)s] {COLORS['BOLD']}ERROR{COLORS['RESET']}{COLORS['RED']} [%(name)s] - %(message)s{COLORS['RESET']}",
-        logging.CRITICAL: f"{COLORS['BG_RED']}{COLORS['WHITE']}[%(asctime)s] {COLORS['BOLD']}CRITICAL{COLORS['RESET']}{COLORS['BG_RED']}{COLORS['WHITE']} [%(name)s] - %(message)s{COLORS['RESET']}"
+        logging.CRITICAL: f"{COLORS['BG_RED']}{COLORS['WHITE']}[%(asctime)s] {COLORS['BOLD']}CRITICAL{COLORS['RESET']}{COLORS['BG_RED']}{COLORS['WHITE']} [%(name)s] - %(message)s{COLORS['RESET']}",
     }
 
     def format(self, record):
@@ -50,6 +51,7 @@ class ColoredFormatter(logging.Formatter):
 
 # Flag to track if logging has been configured
 _logging_configured = False
+
 
 def setup_logger(
     name: str = "ai_engine",
@@ -72,24 +74,24 @@ def setup_logger(
         Configured logger instance
     """
     global _logging_configured
-    
+
     if log_format is None:
         log_format = "[%(asctime)s] %(levelname)s [%(name)s] - %(message)s"
 
     # Standard formatter for file logging
     standard_formatter = logging.Formatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
-    
+
     # Configure root logger only once to avoid duplicates
     root_logger = logging.getLogger()
-    
+
     # Clear all existing handlers from the root logger
     if not _logging_configured:
-        for handler in root_logger.handlers[:]: 
+        for handler in root_logger.handlers[:]:
             root_logger.removeHandler(handler)
-            
+
         # Set the root logger level
         root_logger.setLevel(level)
-        
+
         # Add console handler to root logger
         console_handler = logging.StreamHandler(sys.stdout)
         if use_colors:
@@ -97,7 +99,7 @@ def setup_logger(
         else:
             console_handler.setFormatter(standard_formatter)
         root_logger.addHandler(console_handler)
-        
+
         # Add file handler to root logger if specified
         if log_file:
             os.makedirs(os.path.dirname(log_file), exist_ok=True)
@@ -106,20 +108,20 @@ def setup_logger(
             )
             file_handler.setFormatter(standard_formatter)
             root_logger.addHandler(file_handler)
-        
+
         # Log a separator
         logger = logging.getLogger("ai_engine")
         if use_colors:
             logger.info(f"{COLORS['BOLD']}{'='*80}{COLORS['RESET']}")
             logger.info(f"{COLORS['BOLD']}{'🚀 AI ENGINE STARTING'}{COLORS['RESET']}")
             logger.info(f"{COLORS['BOLD']}{'='*80}{COLORS['RESET']}")
-            
+
         _logging_configured = True
-    
+
     # Get the requested logger (will inherit settings from root)
     requested_logger = logging.getLogger(name)
     requested_logger.setLevel(level)
-    
+
     # Don't add any handlers to non-root loggers to avoid duplication
     return requested_logger
 
@@ -161,43 +163,43 @@ def configure_logging(
         log_format: Optional custom log format
     """
     global logger
-    level = config.get('logging', {}).get('level', logging.INFO)
-    log_file = config.get('logging', {}).get('file', None)
+    level = config.get("logging", {}).get("level", logging.INFO)
+    log_file = config.get("logging", {}).get("file", None)
     logger = setup_logger(level=level, log_file=log_file, log_format=log_format)
 
 
 def format_message(message, icon=None, color=None, bold=False):
     """
     Format a message with an optional icon and color.
-    
+
     Args:
         message: The message to format
         icon: Optional emoji icon to prepend
         color: Optional color from COLORS dict
         bold: Whether to make the text bold
-        
+
     Returns:
         Formatted message string
     """
     formatted = ""
-    
+
     # Add icon if provided
     if icon:
         formatted += f"{icon} "
-        
+
     # Add color and bold formatting if provided
     if color and color in COLORS:
         formatted += COLORS[color]
     if bold:
-        formatted += COLORS['BOLD']
-        
+        formatted += COLORS["BOLD"]
+
     # Add the message
     formatted += message
-    
+
     # Reset formatting
     if color or bold:
-        formatted += COLORS['RESET']
-        
+        formatted += COLORS["RESET"]
+
     return formatted
 
 
@@ -213,47 +215,47 @@ def load_config(config_path=None) -> Dict[str, Any]:
     """
     global config
     if config_path is None:
-        config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
+        config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
 
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
-    
+
     # Set up paths from config or use defaults
-    paths_config = config.get('paths', {})
+    paths_config = config.get("paths", {})
     global MODELS_DIR, ACTUATOR_DIR, ENGINE_LOG_DIR
-    
+
     # Update global paths if specified in config
-    if 'models_dir' in paths_config:
-        MODELS_DIR = os.path.abspath(paths_config['models_dir'])
-    
-    if 'actuator_dir' in paths_config:
-        ACTUATOR_DIR = os.path.abspath(paths_config['actuator_dir'])
-    
-    if 'log_dir' in paths_config:
-        ENGINE_LOG_DIR = os.path.abspath(paths_config['log_dir'])
-    
+    if "models_dir" in paths_config:
+        MODELS_DIR = os.path.abspath(paths_config["models_dir"])
+
+    if "actuator_dir" in paths_config:
+        ACTUATOR_DIR = os.path.abspath(paths_config["actuator_dir"])
+
+    if "log_dir" in paths_config:
+        ENGINE_LOG_DIR = os.path.abspath(paths_config["log_dir"])
+
     # Ensure directories exist
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(ACTUATOR_DIR, exist_ok=True)
     os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
-    
+
     # Configure logging
     log_level_str = config.get("logging", {}).get("level", "INFO")
     log_level = getattr(logging, log_level_str)
-    
+
     # Get log filename from config, but store it in ENGINE_LOG_DIR
     log_filename = config.get("logging", {}).get("file", "ai_engine.log")
-    
+
     # If log_filename is an absolute path, extract just the filename
     log_filename = os.path.basename(log_filename)
-    
+
     # Create full log file path in ENGINE_LOG_DIR
     log_file = os.path.join(ENGINE_LOG_DIR, log_filename)
-    
+
     # Use our setup_logger function which handles duplicate prevention
     global logger
     logger = setup_logger(level=log_level, log_file=log_file)
-    
+
     # Log the paths being used
     logger.debug(f"Using models directory: {MODELS_DIR}")
     logger.debug(f"Using actuator directory: {ACTUATOR_DIR}")
