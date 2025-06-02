@@ -7,7 +7,7 @@ ai:
 # Diretórios para diferentes componentes do sistema
 paths:
   models_dir: ../model-pipeline/models
-  actuator_dir: ../actuator
+  actuator_dir: ../../actuator
   log_dir: ../logs
 
 logging:
