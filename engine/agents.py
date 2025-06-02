@@ -82,7 +82,7 @@ def label_workloads_with_gemini(
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.0-flash-001")
-        response = model.generate_content(prompt)
+        response = model.generate_content(prompt, generation_config={"temperature": 0.2, "max_output_tokens": 1024})
 
         text_response = response.text
         logger.debug(f"Complete Gemini response: {text_response}")
