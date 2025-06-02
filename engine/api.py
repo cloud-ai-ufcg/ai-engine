@@ -19,7 +19,6 @@ import shutil
 from contextlib import asynccontextmanager
 import uvicorn
 
-# Import functions from main.py
 from main import (
     load_models,
     predict_with_models,
@@ -31,7 +30,6 @@ from main import (
     save_and_log_explanations,
 )
 
-# Import utility functions and constants
 
 from data_types import *
 
@@ -45,7 +43,6 @@ from util import (
     ENGINE_LOG_DIR,
 )
 
-# Initialize logger
 logger = get_logger("api")
 
 
@@ -72,7 +69,7 @@ async def lifespan(app: FastAPI):
 
 
 # Initialize FastAPI app
-app = FastAPI(
+api = FastAPI(
     title="AI Engine API",
     description="API for performing workload analysis and generating migration recommendations",
     version="1.0.0",
@@ -80,19 +77,19 @@ app = FastAPI(
 )
 
 
-@app.get("/")
+@api.get("/")
 async def root():
     """Health check endpoint"""
     return {"status": "healthy", "message": "AI Engine API is running"}
 
 
-@app.get("/models")
+@api.get("/models")
 async def get_models():
     """List all available models"""
     return {"models": list(app_state.models.keys())}
 
 
-@app.post("/predict/models")
+@api.post("/predict/models")
 async def predict_models(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -124,7 +121,7 @@ async def predict_models(
         os.unlink(temp_file.name)
 
 
-@app.post("/predict/ml")
+@api.post("/predict/ml")
 async def predict_ml(
     file: UploadFile = File(...),
     model_name: Optional[str] = Form(None),
@@ -163,7 +160,7 @@ async def predict_ml(
         os.unlink(temp_file.name)
 
 
-@app.post("/analyze")
+@api.post("/analyze")
 async def analyze(workload_data: WorkloadInput):
     """Analyze workloads and generate recommendations"""
     try:
@@ -198,7 +195,7 @@ async def analyze(workload_data: WorkloadInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/results/{filename}")
+@api.get("/results/{filename}")
 async def get_results(filename: str):
     """Get result file from actuator directory"""
     file_path = os.path.join(ACTUATOR_DIR, filename)
@@ -209,7 +206,7 @@ async def get_results(filename: str):
     return FileResponse(file_path)
 
 
-@app.post("/monitoring-data")
+@api.post("/monitoring-data")
 async def process_data(
     file: UploadFile = File(...), timestamp_lookback_seconds: int = Form(30)
 ):
