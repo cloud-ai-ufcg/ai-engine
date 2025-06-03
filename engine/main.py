@@ -10,7 +10,7 @@ from util import (
     format_message,
     COLORS,
     MODELS_DIR,
-    ACTUATOR_DIR,
+    OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
 from agents import label_workloads_with_gemini, label_workloads_with_crewai
@@ -35,7 +35,7 @@ def load_models(models_dir=MODELS_DIR):
     return models
 
 
-def predict_with_models(input_csv, models=None, output_dir=ACTUATOR_DIR):
+def predict_with_models(input_csv, models=None, output_dir=OUTPUT_DIR):
     """
     Loads input data from CSV, runs predictions for each model, and writes CSV outputs.
     Each output is named <model_filename>_predictions.csv in the actuator directory.
@@ -57,7 +57,7 @@ def predict_with_models(input_csv, models=None, output_dir=ACTUATOR_DIR):
 
 
 def predict_with_machine_learning(
-    json_path, model=None, output_csv=os.path.join(ACTUATOR_DIR, "recommendations.csv")
+    json_path, model=None, output_csv=os.path.join(OUTPUT_DIR, "recommendations.csv")
 ):
     """
     Reads workload info from JSON, prepares features, uses model to predict migration,
@@ -239,7 +239,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=30):
     return workloads
 
 
-def write_recommendations(result_df, output_dir=ACTUATOR_DIR):
+def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     # Log detailed information about workload migrations
     migrated_workloads = result_df[result_df["label"] == 1]
     non_migrated_workloads = result_df[result_df["label"] == 0]

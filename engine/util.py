@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any
 # Default directory paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 MODELS_DIR = os.path.abspath(os.path.join(BASE_DIR, "model-pipeline/models"))
-ACTUATOR_DIR = os.path.abspath(os.path.join(BASE_DIR, "actuator"))
+OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "output"))
 ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "logs"))
 
 # Ensure log directory exists
@@ -222,21 +222,21 @@ def load_config(config_path=None) -> Dict[str, Any]:
 
     # Set up paths from config or use defaults
     paths_config = config.get("paths", {})
-    global MODELS_DIR, ACTUATOR_DIR, ENGINE_LOG_DIR
+    global MODELS_DIR, OUTPUT_DIR, ENGINE_LOG_DIR
 
     # Update global paths if specified in config
     if "models_dir" in paths_config:
         MODELS_DIR = os.path.abspath(paths_config["models_dir"])
 
-    if "actuator_dir" in paths_config:
-        ACTUATOR_DIR = os.path.abspath(paths_config["actuator_dir"])
+    if "output_dir" in paths_config:
+        OUTPUT_DIR = os.path.abspath(paths_config["output_dir"])
 
     if "log_dir" in paths_config:
         ENGINE_LOG_DIR = os.path.abspath(paths_config["log_dir"])
 
     # Ensure directories exist
     os.makedirs(MODELS_DIR, exist_ok=True)
-    os.makedirs(ACTUATOR_DIR, exist_ok=True)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
 
     # Configure logging
@@ -258,7 +258,7 @@ def load_config(config_path=None) -> Dict[str, Any]:
 
     # Log the paths being used
     logger.debug(f"Using models directory: {MODELS_DIR}")
-    logger.debug(f"Using actuator directory: {ACTUATOR_DIR}")
+    logger.debug(f"Using output directory: {OUTPUT_DIR}")
     logger.debug(f"Using log directory: {ENGINE_LOG_DIR}")
     logger.debug(f"Log file: {log_file}")
 
