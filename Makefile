@@ -6,7 +6,7 @@ PYTHON = python
 # Project directories
 ENGINE_DIR = engine
 MODEL_PIPELINE_DIR = model-pipeline
-ACTUATOR_DIR = actuator
+OUTPUT_DIR = output
 
 # Default configuration file
 CONFIG_FILE = $(ENGINE_DIR)/config.yaml
@@ -38,7 +38,7 @@ clean:
 	find . -type d -name ".pytest_cache" -exec rm -rf {} +
 	find . -type d -name ".coverage" -exec rm -rf {} +
 	find . -type f -name "recommendations.csv" -delete
-	find $(ACTUATOR_DIR) -type f -name "*_predictions.csv" -delete
+	find $(OUTPUT_DIR) -type f -name "*_predictions.csv" -delete
 
 # Run tests
 test:
