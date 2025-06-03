@@ -39,7 +39,7 @@ from util import (
     format_message,
     COLORS,
     MODELS_DIR,
-    ACTUATOR_DIR,
+    OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
 
@@ -93,7 +93,7 @@ async def get_models():
 async def predict_models(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    output_dir: str = Form(ACTUATOR_DIR),
+    output_dir: str = Form(OUTPUT_DIR),
 ):
     """Run predictions using all available models"""
     # Create a temporary file to store the uploaded CSV
@@ -125,7 +125,7 @@ async def predict_models(
 async def predict_ml(
     file: UploadFile = File(...),
     model_name: Optional[str] = Form(None),
-    output_csv: str = Form(os.path.join(ACTUATOR_DIR, "recommendations.csv")),
+    output_csv: str = Form(os.path.join(OUTPUT_DIR, "recommendations.csv")),
 ):
     """Predict migration recommendations using machine learning model"""
     # Create a temporary file to store the uploaded JSON
@@ -198,7 +198,7 @@ async def analyze(workload_data: WorkloadInput):
 @api.get("/results/{filename}")
 async def get_results(filename: str):
     """Get result file from actuator directory"""
-    file_path = os.path.join(ACTUATOR_DIR, filename)
+    file_path = os.path.join(OUTPUT_DIR, filename)
 
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"File {filename} not found")
@@ -238,4 +238,4 @@ async def process_data(
 
 
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api:app", host="0.0.0.0", port=8082, reload=True)
