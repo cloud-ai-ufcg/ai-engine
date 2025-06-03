@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import re
 import json
+from ai_config import get_model_config, get_prompt, PROMPTS
 from dotenv import load_dotenv
 from util import get_logger, load_config
 from crewai import Agent, Task, Crew
@@ -56,33 +57,17 @@ def label_workloads_with_gemini(
     else:
         df = workloads
 
-    prompt = (
-        "You are a Kubernetes cluster orchestrator. For each workload, decide whether it should stay in the 'private' cluster (0) or migrate to the 'public' cluster (1).\n"
-        "Decision rules:\n"
-        "- Workloads with high demand (high CPU or memory usage) while the private cluster is overloaded should go to the public cluster.\n"
-        "- If percent_pending is high, consider moving to the public cluster.\n"
-        "- Consider the cluster_load to avoid overloading both the destination cluster and the actual cluster.\n\n"
-        "For each workload, provide:\n"
-        "1. The decision (0 for private, 1 for public)\n"
-        "2. A brief explanation of why you made this decision based on the workload's characteristics\n\n"
-        "Format your response as a JSON with the following structure:\n"
-        "{\n"
-        '  "decisions": [0, 1, 0, ...],  // Array of 0s and 1s for each workload\n'
-        '  "explanations": [\n'
-        '    "Explanation for workload 1",\n'
-        '    "Explanation for workload 2",\n'
-        "    ...\n"
-        "  ]\n"
-        "}\n\n"
-        "Workloads: " + df.to_json(orient="records", indent=2)
-    )
+    # Get the prompt from the configuration system
+    prompt = get_prompt("label_workloads", workloads_json=df.to_json(orient="records", indent=2))
 
     logger.info("Sending request to Gemini model")
 
     try:
+        # Get model configuration from the configuration system
+        model_config = get_model_config("gemini")
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash-001")
-        response = model.generate_content(prompt, generation_config={"temperature": 0.2, "max_output_tokens": 1024})
+        model = genai.GenerativeModel(model_config["model_name"])
+        response = model.generate_content(prompt, generation_config=model_config["generation_config"])
 
         text_response = response.text
         logger.debug(f"Complete Gemini response: {text_response}")
@@ -94,10 +79,30 @@ def label_workloads_with_gemini(
             if json_match:
                 json_str = json_match.group(0)
                 response_data = json.loads(json_str)
-
-                # Extract decisions and explanations
-                decisions = response_data.get("decisions", [])
-                explanations = response_data.get("explanations", [])
+                
+                # Use the structured output model for validation
+                prompt_config = PROMPTS.get("label_workloads", {})
+                output_schema = prompt_config.get("output_schema")
+                
+                if output_schema:
+                    try:
+                        # Validate with Pydantic model
+                        output = output_schema.from_dict(response_data)
+                        if not output.validate_output():
+                            logger.warning("Output validation failed: decisions and explanations have different lengths")
+                        
+                        # Extract validated data
+                        decisions = output.decisions
+                        explanations = output.explanations
+                    except Exception as e:
+                        logger.error(f"Failed to validate response with schema: {e}")
+                        # Fallback to direct extraction
+                        decisions = response_data.get("decisions", [])
+                        explanations = response_data.get("explanations", [])
+                else:
+                    # No schema defined, use direct extraction
+                    decisions = response_data.get("decisions", [])
+                    explanations = response_data.get("explanations", [])
 
                 # Ensure we have the right number of decisions
                 if len(decisions) == len(df):
