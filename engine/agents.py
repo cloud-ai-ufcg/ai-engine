@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import re
 import json
+from ai_config import get_model_config, get_prompt, PROMPTS
 from dotenv import load_dotenv
 from util import get_logger, load_config
 from crewai import Agent, Task, Crew
@@ -19,7 +20,7 @@ except ImportError:
 
 
 def label_workloads_with_gemini(
-    workloads: Union[list, 'pd.DataFrame']
+    workloads: Union[list, "pd.DataFrame"],
 ) -> Tuple[List[int], Dict[str, Any]]:
     """
     Uses Gemini API to decide workload labels with explanations.
@@ -42,8 +43,8 @@ def label_workloads_with_gemini(
     load_dotenv()
 
     config = load_config()
-    api_key = config.get('api-key', {}).get('google') or os.environ.get(
-        'GOOGLE_API_KEY'
+    api_key = config.get("api-key", {}).get("google") or os.environ.get(
+        "GOOGLE_API_KEY"
     )
     if not api_key:
         logger.warning(
@@ -56,33 +57,17 @@ def label_workloads_with_gemini(
     else:
         df = workloads
 
-    prompt = (
-        "You are a Kubernetes cluster orchestrator. For each workload, decide whether it should stay in the 'private' cluster (0) or migrate to the 'public' cluster (1).\n"
-        "Decision rules:\n"
-        "- Workloads with high demand (high CPU or memory usage) while the private cluster is overloaded should go to the public cluster.\n"
-        "- If percent_pending is high, consider moving to the public cluster.\n"
-        "- Consider the cluster_load to avoid overloading both the destination cluster and the actual cluster.\n\n"
-        "For each workload, provide:\n"
-        "1. The decision (0 for private, 1 for public)\n"
-        "2. A brief explanation of why you made this decision based on the workload's characteristics\n\n"
-        "Format your response as a JSON with the following structure:\n"
-        "{\n"
-        "  \"decisions\": [0, 1, 0, ...],  // Array of 0s and 1s for each workload\n"
-        "  \"explanations\": [\n"
-        "    \"Explanation for workload 1\",\n"
-        "    \"Explanation for workload 2\",\n"
-        "    ...\n"
-        "  ]\n"
-        "}\n\n"
-        "Workloads: " + df.to_json(orient='records', indent=2)
-    )
+    # Get the prompt from the configuration system
+    prompt = get_prompt("label_workloads", workloads_json=df.to_json(orient="records", indent=2))
 
     logger.info("Sending request to Gemini model")
 
     try:
+        # Get model configuration from the configuration system
+        model_config = get_model_config("gemini")
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash-001')
-        response = model.generate_content(prompt)
+        model = genai.GenerativeModel(model_config["model_name"])
+        response = model.generate_content(prompt, generation_config=model_config["generation_config"])
 
         text_response = response.text
         logger.debug(f"Complete Gemini response: {text_response}")
@@ -90,14 +75,34 @@ def label_workloads_with_gemini(
         # Try to parse the JSON response
         try:
             # Extract JSON from the response (in case there's any surrounding text)
-            json_match = re.search(r'\{[\s\S]*\}', text_response)
+            json_match = re.search(r"\{[\s\S]*\}", text_response)
             if json_match:
                 json_str = json_match.group(0)
                 response_data = json.loads(json_str)
-
-                # Extract decisions and explanations
-                decisions = response_data.get('decisions', [])
-                explanations = response_data.get('explanations', [])
+                
+                # Use the structured output model for validation
+                prompt_config = PROMPTS.get("label_workloads", {})
+                output_schema = prompt_config.get("output_schema")
+                
+                if output_schema:
+                    try:
+                        # Validate with Pydantic model
+                        output = output_schema.from_dict(response_data)
+                        if not output.validate_output():
+                            logger.warning("Output validation failed: decisions and explanations have different lengths")
+                        
+                        # Extract validated data
+                        decisions = output.decisions
+                        explanations = output.explanations
+                    except Exception as e:
+                        logger.error(f"Failed to validate response with schema: {e}")
+                        # Fallback to direct extraction
+                        decisions = response_data.get("decisions", [])
+                        explanations = response_data.get("explanations", [])
+                else:
+                    # No schema defined, use direct extraction
+                    decisions = response_data.get("decisions", [])
+                    explanations = response_data.get("explanations", [])
 
                 # Ensure we have the right number of decisions
                 if len(decisions) == len(df):
@@ -112,8 +117,8 @@ def label_workloads_with_gemini(
 
                     # Log the decision for each workload
                     for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                        workload_id = workload[1].get('workload_id', f'workload-{idx}')
-                        kind = workload[1].get('kind', 'unknown')
+                        workload_id = workload[1].get("workload_id", f"workload-{idx}")
+                        kind = workload[1].get("kind", "unknown")
                         destination = "public" if label == 1 else "private"
                         logger.info(
                             f"Decision for {workload_id} ({kind}): Cluster {destination}"
@@ -132,7 +137,7 @@ def label_workloads_with_gemini(
             logger.warning(f"Error parsing JSON response: {e}")
 
         # Fallback: try to extract just the decisions if JSON parsing failed
-        pattern = r'[01]+'
+        pattern = r"[01]+"
         matches = re.findall(pattern, text_response)
 
         if matches:
@@ -149,8 +154,8 @@ def label_workloads_with_gemini(
 
                 # Log the decision for each workload
                 for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                    workload_id = workload[1].get('workload_id', f'workload-{idx}')
-                    kind = workload[1].get('kind', 'unknown')
+                    workload_id = workload[1].get("workload_id", f"workload-{idx}")
+                    kind = workload[1].get("kind", "unknown")
                     destination = "public" if label == 1 else "private"
                     logger.info(
                         f"Decision for {workload_id} ({kind}): Cluster {destination}"
@@ -165,7 +170,7 @@ def label_workloads_with_gemini(
 
                 return labels, explanation_output
 
-        all_digits = re.findall(r'[01]', text_response)
+        all_digits = re.findall(r"[01]", text_response)
         if len(all_digits) >= len(df):
             logger.info(f"Extracting labels from Gemini response: {text_response}")
             labels = [int(digit) for digit in all_digits[: len(df)]]
@@ -178,8 +183,8 @@ def label_workloads_with_gemini(
 
             # Log the decision for each workload
             for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                workload_id = workload[1].get('workload_id', f'workload-{idx}')
-                kind = workload[1].get('kind', 'unknown')
+                workload_id = workload[1].get("workload_id", f"workload-{idx}")
+                kind = workload[1].get("kind", "unknown")
                 destination = "public" if label == 1 else "private"
                 logger.info(
                     f"Decision for {workload_id} ({kind}): Cluster {destination}"
@@ -207,8 +212,8 @@ def label_workloads_with_gemini(
 
         # Add generic explanations
         for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get('workload_id', f'workload-{idx}')
-            kind = workload[1].get('kind', 'unknown')
+            workload_id = workload[1].get("workload_id", f"workload-{idx}")
+            kind = workload[1].get("kind", "unknown")
 
             if label == 1:
                 explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
@@ -229,8 +234,8 @@ def label_workloads_with_gemini(
 
         # Add generic explanations
         for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get('workload_id', f'workload-{idx}')
-            kind = workload[1].get('kind', 'unknown')
+            workload_id = workload[1].get("workload_id", f"workload-{idx}")
+            kind = workload[1].get("kind", "unknown")
 
             if label == 1:
                 explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
@@ -242,7 +247,7 @@ def label_workloads_with_gemini(
 
 
 def _label_workloads_with_heuristics(
-    workloads: Union[list, 'pd.DataFrame']
+    workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
     """
     Fallback: uses simple heuristics to decide labels when AI is not available.
@@ -254,33 +259,33 @@ def _label_workloads_with_heuristics(
         df = workloads.copy()
 
     def cpu_to_float(cpu):
-        if isinstance(cpu, str) and cpu.endswith('m'):
+        if isinstance(cpu, str) and cpu.endswith("m"):
             return float(cpu[:-1]) / 1000.0
         return float(cpu) if cpu else 0.0
 
     def mem_to_float(mem):
-        if isinstance(mem, str) and mem.endswith('Mi'):
+        if isinstance(mem, str) and mem.endswith("Mi"):
             return float(mem[:-2])
         return float(mem) if mem else 0.0
 
     # Extract and convert resources
     try:
-        cpu_values = df['resources'].apply(
-            lambda x: cpu_to_float(x.get('cpu', 0)) if isinstance(x, dict) else 0.0
+        cpu_values = df["resources"].apply(
+            lambda x: cpu_to_float(x.get("cpu", 0)) if isinstance(x, dict) else 0.0
         )
-        mem_values = df['resources'].apply(
-            lambda x: mem_to_float(x.get('memory', 0)) if isinstance(x, dict) else 0.0
+        mem_values = df["resources"].apply(
+            lambda x: mem_to_float(x.get("memory", 0)) if isinstance(x, dict) else 0.0
         )
     except:
         # Alternative if the format is different
-        cpu_values = df.get('resources.cpu', df.get('cpu', 0)).apply(cpu_to_float)
-        mem_values = df.get('resources.memory', df.get('memory', 0)).apply(mem_to_float)
+        cpu_values = df.get("resources.cpu", df.get("cpu", 0)).apply(cpu_to_float)
+        mem_values = df.get("resources.memory", df.get("memory", 0)).apply(mem_to_float)
 
     # Rules heuristics:
     # 1. If CPU > 0.5 or memory > 1024Mi: move to public
     # 2. If percent_pending > 20%: move to public
     try:
-        percent_pending = df['percent_pending'].fillna(0)
+        percent_pending = df["percent_pending"].fillna(0)
     except:
         percent_pending = pd.Series([0] * len(df))
 
@@ -304,34 +309,34 @@ def analyze_workload_resources(workloads_json: str) -> str:
 
         # Convert resources to standard format
         for workload in workloads:
-            if 'resources' in workload and isinstance(workload['resources'], dict):
-                cpu = workload['resources'].get('cpu', '0')
-                memory = workload['resources'].get('memory', '0')
+            if "resources" in workload and isinstance(workload["resources"], dict):
+                cpu = workload["resources"].get("cpu", "0")
+                memory = workload["resources"].get("memory", "0")
 
                 # Convert CPU
-                if isinstance(cpu, str) and cpu.endswith('m'):
+                if isinstance(cpu, str) and cpu.endswith("m"):
                     cpu_value = float(cpu[:-1]) / 1000.0
                 else:
                     cpu_value = float(cpu) if cpu else 0.0
 
                 # Convert Memory
-                if isinstance(memory, str) and memory.endswith('Mi'):
+                if isinstance(memory, str) and memory.endswith("Mi"):
                     memory_value = float(memory[:-2])
                 else:
                     memory_value = float(memory) if memory else 0.0
 
-                workload['cpu_value'] = cpu_value
-                workload['memory_value'] = memory_value
+                workload["cpu_value"] = cpu_value
+                workload["memory_value"] = memory_value
 
         # Calculate statistics
         total_workloads = len(workloads)
         avg_cpu = (
-            sum(w.get('cpu_value', 0) for w in workloads) / total_workloads
+            sum(w.get("cpu_value", 0) for w in workloads) / total_workloads
             if total_workloads
             else 0
         )
         avg_memory = (
-            sum(w.get('memory_value', 0) for w in workloads) / total_workloads
+            sum(w.get("memory_value", 0) for w in workloads) / total_workloads
             if total_workloads
             else 0
         )
@@ -339,7 +344,7 @@ def analyze_workload_resources(workloads_json: str) -> str:
         # Count workload types
         workload_types = {}
         for w in workloads:
-            kind = w.get('kind', 'Unknown')
+            kind = w.get("kind", "Unknown")
             workload_types[kind] = workload_types.get(kind, 0) + 1
 
         result = {
@@ -355,7 +360,7 @@ def analyze_workload_resources(workloads_json: str) -> str:
 
 
 def label_workloads_with_crewai(
-    workloads: Union[list, 'pd.DataFrame']
+    workloads: Union[list, "pd.DataFrame"],
 ) -> Tuple[List[int], Dict[str, Any]]:
     """
     Uses CrewAI to decide workload labels with explanations.
@@ -378,15 +383,15 @@ def label_workloads_with_crewai(
         df = workloads.copy()
 
     # Convert DataFrame to JSON for the agents
-    workloads_json = df.to_json(orient='records', indent=2)
+    workloads_json = df.to_json(orient="records", indent=2)
 
     # Load environment variables and config
     load_dotenv()
     config = load_config()
 
     # Check for API key
-    api_key = os.environ.get('GOOGLE_API_KEY') or config.get('api-key', {}).get(
-        'google'
+    api_key = os.environ.get("GOOGLE_API_KEY") or config.get("api-key", {}).get(
+        "google"
     )
     if not api_key:
         logger.warning("API Key not found. Using traditional model as fallback.")
@@ -477,12 +482,12 @@ def label_workloads_with_crewai(
 
         try:
             decision_output = json.loads(decision_task.output)
-            labels = decision_output.get('labels', [])
+            labels = decision_output.get("labels", [])
 
             # If labels are not in the expected format, extract them
             if not labels:
                 # Try to extract a pattern of 0s and 1s
-                pattern = r'[01]+'
+                pattern = r"[01]+"
                 matches = re.findall(pattern, decision_task.output)
                 if matches:
                     longest_match = max(matches, key=len)
@@ -510,8 +515,8 @@ def label_workloads_with_crewai(
 
             # Log the decisions
             for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                workload_id = workload[1].get('workload_id', f'workload-{idx}')
-                kind = workload[1].get('kind', 'unknown')
+                workload_id = workload[1].get("workload_id", f"workload-{idx}")
+                kind = workload[1].get("kind", "unknown")
                 destination = "public" if label == 1 else "private"
                 logger.info(
                     f"Decision for {workload_id} ({kind}): Cluster {destination}"
