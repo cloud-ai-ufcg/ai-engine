@@ -7,11 +7,11 @@ ai:
 # Diretórios para diferentes componentes do sistema
 paths:
   models_dir: ai-engine/model-pipeline/models
-  output_dir: ai-engine/output
-  log_dir: ai-engine/logs
+  output_dir: ../simulator/data/output
+  log_dir: ../simulator/logs
 
 logging:
-  level: INFO
+  level: DEBUG
   file: ai_engine.log
 
 api-key:

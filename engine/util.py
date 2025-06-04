@@ -8,8 +8,8 @@ from typing import Optional, Dict, Any
 # Default directory paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 MODELS_DIR = os.path.abspath(os.path.join(BASE_DIR, "model-pipeline/models"))
-OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "output"))
-ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "logs"))
+OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data/output"))
+ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "../logs"))
 
 # Ensure log directory exists
 os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
@@ -33,7 +33,6 @@ COLORS = {
 }
 
 
-# Custom formatter with colors
 class ColoredFormatter(logging.Formatter):
     FORMATS = {
         logging.DEBUG: f"{COLORS['BLUE']}[%(asctime)s] {COLORS['BOLD']}DEBUG{COLORS['RESET']}{COLORS['BLUE']} [%(name)s] - %(message)s{COLORS['RESET']}",
@@ -257,6 +256,8 @@ def load_config(config_path=None) -> Dict[str, Any]:
     logger = setup_logger(level=log_level, log_file=log_file)
 
     # Log the paths being used
+    logger.debug(f"Using config file: {config_path}")
+    logger.debug(f"Using base directory: {BASE_DIR}")
     logger.debug(f"Using models directory: {MODELS_DIR}")
     logger.debug(f"Using output directory: {OUTPUT_DIR}")
     logger.debug(f"Using log directory: {ENGINE_LOG_DIR}")
