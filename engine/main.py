@@ -3,6 +3,7 @@ import joblib
 import json
 import pandas as pd
 from typing import Dict, List, Any, Tuple, Union
+import datetime
 
 from util import (
     get_logger,
@@ -408,10 +409,11 @@ def save_and_log_explanations(result_df, explanations):
         explanations: Dictionary with explanations
     """
     # Save explanations to a JSON file
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     if not os.path.exists(ENGINE_LOG_DIR):
         os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
     explanations_file = os.path.join(
-        ENGINE_LOG_DIR, "recommendations_explanations.json"
+        ENGINE_LOG_DIR, f"recommendations_explanations_{timestamp}.json"
     )
 
     with open(explanations_file, "w") as f:
