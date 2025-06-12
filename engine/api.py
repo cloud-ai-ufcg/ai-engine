@@ -4,16 +4,13 @@ from fastapi import (
     UploadFile,
     HTTPException,
     Form,
-    Depends,
     BackgroundTasks,
 )
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-from typing import Dict, List, Any, Tuple, Union, Optional
+from typing import Any, Optional
 import pandas as pd
 import os
-import json
-import joblib
 import tempfile
 import shutil
 from contextlib import asynccontextmanager
@@ -43,6 +40,12 @@ from util import (
     ENGINE_LOG_DIR,
 )
 
+import asyncio
+import aiohttp
+import schedule
+import threading
+import time
+
 logger = get_logger("api")
 
 
@@ -61,15 +64,15 @@ app_state = AppState()
 async def lifespan(app: FastAPI):
     # Load configuration and models at startup
     app_state.config = load_config()
-    app_state.models = load_models()
-    logger.info(f"Loaded {len(app_state.models)} models")
+    # app_state.models = load_models()
+    # logger.info(f"Loaded {len(app_state.models)} models")
     yield
     # Clean up resources at shutdown
     app_state.models = {}
 
 
 # Initialize FastAPI app
-api = FastAPI(
+app = FastAPI(
     title="AI Engine API",
     description="API for performing workload analysis and generating migration recommendations",
     version="1.0.0",
@@ -77,19 +80,19 @@ api = FastAPI(
 )
 
 
-@api.get("/")
+@app.get("/")
 async def root():
     """Health check endpoint"""
     return {"status": "healthy", "message": "AI Engine API is running"}
 
 
-@api.get("/models")
+@app.get("/models")
 async def get_models():
     """List all available models"""
     return {"models": list(app_state.models.keys())}
 
 
-@api.post("/predict/models")
+@app.post("/predict/models")
 async def predict_models(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -121,46 +124,7 @@ async def predict_models(
         os.unlink(temp_file.name)
 
 
-@api.post("/predict/ml")
-async def predict_ml(
-    file: UploadFile = File(...),
-    model_name: Optional[str] = Form(None),
-    output_csv: str = Form(os.path.join(OUTPUT_DIR, "recommendations.csv")),
-):
-    """Predict migration recommendations using machine learning model"""
-    # Create a temporary file to store the uploaded JSON
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
-    try:
-        # Save uploaded file to temporary location
-        with temp_file:
-            shutil.copyfileobj(file.file, temp_file)
-
-        # Select model if specified
-        model = None
-        if model_name and model_name in app_state.models:
-            model = app_state.models[model_name]
-
-        # Run prediction
-        predict_with_machine_learning(temp_file.name, model, output_csv)
-
-        # Try to read the results
-        result_df = pd.read_csv(output_csv)
-        recommendations = result_df.to_dict(orient="records")
-
-        return {
-            "status": "completed",
-            "recommendations": recommendations,
-            "output_csv": output_csv,
-        }
-    except Exception as e:
-        logger.error(f"Error processing JSON file: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Clean up the temp file
-        os.unlink(temp_file.name)
-
-
-@api.post("/analyze")
+@app.post("/analyze")
 async def analyze(workload_data: WorkloadInput):
     """Analyze workloads and generate recommendations"""
     try:
@@ -195,46 +159,67 @@ async def analyze(workload_data: WorkloadInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@api.get("/results/{filename}")
-async def get_results(filename: str):
-    """Get result file from actuator directory"""
-    file_path = os.path.join(OUTPUT_DIR, filename)
+@app.post("/start")
+async def start():
+    """Start the AI Engine"""
 
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"File {filename} not found")
+    # Global variable to track if the engine is running
+    running = True
+    stop_event = threading.Event()
 
-    return FileResponse(file_path)
+    # Function to fetch metrics from monitor
+    async def fetch_metrics():
+        if not running:
+            return
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"http://{app_state.config['monitor']['host']}:{app_state.config['monitor']['port']}/{app_state.config['monitor']['route']}"
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        logger.info(
+                            format_message(
+                                "Successfully fetched metrics from MONITOR",
+                                icon="📊",
+                                color="GREEN",
+                            )
+                        )
+                        # Process the metrics data
+                        if "workloads" in data:
+                            workloads = process_monitoring_data(data["workloads"])
+                            if workloads:
+                                result_df, explanations = analyze_workloads(
+                                    workloads, app_state.config
+                                )
+                                save_and_log_explanations(result_df, explanations)
+                                write_recommendations(result_df)
+                    else:
+                        logger.error(
+                            f"Failed to fetch metrics from MONITOR: {response.status}"
+                        )
+        except Exception as e:
+            logger.error(f"Error fetching metrics from MONITOR: {e}")
+
+    # Function to run the scheduler in a separate thread
+    def run_scheduler():
+        while not stop_event.is_set():
+            schedule.run_pending()
+
+    # Start the scheduler
+    schedule.every(30).seconds.do(lambda: asyncio.run(fetch_metrics()))
+    scheduler_thread = threading.Thread(target=run_scheduler)
+    scheduler_thread.start()
+
+    return {"status": "Recommendations are running"}
 
 
-@api.post("/monitoring-data")
-async def process_data(
-    file: UploadFile = File(...), timestamp_lookback_seconds: int = Form(30)
-):
-    """Process monitoring data from uploaded JSON file"""
-    # Create a temporary file to store the uploaded JSON
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
-    try:
-        # Save uploaded file to temporary location
-        with temp_file:
-            shutil.copyfileobj(file.file, temp_file)
-
-        # Load and process data
-        with open(temp_file.name, "r") as f:
-            data = json.load(f)
-
-        workloads = process_monitoring_data(data, timestamp_lookback_seconds)
-
-        return {
-            "status": "success",
-            "workload_count": len(workloads),
-            "workloads": workloads,
-        }
-    except Exception as e:
-        logger.error(f"Error processing monitoring data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Clean up the temp file
-        os.unlink(temp_file.name)
+@app.post("/stop")
+async def stop():
+    """Stop the AI Engine"""
+    stop_event.set()
+    return {"status": "Recommendations stopped"}
 
 
 if __name__ == "__main__":
