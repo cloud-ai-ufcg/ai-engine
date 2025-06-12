@@ -175,7 +175,8 @@ async def start():
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    f"http://{app_state.config['monitor']['host']}:{app_state.config['monitor']['port']}/{app_state.config['monitor']['route']}"
+                    f"http://{app_state.config['monitor']['host']}:{app_state.config['monitor']['port']}/{app_state.config['monitor']['route']}",
+                    json={},
                 ) as response:
                     if response.status == 200:
                         data = await response.json()
