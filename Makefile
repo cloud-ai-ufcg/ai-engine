@@ -22,6 +22,9 @@ install:
 run:
 	cd $(ENGINE_DIR) && $(PYTHON) main.py
 
+api:
+	cd $(ENGINE_DIR) && $(PYTHON) api.py
+
 # Run with custom config
 run-with-config:
 	cd $(ENGINE_DIR) && $(PYTHON) main.py --config $(CONFIG_FILE)
