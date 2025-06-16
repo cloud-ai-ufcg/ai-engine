@@ -5,7 +5,7 @@ import pandas as pd
 from typing import Dict, List, Any, Tuple, Union
 import datetime
 
-from util import (
+from .util import (
     get_logger,
     load_config,
     format_message,
@@ -14,7 +14,7 @@ from util import (
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
-from agents import label_workloads_with_gemini, label_workloads_with_crewai
+from .agents import label_workloads_with_gemini, label_workloads_with_crewai
 
 logger = get_logger("main")
 
@@ -312,14 +312,17 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             )
 
     # Write recommendations to CSV
-    output_csv = os.path.join(output_dir, "recommendations.csv")
-    result_df.to_csv(output_csv, index=False)
-    logger.info(
-        format_message(
-            f"Recommendations written to {output_csv}", icon="📝", color="MAGENTA"
+    try:
+        output_csv = os.path.join(output_dir, "recommendations.csv")
+        result_df.to_csv(output_csv, index=False)
+        logger.info(
+            format_message(
+                f"Recommendations written to {output_csv}", icon="📝", color="MAGENTA"
+            )
         )
-    )
-
+    except Exception as e:
+        logger.error(f"Error writing recommendations to CSV: {e}")
+    
     return output_csv
 
 
@@ -460,23 +463,4 @@ def save_and_log_explanations(result_df, explanations):
             logger.info(f"💡 {key}: {value}")
 
 
-def main():
-    """
-    Main function that orchestrates the workload analysis process.
-    """
-    config = load_config()
 
-    workloads = load_monitoring_data(config)
-    if not workloads:
-        logger.error("❌ No workloads found")
-        return
-
-    result, explanations = analyze_workloads(workloads, config)
-
-    save_and_log_explanations(result, explanations)
-
-    write_recommendations(result)
-
-
-if __name__ == "__main__":
-    main()
