@@ -1,11 +1,11 @@
-from typing import List, Union, Dict, Any, Tuple, Callable
+from typing import List, Union, Dict, Any, Tuple
 import os
 import pandas as pd
 import re
 import json
-from ai_config import get_model_config, get_prompt, PROMPTS
+from .ai_config import get_model_config, get_prompt, PROMPTS
 from dotenv import load_dotenv
-from util import get_logger, load_config
+from .util import get_logger, load_config
 from crewai import Agent, Task, Crew
 
 logger = get_logger("agents")
