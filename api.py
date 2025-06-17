@@ -41,6 +41,7 @@ from engine.util import (
 
 import asyncio
 import aiohttp
+import json
 import schedule
 import threading
 import time
@@ -100,11 +101,12 @@ async def apply_recommendations(result_df):
     """
     try:
         # Apply recommendations
-        recommendations_dict = result_df.to_dict(orient="records")
+        recommendations_json = json.dumps(result_df.to_dict(orient="records"), ensure_ascii=False)
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"http://{app_state.config['actuator']['host']}:{app_state.config['actuator']['port']}/{app_state.config['actuator']['route']}",
-                json={"recommendations": recommendations_dict},
+                data=recommendations_json,
+                headers={"Content-Type": "application/json"},
             ) as response:
                 if response.status == 200:
                     logger.info(
