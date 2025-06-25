@@ -11,15 +11,10 @@ from pydantic import BaseModel
 from typing import Any, Optional
 import pandas as pd
 import os
-import tempfile
-import shutil
 from contextlib import asynccontextmanager
 import uvicorn
 
 from engine.main import (
-    load_models,
-    predict_with_models,
-    predict_with_machine_learning,
     process_monitoring_data,
     write_recommendations,
     load_monitoring_data,
@@ -63,11 +58,7 @@ app_state = AppState()
 async def lifespan(app: FastAPI):
     # Load configuration and models at startup
     app_state.config = load_config()
-    # app_state.models = load_models()
-    # logger.info(f"Loaded {len(app_state.models)} models")
     yield
-    # Clean up resources at shutdown
-    app_state.models = {}
 
 
 app = FastAPI(
@@ -84,10 +75,6 @@ async def root():
     return {"status": "healthy", "message": "AI Engine API is running"}
 
 
-@app.get("/models")
-async def get_models():
-    """List all available models"""
-    return {"models": list(app_state.models.keys())}
 
 
 async def apply_recommendations(result_df):
