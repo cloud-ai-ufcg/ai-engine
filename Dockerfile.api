@@ -15,4 +15,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8083
 
 # Run in API mode
-CMD ["python", "-m", "engine.api"]
+CMD ["python", "api.py"]
