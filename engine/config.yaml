@@ -7,8 +7,8 @@ ai:
 # Diretórios para diferentes componentes do sistema
 paths:
   models_dir: ai-engine/model-pipeline/models
-  output_dir: ../simulator/data/output
-  log_dir: ../simulator/logs
+  output_dir: ai-engine/data/output
+  log_dir: ai-engine/logs
 
 logging:
   level: DEBUG
@@ -16,3 +16,13 @@ logging:
 
 api-key:
   google: KEY_VALUE
+
+monitor:
+  host: 0.0.0.0
+  port: 8082
+  route: metrics
+
+actuator:
+  host: 0.0.0.0
+  port: 8084
+  route: apply
