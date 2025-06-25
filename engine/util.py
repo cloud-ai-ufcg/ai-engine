@@ -6,10 +6,10 @@ import yaml
 from typing import Optional, Dict, Any
 
 # Default directory paths
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 MODELS_DIR = os.path.abspath(os.path.join(BASE_DIR, "model-pipeline/models"))
-OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "../data/output"))
-ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "../logs"))
+OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "data/output"))
+ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "logs"))
 
 # Ensure log directory exists
 os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
