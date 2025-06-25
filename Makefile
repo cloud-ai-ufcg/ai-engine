@@ -1,4 +1,4 @@
-.PHONY: run clean install test
+.PHONY: run clean install
 
 # Default Python interpreter
 PYTHON = python
@@ -14,19 +14,33 @@ CONFIG_FILE = $(ENGINE_DIR)/config.yaml
 # Default target
 all: install run
 
-# Install dependencies
 install:
 	pip install -r requirements.txt
 
-# Run the engine module
 run:
-	cd $(ENGINE_DIR) && $(PYTHON) main.py
+	$(PYTHON) main.py
 
-# Run with custom config
+cli:
+	$(PYTHON) cli.py
+
+api:
+	$(PYTHON) api.py
+
 run-with-config:
-	cd $(ENGINE_DIR) && $(PYTHON) main.py --config $(CONFIG_FILE)
+	$(PYTHON) cli.py --config $(CONFIG_FILE)
 
-# Clean generated files
+build-docker-api:
+	docker build -t ai-engine-api -f Dockerfile.api .
+
+build-docker-cli:
+	docker build -t ai-engine-cli -f Dockerfile.cli .
+
+run-docker-api:
+	docker run --name ai-engine-api -p 8083:8083 ai-engine-api
+
+run-docker-cli:
+	docker run --name ai-engine-cli -p 8083:8083 ai-engine-cli
+
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
@@ -40,11 +54,6 @@ clean:
 	find . -type f -name "recommendations.csv" -delete
 	find $(OUTPUT_DIR) -type f -name "*_predictions.csv" -delete
 
-# Run tests
-test:
-	$(PYTHON) -m pytest tests/
-
-# Show help
 help:
 	@echo "Available targets:"
 	@echo "  all          : Default target, runs the engine"
@@ -52,5 +61,4 @@ help:
 	@echo "  run          : Run the engine module"
 	@echo "  run-with-config : Run with a specific config file"
 	@echo "  clean        : Clean generated files"
-	@echo "  test         : Run tests"
 	@echo "  help         : Show this help message"
