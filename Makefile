@@ -1,4 +1,4 @@
-.PHONY: run clean install test
+.PHONY: run clean install
 
 # Default Python interpreter
 PYTHON = python
@@ -54,9 +54,6 @@ clean:
 	find . -type f -name "recommendations.csv" -delete
 	find $(OUTPUT_DIR) -type f -name "*_predictions.csv" -delete
 
-test:
-	$(PYTHON) -m pytest tests/
-
 help:
 	@echo "Available targets:"
 	@echo "  all          : Default target, runs the engine"
@@ -64,5 +61,4 @@ help:
 	@echo "  run          : Run the engine module"
 	@echo "  run-with-config : Run with a specific config file"
 	@echo "  clean        : Clean generated files"
-	@echo "  test         : Run tests"
 	@echo "  help         : Show this help message"
