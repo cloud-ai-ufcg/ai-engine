@@ -30,16 +30,16 @@ run-with-config:
 	$(PYTHON) cli.py --config $(CONFIG_FILE)
 
 build-docker-api:
-	docker build -t ai-engine-api -f Dockerfile.api .
+	docker build -t ai-engine-api:latest -f Dockerfile.api .
 
 build-docker-cli:
-	docker build -t ai-engine-cli -f Dockerfile.cli .
+	docker build -t ai-engine-cli:latest -f Dockerfile.cli .
 
 run-docker-api:
-	docker run --name ai-engine-api -p 8083:8083 ai-engine-api
+	docker run --name ai-engine-api -p 8083:8083 ai-engine-api:latest
 
 run-docker-cli:
-	docker run --name ai-engine-cli -p 8083:8083 ai-engine-cli
+	docker run --name ai-engine-cli -p 8083:8083 ai-engine-cli:latest
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
