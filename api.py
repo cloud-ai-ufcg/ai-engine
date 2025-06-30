@@ -40,6 +40,13 @@ import json
 import schedule
 import threading
 import time
+from typing import Optional
+
+# Global state variables to control the recommendation loop
+running: bool = False
+stop_event: threading.Event = threading.Event()
+# Background thread that runs the scheduler; populated when `/start` is called
+scheduler_thread: Optional[threading.Thread] = None
 
 logger = get_logger("api")
 
@@ -114,10 +121,12 @@ async def apply_recommendations(result_df):
 @app.post("/start")
 async def start():
     """Start the AI Engine"""
+    global running, stop_event
 
-    # Global variable to track if the engine is running
+    # Mark the engine as running and clear any previous stop signal
     running = True
-    stop_event = threading.Event()
+    if stop_event.is_set():
+        stop_event.clear()
 
     # Function to fetch metrics from monitor
     async def fetch_metrics():
@@ -165,19 +174,26 @@ async def start():
     asyncio.create_task(fetch_metrics())
 
     # Start the scheduler to run every 30 seconds after the first execution
+    global scheduler_thread
     schedule.every(30).seconds.do(lambda: asyncio.run(fetch_metrics()))
-    scheduler_thread = threading.Thread(target=run_scheduler)
+    scheduler_thread = threading.Thread(target=run_scheduler, name="scheduler-thread", daemon=True)
     scheduler_thread.start()
 
+    logger.info(format_message("Recommendations are running", icon="🚀", color="GREEN"))
     return {"status": "Recommendations are running"}
 
 
 @app.post("/stop")
 async def stop():
     """Stop the AI Engine"""
-    global running
+    global running, stop_event, scheduler_thread
     running = False
     stop_event.set()
+    # Wait for the background thread to finish in a non-blocking way
+    if scheduler_thread is not None and scheduler_thread.is_alive():
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, scheduler_thread.join)
+    logger.info(format_message("Recommendations stopped", icon="🛑", color="RED"))
     return {"status": "Recommendations stopped"}
 
 
