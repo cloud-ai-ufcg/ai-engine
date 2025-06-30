@@ -16,6 +16,16 @@ Run API
 make api
 ```
 
+Run Fake Monitor
+```bash
+make fake-monitor
+```
+
+Run Fake Actuator
+```bash
+make fake-actuator
+```
+
 Turn on recommendations
 ```bash
 curl -X POST http://0.0.0.0:8083/start
