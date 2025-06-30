@@ -214,7 +214,10 @@ def load_config(config_path=None) -> Dict[str, Any]:
     """
     global config
     if config_path is None:
-        config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+        # Default to the config.yaml located one directory above the current module
+        config_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), os.pardir, "config.yaml")
+        )
 
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
