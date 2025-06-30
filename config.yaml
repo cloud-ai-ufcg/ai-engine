@@ -26,3 +26,10 @@ actuator:
   host: 0.0.0.0
   port: 8084
   route: apply
+
+server:
+  host: 0.0.0.0
+  port: 8083
+  route: start/stop
+  reload: false
+  
