@@ -1,14 +1,7 @@
-from fastapi import (
-    FastAPI,
-    File,
-    UploadFile,
-    HTTPException,
-    Form,
-    BackgroundTasks,
-)
-from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
-from typing import Any, Optional
+from fastapi import FastAPI
+
+
+from typing import Optional
 import pandas as pd
 import os
 from contextlib import asynccontextmanager
@@ -40,6 +33,14 @@ import json
 import schedule
 import threading
 import time
+
+
+# Global state variables to control the recommendation loop
+SCHEDULER_INTERVAL: int = 30  # seconds between recommendation cycles
+running: bool = False
+stop_event: threading.Event = threading.Event()
+# Background thread that runs the scheduler; populated when `/start` is called
+scheduler_thread: Optional[threading.Thread] = None
 
 logger = get_logger("api")
 
@@ -75,8 +76,6 @@ async def root():
     return {"status": "healthy", "message": "AI Engine API is running"}
 
 
-
-
 async def apply_recommendations(result_df):
     """
     Sends a POST request to the Actuator service endpoint with the recommendations
@@ -88,7 +87,9 @@ async def apply_recommendations(result_df):
     """
     try:
         # Apply recommendations
-        recommendations_json = json.dumps(result_df.to_dict(orient="records"), ensure_ascii=False)
+        recommendations_json = json.dumps(
+            result_df.to_dict(orient="records"), ensure_ascii=False
+        )
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"http://{app_state.config['actuator']['host']}:{app_state.config['actuator']['port']}/{app_state.config['actuator']['route']}",
@@ -114,10 +115,12 @@ async def apply_recommendations(result_df):
 @app.post("/start")
 async def start():
     """Start the AI Engine"""
+    global running, stop_event
 
-    # Global variable to track if the engine is running
+    # Mark the engine as running and clear any previous stop signal
     running = True
-    stop_event = threading.Event()
+    if stop_event.is_set():
+        stop_event.clear()
 
     # Function to fetch metrics from monitor
     async def fetch_metrics():
@@ -138,8 +141,6 @@ async def start():
                                 color="GREEN",
                             )
                         )
-                        # Process the metrics data
-
                     else:
                         logger.error(
                             f"Failed to fetch metrics from MONITOR: {response.status}"
@@ -165,21 +166,35 @@ async def start():
     asyncio.create_task(fetch_metrics())
 
     # Start the scheduler to run every 30 seconds after the first execution
-    schedule.every(30).seconds.do(lambda: asyncio.run(fetch_metrics()))
-    scheduler_thread = threading.Thread(target=run_scheduler)
+    global scheduler_thread
+    schedule.every(SCHEDULER_INTERVAL).seconds.do(lambda: asyncio.run(fetch_metrics()))
+    scheduler_thread = threading.Thread(
+        target=run_scheduler, name="scheduler-thread", daemon=True
+    )
     scheduler_thread.start()
 
+    logger.info(format_message("Recommendations are running", icon="🚀", color="GREEN"))
     return {"status": "Recommendations are running"}
 
 
 @app.post("/stop")
 async def stop():
     """Stop the AI Engine"""
-    global running
+    global running, stop_event, scheduler_thread
     running = False
     stop_event.set()
+    # Wait for the background thread to finish in a non-blocking way
+    if scheduler_thread is not None and scheduler_thread.is_alive():
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, scheduler_thread.join)
+    logger.info(format_message("Recommendations stopped", icon="🛑", color="RED"))
     return {"status": "Recommendations stopped"}
 
 
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="0.0.0.0", port=8083, reload=False)
+    uvicorn.run(
+        "api:app",
+        host=app_state.config["server"]["host"],
+        port=app_state.config["server"]["port"],
+        reload=app_state.config["server"]["reload"],
+    )

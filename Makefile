@@ -9,7 +9,7 @@ MODEL_PIPELINE_DIR = model-pipeline
 OUTPUT_DIR = output
 
 # Default configuration file
-CONFIG_FILE = $(ENGINE_DIR)/config.yaml
+CONFIG_FILE = config.yaml
 
 # Default target
 all: install run
@@ -18,13 +18,19 @@ install:
 	pip install -r requirements.txt
 
 run:
-	$(PYTHON) main.py
+	$(PYTHON) cli.py
 
 cli:
 	$(PYTHON) cli.py
 
 api:
 	$(PYTHON) api.py
+
+fake-monitor:
+	$(PYTHON) -m uvicorn fake_monitor:app --host 0.0.0.0 --port 8082 --reload
+
+fake-actuator:
+	$(PYTHON) -m uvicorn fake_actuator:app --host 0.0.0.0 --port 8084 --reload
 
 run-with-config:
 	$(PYTHON) cli.py --config $(CONFIG_FILE)
