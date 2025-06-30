@@ -1,14 +1,7 @@
-from fastapi import (
-    FastAPI,
-    File,
-    UploadFile,
-    HTTPException,
-    Form,
-    BackgroundTasks,
-)
-from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
-from typing import Any, Optional
+from fastapi import FastAPI
+
+
+from typing import Optional
 import pandas as pd
 import os
 from contextlib import asynccontextmanager
@@ -40,9 +33,10 @@ import json
 import schedule
 import threading
 import time
-from typing import Optional
+
 
 # Global state variables to control the recommendation loop
+SCHEDULER_INTERVAL: int = 30  # seconds between recommendation cycles
 running: bool = False
 stop_event: threading.Event = threading.Event()
 # Background thread that runs the scheduler; populated when `/start` is called
@@ -147,8 +141,6 @@ async def start():
                                 color="GREEN",
                             )
                         )
-                        # Process the metrics data
-
                     else:
                         logger.error(
                             f"Failed to fetch metrics from MONITOR: {response.status}"
@@ -175,7 +167,7 @@ async def start():
 
     # Start the scheduler to run every 30 seconds after the first execution
     global scheduler_thread
-    schedule.every(30).seconds.do(lambda: asyncio.run(fetch_metrics()))
+    schedule.every(SCHEDULER_INTERVAL).seconds.do(lambda: asyncio.run(fetch_metrics()))
     scheduler_thread = threading.Thread(target=run_scheduler, name="scheduler-thread", daemon=True)
     scheduler_thread.start()
 
