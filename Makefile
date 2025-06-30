@@ -26,6 +26,12 @@ cli:
 api:
 	$(PYTHON) api.py
 
+fake-monitor:
+	$(PYTHON) -m uvicorn fake_monitor:app --host 0.0.0.0 --port 8082 --reload
+
+fake-actuator:
+	$(PYTHON) -m uvicorn fake_actuator:app --host 0.0.0.0 --port 8084 --reload
+
 run-with-config:
 	$(PYTHON) cli.py --config $(CONFIG_FILE)
 
