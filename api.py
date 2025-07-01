@@ -192,9 +192,16 @@ async def stop():
 
 
 if __name__ == "__main__":
+    # When running this module directly (e.g. `python api.py` inside Docker), the
+    # FastAPI lifespan event has **not** executed yet, so the configuration has
+    # not been loaded.  Ensure we load it manually before starting uvicorn so
+    # that the server settings are available.
+    if app_state.config is None:
+        app_state.config = load_config()
+
     uvicorn.run(
         "api:app",
         host=app_state.config["server"]["host"],
         port=app_state.config["server"]["port"],
-        reload=app_state.config["server"]["reload"],
+        reload=app_state.config["server"].get("reload", False),
     )
