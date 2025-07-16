@@ -67,9 +67,24 @@ def label_workloads_with_gemini(
         model_config = get_model_config("gemini")
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(model_config["model_name"])
+
+        input_tokens = model.count_tokens(prompt).total_tokens  #
+        print("Token input usage:")                             # Calculates the token usage of the input
+        print(input_tokens)                                     #
+        
         response = model.generate_content(prompt, generation_config=model_config["generation_config"])
 
+        output_tokens = model.count_tokens(response.text).total_tokens #
+        print("Token output usage:")                                   # Calculates the token usage of the output
+        print(output_tokens)                                           #
+
+        total_tokens = input_tokens + output_tokens                    #
+        print(" Total token usage:")                                   # Calculates the total token usage
+        print(total_tokens)                                            #
+
         text_response = response.text
+
+        logger.info(f"Token Usage - Input: {input_tokens} | Output: {output_tokens} | Total: {total_tokens}")
         logger.debug(f"Complete Gemini response: {text_response}")
 
         # Try to parse the JSON response
