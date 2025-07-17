@@ -1,5 +1,5 @@
 data:
-  input_json: ../../data/output/monitor_outputs.json
+  input_json: monitor_outputs_v2.json
 
 ai:
   model: gemini
