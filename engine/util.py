@@ -246,19 +246,25 @@ def load_config(config_path=None) -> Dict[str, Any]:
     if "models_dir" in paths_config:
         raw_path = paths_config["models_dir"]
         MODELS_DIR = (
-            raw_path if os.path.isabs(raw_path) else os.path.abspath(os.path.join(BASE_DIR, raw_path))
+            raw_path
+            if os.path.isabs(raw_path)
+            else os.path.abspath(os.path.join(BASE_DIR, raw_path))
         )
 
     if "output_dir" in paths_config:
         raw_path = paths_config["output_dir"]
         OUTPUT_DIR = (
-            raw_path if os.path.isabs(raw_path) else os.path.abspath(os.path.join(BASE_DIR, raw_path))
+            raw_path
+            if os.path.isabs(raw_path)
+            else os.path.abspath(os.path.join(BASE_DIR, raw_path))
         )
 
     if "log_dir" in paths_config:
         raw_path = paths_config["log_dir"]
         ENGINE_LOG_DIR = (
-            raw_path if os.path.isabs(raw_path) else os.path.abspath(os.path.join(BASE_DIR, raw_path))
+            raw_path
+            if os.path.isabs(raw_path)
+            else os.path.abspath(os.path.join(BASE_DIR, raw_path))
         )
 
     # Ensure directories exist
@@ -294,41 +300,39 @@ def load_config(config_path=None) -> Dict[str, Any]:
     return config
 
 
-
 def estimate_tokens(text: Union[str, Dict, Any]) -> int:
     """
     Token estimation using strict 4 characters = 1 token rule.
     Handles strings, dictionaries (JSON), and other serializable formats.
-    
+
     Args:
         text: Input text or serializable object to count tokens for
-        
+
     Returns:
         Estimated token count using ceiling(character_count / 4)
     """
     if not isinstance(text, str):
         text = json.dumps(text)
-    
+
     # Count all characters (including spaces and punctuation)
     char_count = len(text)
-    
+
     # Apply 4 chars = 1 token rule with ceiling division
     return (char_count + 3) // 4  # Equivalent to math.ceil(char_count / 4)
 
+
 def log_token_usage(
-    prompt: str, 
-    response: str, 
-    model_type: str = "generic"
+    prompt: str, response: str, model_type: str = "generic"
 ) -> Dict[str, int]:
     """
     Unified token counting using 4 characters = 1 token rule.
     No longer uses exact_counts since we're using generalized counting.
-    
+
     Args:
         prompt: Input prompt text
         response: Model response text
         model_type: LLM provider identifier
-        
+
     Returns:
         Dictionary with token counts and metadata
     """
@@ -337,8 +341,10 @@ def log_token_usage(
         "output_tokens": estimate_tokens(response),
         "model_type": model_type,
         "counting_method": "4_chars_per_token",
-        "is_estimate": True  # Since we're using one consistent method
+        "is_estimate": True,  # Since we're using one consistent method
     }
-    token_counts["total_tokens"] = token_counts["input_tokens"] + token_counts["output_tokens"]
-    
+    token_counts["total_tokens"] = (
+        token_counts["input_tokens"] + token_counts["output_tokens"]
+    )
+
     return token_counts
