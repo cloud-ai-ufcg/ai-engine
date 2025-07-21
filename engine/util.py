@@ -204,7 +204,7 @@ def format_message(message, icon=None, color=None, bold=False):
 
 def load_config(config_path=None) -> Dict[str, Any]:
     """
-    Loads configuration from a YAML file and sets up global paths and logging
+    Loads configuration from a YAML file, injects API keys from environment variables (GOOGLE_API_KEY, GROQ_API_KEY), and sets up global paths and logging
 
     Args:
         config_path: Path to the configuration file. If None, uses the default config.yaml
@@ -222,19 +222,42 @@ def load_config(config_path=None) -> Dict[str, Any]:
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
+    # ------------------------------------------------------------------
+    # Inject API keys from environment variables, overriding YAML values
+    # ------------------------------------------------------------------
+    api_key_cfg: Dict[str, Any] = config.get("api-key", {}) or {}
+    google_env_key = os.getenv("GOOGLE_API_KEY")
+    if google_env_key:
+        api_key_cfg["google"] = google_env_key
+    groq_env_key = os.getenv("GROQ_API_KEY")
+    if groq_env_key:
+        api_key_cfg["groq"] = groq_env_key
+
+    if api_key_cfg:
+        config["api-key"] = api_key_cfg
+
     # Set up paths from config or use defaults
     paths_config = config.get("paths", {})
     global MODELS_DIR, OUTPUT_DIR, ENGINE_LOG_DIR
 
     # Update global paths if specified in config
     if "models_dir" in paths_config:
-        MODELS_DIR = os.path.abspath(paths_config["models_dir"])
+        raw_path = paths_config["models_dir"]
+        MODELS_DIR = (
+            raw_path if os.path.isabs(raw_path) else os.path.abspath(os.path.join(BASE_DIR, raw_path))
+        )
 
     if "output_dir" in paths_config:
-        OUTPUT_DIR = os.path.abspath(paths_config["output_dir"])
+        raw_path = paths_config["output_dir"]
+        OUTPUT_DIR = (
+            raw_path if os.path.isabs(raw_path) else os.path.abspath(os.path.join(BASE_DIR, raw_path))
+        )
 
     if "log_dir" in paths_config:
-        ENGINE_LOG_DIR = os.path.abspath(paths_config["log_dir"])
+        raw_path = paths_config["log_dir"]
+        ENGINE_LOG_DIR = (
+            raw_path if os.path.isabs(raw_path) else os.path.abspath(os.path.join(BASE_DIR, raw_path))
+        )
 
     # Ensure directories exist
     os.makedirs(MODELS_DIR, exist_ok=True)
