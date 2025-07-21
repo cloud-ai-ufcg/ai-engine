@@ -3,7 +3,8 @@ import sys
 import logging
 import logging.handlers
 import yaml
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
+import re
 
 # Default directory paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
@@ -290,3 +291,55 @@ def load_config(config_path=None) -> Dict[str, Any]:
     logger.debug(f"Log file: {log_file}")
 
     return config
+
+# util.py
+import json
+from typing import Union, Dict, Any
+
+def estimate_tokens(text: Union[str, Dict, Any]) -> int:
+    """
+    Token estimation using strict 4 characters = 1 token rule.
+    Handles strings, dictionaries (JSON), and other serializable formats.
+    
+    Args:
+        text: Input text or serializable object to count tokens for
+        
+    Returns:
+        Estimated token count using ceiling(character_count / 4)
+    """
+    if not isinstance(text, str):
+        text = json.dumps(text)
+    
+    # Count all characters (including spaces and punctuation)
+    char_count = len(text)
+    
+    # Apply 4 chars = 1 token rule with ceiling division
+    return (char_count + 3) // 4  # Equivalent to math.ceil(char_count / 4)
+
+def log_token_usage(
+    prompt: str, 
+    response: str, 
+    model_type: str = "generic"
+) -> Dict[str, int]:
+    """
+    Unified token counting using 4 characters = 1 token rule.
+    No longer uses exact_counts since we're using generalized counting.
+    
+    Args:
+        prompt: Input prompt text
+        response: Model response text
+        model_type: LLM provider identifier
+        
+    Returns:
+        Dictionary with token counts and metadata
+    """
+    token_counts = {
+        "input_tokens": estimate_tokens(prompt),
+        "output_tokens": estimate_tokens(response),
+        "model_type": model_type,
+        "counting_method": "4_chars_per_token",
+        "is_estimate": True  # Since we're using one consistent method
+    }
+    token_counts["total_tokens"] = token_counts["input_tokens"] + token_counts["output_tokens"]
+    
+    return token_counts
