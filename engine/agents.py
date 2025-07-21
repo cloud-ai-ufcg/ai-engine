@@ -71,18 +71,27 @@ def label_workloads_with_gemini(
         
         response = model.generate_content(prompt, generation_config=model_config["generation_config"])
 
-        # Use generalized token counting (4 chars = 1 token)
+        # Get comprehensive token counts
         token_counts = log_token_usage(
             prompt=prompt,
             response=response.text,
-            model_type="gemini"  # Still track model type for analytics
+            model_instance=model
         )
 
+        for method in ["generic", "openai", "gemini"]:
+            input_tokens = token_counts[method]["input"]
+            output_tokens = token_counts[method]["output"]
+            total_tokens = token_counts[method]["total"]
+
+            logger.info(
+                f"[{method.upper()}] Tokens → Input: {input_tokens} | Output: {output_tokens} | Total: {total_tokens}"
+            )
+            
         logger.info(
-            f"Token Usage (4 chars = 1 token) | "
-            f"Input: {token_counts['input_tokens']} | "
-            f"Output: {token_counts['output_tokens']} | "
-            f"Total: {token_counts['total_tokens']}"
+            f"Token Counts | "
+            f"Generic: {token_counts['generic']['total']} | "
+            f"OpenAI: {token_counts['openai']['total']} | "
+            f"Gemini: {token_counts['gemini']['total']}"
         )
 
         text_response = response.text

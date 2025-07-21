@@ -4,7 +4,8 @@ import logging
 import logging.handlers
 import yaml
 from typing import Optional, Dict, Any, Union
-import re
+import json
+import tiktoken
 
 # Default directory paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
@@ -269,54 +270,60 @@ def load_config(config_path=None) -> Dict[str, Any]:
 
     return config
 
-# util.py
-import json
-from typing import Union, Dict, Any
-
-def estimate_tokens(text: Union[str, Dict, Any]) -> int:
+def estimate_tokens_generic(text: Union[str, Dict, Any]) -> int:
     """
-    Token estimation using strict 4 characters = 1 token rule.
+    Generic token estimation using 4 characters = 1 token rule.
     Handles strings, dictionaries (JSON), and other serializable formats.
-    
-    Args:
-        text: Input text or serializable object to count tokens for
-        
-    Returns:
-        Estimated token count using ceiling(character_count / 4)
     """
     if not isinstance(text, str):
-        text = json.dumps(text)
-    
-    # Count all characters (including spaces and punctuation)
-    char_count = len(text)
-    
-    # Apply 4 chars = 1 token rule with ceiling division
-    return (char_count + 3) // 4  # Equivalent to math.ceil(char_count / 4)
+        text = json.dumps(text, ensure_ascii=False)
+    return (len(text) + 3) // 4  # Ceiling division
+
+def estimate_tokens_openai(text: Union[str, Dict, Any]) -> int:
+    """
+    OpenAI-compatible token estimation using tiktoken.
+    Falls back to generic if tiktoken not available.
+    """
+    try:
+        if not isinstance(text, str):
+            text = json.dumps(text, ensure_ascii=False)
+        enc = tiktoken.get_encoding("cl100k_base")
+        return len(enc.encode(text))
+    except ImportError:
+        return estimate_tokens_generic(text)
+
+def estimate_tokens_gemini(text: Union[str, Dict, Any], model=None) -> int:
+    """
+    Gemini token estimation. Uses native count if available, otherwise falls back.
+    """
+    try:
+        if model and hasattr(model, 'count_tokens'):
+            return model.count_tokens(text).total_tokens
+        return estimate_tokens_generic(text)
+    except Exception:
+        return estimate_tokens_generic(text)
 
 def log_token_usage(
-    prompt: str, 
-    response: str, 
-    model_type: str = "generic"
-) -> Dict[str, int]:
-    """
-    Unified token counting using 4 characters = 1 token rule.
-    No longer uses exact_counts since we're using generalized counting.
-    
-    Args:
-        prompt: Input prompt text
-        response: Model response text
-        model_type: LLM provider identifier
-        
-    Returns:
-        Dictionary with token counts and metadata
-    """
-    token_counts = {
-        "input_tokens": estimate_tokens(prompt),
-        "output_tokens": estimate_tokens(response),
-        "model_type": model_type,
-        "counting_method": "4_chars_per_token",
-        "is_estimate": True  # Since we're using one consistent method
+    prompt: str,
+    response: str,
+    model_instance: Any = None
+) -> Dict[str, Dict[str, int]]:
+    counts = {
+        "generic": {
+            "input": estimate_tokens_generic(prompt),
+            "output": estimate_tokens_generic(response),
+        },
+        "openai": {
+            "input": estimate_tokens_openai(prompt),
+            "output": estimate_tokens_openai(response),
+        },
+        "gemini": {
+            "input": estimate_tokens_gemini(prompt, model_instance),
+            "output": estimate_tokens_gemini(response, model_instance),
+        }
     }
-    token_counts["total_tokens"] = token_counts["input_tokens"] + token_counts["output_tokens"]
     
-    return token_counts
+    for method in counts:
+        counts[method]["total"] = counts[method]["input"] + counts[method]["output"]
+    
+    return counts
