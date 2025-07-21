@@ -5,6 +5,7 @@ import logging.handlers
 import yaml
 from typing import Optional, Dict, Any, Union
 import re
+import json
 
 # Default directory paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
@@ -292,9 +293,7 @@ def load_config(config_path=None) -> Dict[str, Any]:
 
     return config
 
-# util.py
-import json
-from typing import Union, Dict, Any
+
 
 def estimate_tokens(text: Union[str, Dict, Any]) -> int:
     """
