@@ -37,7 +37,16 @@ MODEL_CONFIGS = {
             "temperature": 0.2,
             "max_output_tokens": 1024
         }
+    },
+    "groq": {
+        "model_name": "llama-3.1-8b-instant",
+        "generation_config": {
+            "temperature": 0.3,
+            "max_output_tokens": 1024
+        }
     }
+
+
 }
 
 # Prompt templates
@@ -67,6 +76,79 @@ YOUR RESPONSE MUST STRICTLY FOLLOW THIS JSON SCHEMA:
 
 Workloads: {workloads_json}
 """
+    },
+    "cpu_checker":{
+        "version": "1.0",
+        "output_schema": WorkloadLabelOutput,
+        "template": """You are a CPU resource manager in a Kubernetes cluster. Your task is to analyze each workload based on its CPU demand and the current CPU load in the private and public clusters.
+
+Decision rules:
+- Workloads with high CPU usage should be moved to the public cluster **if** the private cluster is highly loaded.
+- Try to avoid overloading the public cluster.
+- Prefer keeping low CPU workloads in the private cluster if there's capacity.
+
+For each workload, provide:
+1. The decision (0 = stay in private, 1 = move to public)
+2. A brief explanation considering the CPU usage of the workload and cluster CPU loads.
+
+Input:
+{workloads_json}
+
+Response format:
+{{
+  "decisions": [0, 1, 0],
+  "explanations": [
+    "Workload 1 has low CPU demand and private cluster is underloaded.",
+    "Workload 2 has high CPU demand and private cluster is close to capacity.",
+    ...
+  ]
+}}"""
+    },
+    "memory_checker": {
+    "version": "1.0",
+    "output_schema": WorkloadLabelOutput,
+    "template": """You are a memory resource manager in a Kubernetes multi-cluster setup. Evaluate the memory usage of each workload and compare it with the memory load of private and public clusters.
+
+Decision rules:
+- Workloads with high memory demand should go to the public cluster if private is overloaded.
+- Avoid overloading the public cluster when possible.
+- Lightweight workloads can stay in private cluster.
+
+Input:
+{workloads_json}
+
+Response format:
+{{
+  "decisions": [0, 1, 1],
+  "explanations": [
+    "Workload 1 uses little memory and the private cluster has enough capacity.",
+    "Workload 2 uses a lot of memory and private is overloaded.",
+    ...
+  ]
+}}"""
+    },
+    "pending_checker": {
+    "version": "1.0",
+    "output_schema": WorkloadLabelOutput,
+    "template": """You are monitoring pod scheduling in a Kubernetes multi-cluster system. Analyze the percent of pending pods for each workload and decide if it should be moved to the public cluster.
+
+Decision rules:
+- If a workload has a high percent_pending value, consider moving it to public cluster.
+- If a workload has 0% pending, keep it in the current cluster unless load is high.
+- Consider the cluster's CPU and memory load to avoid overload.
+
+Input:
+{workloads_json}
+
+Response format:
+{{
+  "decisions": [0, 0, 1],
+  "explanations": [
+    "Workload 1 has no pending pods and cluster is underloaded.",
+    "Workload 2 has high pending rate, needs to be moved.",
+    ...
+  ]
+}}"""
     }
 }
 
