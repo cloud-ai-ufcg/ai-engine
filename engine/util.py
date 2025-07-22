@@ -52,6 +52,11 @@ class ColoredFormatter(logging.Formatter):
 
 # Flag to track if logging has been configured
 _logging_configured = False
+_config_loaded = False  # Flag to prevent repeated config loading
+
+# Global variables for configuration and logging
+config: Optional[Dict[str, Any]] = None
+logger: Optional[logging.Logger] = None
 
 
 def setup_logger(
@@ -214,7 +219,12 @@ def load_config(config_path=None) -> Dict[str, Any]:
     Returns:
         dict: Configuration dictionary with all settings
     """
-    global config
+    global config, _config_loaded
+    
+    # Return cached config if already loaded
+    if _config_loaded and config is not None:
+        return config
+    
     if config_path is None:
         # Default to the config.yaml located one directory above the current module
         config_path = os.path.abspath(
@@ -289,14 +299,13 @@ def load_config(config_path=None) -> Dict[str, Any]:
     global logger
     logger = setup_logger(level=log_level, log_file=log_file)
 
-    # Log the paths being used
+    # Log the paths being used (only on first load)
     logger.debug(f"Using config file: {config_path}")
     logger.debug(f"Using base directory: {BASE_DIR}")
-    logger.debug(f"Using models directory: {MODELS_DIR}")
     logger.debug(f"Using output directory: {OUTPUT_DIR}")
     logger.debug(f"Using log directory: {ENGINE_LOG_DIR}")
-    logger.debug(f"Log file: {log_file}")
-
+    # Mark config as loaded to prevent repeated loading
+    _config_loaded = True
     return config
 
 
