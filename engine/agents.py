@@ -1,4 +1,4 @@
-from typing import List, Union, Dict, Any, Tuple
+from typing import List, Union, Dict, Any, Tuple, Optional
 import os
 import pandas as pd
 import re
@@ -27,6 +27,86 @@ except ImportError:
     HAS_GROQ = False
 
 
+# ---------------------------------------------------------------------------
+# Gemini API Helper Functions
+# ---------------------------------------------------------------------------
+
+def _get_gemini_api_key(config: Dict[str, Any]) -> Optional[str]:
+    """Retrieve Gemini API key from config or environment."""
+    return config.get("api-key", {}).get("google") or os.environ.get("GOOGLE_API_KEY")
+
+
+def _setup_gemini_model(api_key: str, config: Dict[str, Any]):
+    """Configure and return Gemini model with config."""
+    model_config = config.get("ai", {}).get("models", {}).get("gemini", {})
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(model_config["model_name"])
+    return model, model_config
+
+
+def _normalize_workloads_to_dataframe(workloads: Union[list, "pd.DataFrame"]) -> "pd.DataFrame":
+    """Convert workloads input to DataFrame format."""
+    return pd.DataFrame(workloads) if isinstance(workloads, list) else workloads
+
+
+def _extract_json_from_response(text_response: str) -> Dict[str, Any]:
+    """Extract and parse JSON from model response."""
+    json_match = re.search(r"\{[\s\S]*\}", text_response)
+    if not json_match:
+        raise ValueError("No JSON object found in model response")
+    
+    json_str = json_match.group(0)
+    return json.loads(json_str)
+
+
+def _validate_and_extract_decisions(response_data: Dict[str, Any]) -> Tuple[List[int], List[str]]:
+    """Validate response using schema and extract decisions/explanations."""
+    prompt_config = PROMPTS.get("label_workloads", {})
+    output_schema = prompt_config.get("output_schema")
+    
+    if output_schema:
+        try:
+            output = output_schema.from_dict(response_data)
+            if not output.validate_output():
+                logger.warning(
+                    "Output validation failed: decisions and explanations have different lengths"
+                )
+            return output.decisions, output.explanations
+        except Exception as e:
+            logger.error(f"Failed to validate response with schema: {e}")
+    
+    # Fallback to direct extraction
+    decisions = response_data.get("decisions", [])
+    explanations = response_data.get("explanations", [])
+    return decisions, explanations
+
+
+def _create_explanation_output(labels: List[int], explanations: List[str], df: "pd.DataFrame") -> Dict[str, Any]:
+    """Create structured explanation output and log decisions."""
+    explanation_output = {
+        "explanation": "Migration decisions based on AI analysis of workload characteristics",
+        "workload_explanations": [],
+    }
+    
+    for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
+        workload_id = workload[1].get("workload_id", f"workload-{idx}")
+        kind = workload[1].get("kind", "unknown")
+        destination = "public" if label == 1 else "private"
+        
+        # Log the decision
+        logger.info(f"Decision for {workload_id} ({kind}): Cluster {destination}")
+        
+        # Add explanation for this workload
+        explanation = (
+            explanations[idx]
+            if idx < len(explanations)
+            else f"Workload {workload_id} recommended for {destination} cluster based on resource requirements"
+        )
+        explanation_output["workload_explanations"].append(explanation)
+    
+    return explanation_output
+
+
 def label_workloads_with_gemini(
     workloads: Union[list, "pd.DataFrame"],
 ) -> Tuple[List[int], Dict[str, Any]]:
@@ -42,52 +122,36 @@ def label_workloads_with_gemini(
     """
     logger.info("Starting workload analysis for migration decision")
 
+    # Dependency validation - early return if not available
     if not HAS_GENAI:
-        logger.warning(
-            "Gemini model not available. Using traditional model as fallback."
-        )
+        logger.warning("Gemini model not available. Using traditional model as fallback.")
         return _label_workloads_with_heuristics(workloads)
 
+    # API key setup - load config once
     load_dotenv()
-
     config = load_config()
-    api_key = config.get("api-key", {}).get("google") or os.environ.get(
-        "GOOGLE_API_KEY"
-    )
+    api_key = _get_gemini_api_key(config)
     if not api_key:
-        logger.warning(
-            "API Key for Gemini not found. Using traditional model as fallback."
-        )
+        logger.warning("API Key for Gemini not found. Using traditional model as fallback.")
         return _label_workloads_with_heuristics(workloads)
 
-    if isinstance(workloads, list):
-        df = pd.DataFrame(workloads)
-    else:
-        df = workloads
-
-    # Get the prompt from the configuration system
-    prompt = get_prompt(
-        "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
-    )
-
+    # Data preparation
+    df = _normalize_workloads_to_dataframe(workloads)
+    prompt = get_prompt("label_workloads", workloads_json=df.to_json(orient="records", indent=2))
+    
     logger.info("Sending request to Gemini model")
 
     try:
-        # Get model configuration from the configuration system
-        model_config = get_model_config("gemini")
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_config["model_name"])
-
-        
+        # Model setup and API call
+        model, model_config = _setup_gemini_model(api_key, config)
         response = model.generate_content(prompt, generation_config=model_config["generation_config"])
 
-        # Use generalized token counting (4 chars = 1 token)
+        # Token usage logging
         token_counts = log_token_usage(
             prompt=prompt,
             response=response.text,
-            model_type="gemini"  # Still track model type for analytics
+            model_type="gemini"
         )
-
         logger.info(
             f"Token Usage (4 chars = 1 token) | "
             f"Input: {token_counts['input_tokens']} | "
@@ -95,74 +159,27 @@ def label_workloads_with_gemini(
             f"Total: {token_counts['total_tokens']}"
         )
 
+        # Response processing
         text_response = response.text
         logger.debug(f"Complete Gemini response: {text_response}")
 
-        # Try to parse the JSON response
-        try:
-            # Extract JSON from the response (in case there's any surrounding text)
-            json_match = re.search(r"\{[\s\S]*\}", text_response)
-            if json_match:
-                json_str = json_match.group(0)
-                response_data = json.loads(json_str)
+        # Parse and validate response
+        response_data = _extract_json_from_response(text_response)
+        decisions, explanations = _validate_and_extract_decisions(response_data)
 
-                # Use the structured output model for validation
-                prompt_config = PROMPTS.get("label_workloads", {})
-                output_schema = prompt_config.get("output_schema")
+        # Validate decision count
+        if len(decisions) != len(df):
+            raise ValueError(f"Expected {len(df)} decisions, got {len(decisions)}")
 
-                if output_schema:
-                    try:
-                        # Validate with Pydantic model
-                        output = output_schema.from_dict(response_data)
-                        if not output.validate_output():
-                            logger.warning(
-                                "Output validation failed: decisions and explanations have different lengths"
-                            )
+        # Convert to integers and create output
+        labels = [int(decision) for decision in decisions]
+        logger.info("Migration decisions extracted from JSON response")
+        
+        explanation_output = _create_explanation_output(labels, explanations, df)
+        return labels, explanation_output
 
-                        # Extract validated data
-                        decisions = output.decisions
-                        explanations = output.explanations
-                    except Exception as e:
-                        logger.error(f"Failed to validate response with schema: {e}")
-                        # Fallback to direct extraction
-                        decisions = response_data.get("decisions", [])
-                        explanations = response_data.get("explanations", [])
-                else:
-                    # No schema defined, use direct extraction
-                    decisions = response_data.get("decisions", [])
-                    explanations = response_data.get("explanations", [])
-
-                # Ensure we have the right number of decisions
-                if len(decisions) == len(df):
-                    logger.info(f"Migration decisions extracted from JSON response")
-                    labels = [int(decision) for decision in decisions]
-
-                    # Create explanation output
-                    explanation_output = {
-                        "explanation": "Migration decisions based on AI analysis of workload characteristics",
-                        "workload_explanations": [],
-                    }
-
-                    # Log the decision for each workload
-                    for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                        workload_id = workload[1].get("workload_id", f"workload-{idx}")
-                        kind = workload[1].get("kind", "unknown")
-                        destination = "public" if label == 1 else "private"
-                        logger.info(
-                            f"Decision for {workload_id} ({kind}): Cluster {destination}"
-                        )
-
-                        # Add explanation for this workload
-                        explanation = (
-                            explanations[idx]
-                            if idx < len(explanations)
-                            else f"Workload {workload_id} recommended for {destination} cluster based on resource requirements"
-                        )
-                        explanation_output["workload_explanations"].append(explanation)
-
-                    return labels, explanation_output
-        except Exception as e:
-            logger.warning(f"Error parsing JSON response: {e}")
+    except Exception as e:
+        logger.warning(f"Error parsing JSON response: {e}")
 
         # Fallback: try to extract just the decisions if JSON parsing failed
         pattern = r"[01]+"
@@ -317,7 +334,7 @@ def label_workloads_with_llama(
         model_cfg = get_model_config("llama")
         client = Groq(api_key=api_key)
         completion = client.chat.completions.create(
-            model=model_cfg.get("model_name", "llama3-70b-8192"),
+            model=model_cfg.get("model_name", "llama-3.1-8b-instant"),
             messages=[{"role": "user", "content": prompt}],
             temperature=model_cfg.get("generation_config", {}).get("temperature", 0.1),
             max_tokens=model_cfg.get("generation_config", {}).get(

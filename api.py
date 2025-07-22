@@ -36,7 +36,11 @@ import time
 
 
 # Global state variables to control the recommendation loop
-SCHEDULER_INTERVAL: int = 30  # seconds between recommendation cycles
+config = load_config()
+
+SCHEDULER_INTERVAL_DEFAULT = 60 * 5 # 5 minutes
+SCHEDULER_INTERVAL: int = config["ai"]["scheduler_interval"] or SCHEDULER_INTERVAL_DEFAULT  # seconds between recommendation cycles
+
 running: bool = False
 stop_event: threading.Event = threading.Event()
 # Background thread that runs the scheduler; populated when `/start` is called
@@ -176,7 +180,6 @@ async def start():
     logger.info(format_message("Recommendations are running", icon="🚀", color="GREEN"))
     return {"status": "Recommendations are running"}
 
-
 @app.post("/stop")
 async def stop():
     """Stop the AI Engine"""
@@ -189,6 +192,32 @@ async def stop():
         await loop.run_in_executor(None, scheduler_thread.join)
     logger.info(format_message("Recommendations stopped", icon="🛑", color="RED"))
     return {"status": "Recommendations stopped"}
+
+@app.post("/analyze")
+async def analyze_workloads_direct(workloads: list):
+    """
+    Analyze workloads directly from POST request data
+    
+    Args:
+        workloads: List of workload data in JSON format
+    Returns:
+        Dictionary with analysis results and status
+    """
+    try:
+        if not workloads:
+            return {"status": "error", "message": "No workload data provided"}
+            
+        result_df, explanations = analyze_workloads(workloads, app_state.config)
+        save_and_log_explanations(result_df, explanations)
+        
+        return {
+            "status": "success",
+            "message": "Workloads analyzed successfully",
+            "recommendations": result_df.to_dict(orient="records")
+        }
+    except Exception as e:
+        logger.error(f"Error analyzing workloads: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 if __name__ == "__main__":
