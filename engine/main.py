@@ -14,7 +14,7 @@ from .util import (
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
-from .agents import label_workloads_with_gemini, label_workloads_with_crewai
+from .agents import label_workloads
 
 logger = get_logger("main")
 
@@ -368,32 +368,19 @@ def analyze_workloads(workloads, config):
     Returns:
         Tuple containing (DataFrame with results, explanations dictionary)
     """
-    # Get AI model to use from config (default to crewai if not specified)
-    model_type = config.get("ai", {}).get("model", "crewai").lower()
+    # Get AI provider from config
+    provider = config.get("ai", {}).get("selected_model", "gemini").lower()
 
-    # Analyze workloads with the selected model
-    if model_type == "gemini":
-        logger.info(
-            format_message(
-                "Using Gemini model for workload analysis",
-                icon="🧠",
-                color="MAGENTA",
-                bold=True,
-            )
+    logger.info(
+        format_message(
+            f"Using {provider} model for workload analysis",
+            icon="🧠",
+            color="MAGENTA",
+            bold=True,
         )
-        # Unpack the tuple returned by label_workloads_with_gemini
-        labels, explanations = label_workloads_with_gemini(workloads)
-    else:
-        logger.info(
-            format_message(
-                "Using CrewAI for workload analysis",
-                icon="🧠",
-                color="MAGENTA",
-                bold=True,
-            )
-        )
-        # Unpack the tuple returned by label_workloads_with_crewai
-        labels, explanations = label_workloads_with_crewai(workloads)
+    )
+
+    labels, explanations = label_workloads(workloads, provider=provider)
 
     # Create result DataFrame
     df = pd.DataFrame(workloads)
