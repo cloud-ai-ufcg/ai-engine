@@ -142,7 +142,6 @@ def label_workloads_with_gemini(
     logger.info("Sending request to Gemini model")
 
     try:
-        # Model setup and API call
         model, model_config = _setup_gemini_model(api_key, config)
         response = model.generate_content(prompt, generation_config=model_config["generation_config"])
 
