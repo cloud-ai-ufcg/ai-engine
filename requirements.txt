@@ -12,3 +12,4 @@ python-dotenv==1.0.0
 google-generativeai==0.8.5
 schedule==1.2.2
 groq>=0.0.3
+aiohttp==3.11.18
