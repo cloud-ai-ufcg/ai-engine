@@ -212,8 +212,11 @@ async def get_metrics() -> Dict[str, Any]:
             ],
         },
     }
-
-    return metrics_data
+    import json
+    with open("monitor_test.json", "r") as f:
+        return json.load(f)
+     
+    # return metrics_data
 
 
 if __name__ == "__main__":

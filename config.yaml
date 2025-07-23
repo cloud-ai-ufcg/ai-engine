@@ -11,21 +11,21 @@ ai:
       api_key: ${GOOGLE_API_KEY}
       generation_config:
         temperature: 0.1
-        max_output_tokens: 1024
+        max_output_tokens: 6000
     llama:
       model_name: llama-3.1-8b-instant
       provider: groq
       api_key: ${GROQ_API_KEY}
       generation_config:
         temperature: 0.1
-        max_output_tokens: 1024
+        max_output_tokens: 6000
     claude:
       model_name: claude-3.5-sonnet-20240620
       provider: anthropic
       api_key: ${ANTHROPIC_API_KEY}
       generation_config:
         temperature: 0.1
-        max_output_tokens: 1024
+        max_output_tokens: 6000
 
 # Diretórios para diferentes componentes do sistema
 paths:
@@ -38,7 +38,6 @@ logging:
   file: ai_engine.log
 
 api-key:
-  google: 
   groq: 
   anthropic: 
 

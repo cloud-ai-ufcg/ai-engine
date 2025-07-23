@@ -337,7 +337,7 @@ def label_workloads_with_llama(
             messages=[{"role": "user", "content": prompt}],
             temperature=model_cfg.get("generation_config", {}).get("temperature", 0.1),
             max_tokens=model_cfg.get("generation_config", {}).get(
-                "max_output_tokens", 1024
+                "max_output_tokens", 6000
             ),
         )
         text_response = completion.choices[0].message.content  # type: ignore[attr-defined]
