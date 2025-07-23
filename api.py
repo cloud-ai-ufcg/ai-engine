@@ -39,7 +39,7 @@ import time
 config = load_config()
 
 SCHEDULER_INTERVAL_DEFAULT = 60 * 5 # 5 minutes
-SCHEDULER_INTERVAL: int = config["ai"]["scheduler_interval"] or SCHEDULER_INTERVAL_DEFAULT  # seconds between recommendation cycles
+SCHEDULER_INTERVAL: int = int(config["ai"]["scheduler_interval"]) or int(SCHEDULER_INTERVAL_DEFAULT)  # seconds between recommendation cycles
 
 running: bool = False
 stop_event: threading.Event = threading.Event()
