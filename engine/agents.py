@@ -143,7 +143,14 @@ def label_workloads_with_gemini(
 
     try:
         model, model_config = _setup_gemini_model(api_key, config)
+        logger.info(f"CONFIG: Using Gemini model: {model_config['model_name']}")
+        logger.info(f"CONFIG: Using Gemini generation config: {model_config['generation_config']}")
+        
         response = model.generate_content(prompt, generation_config=model_config["generation_config"])
+        
+        if hasattr(response, "prompt_feedback") and response.prompt_feedback:
+            if getattr(response.prompt_feedback, "block_reason", None) == "MAX_TOKENS":
+                logger.warning("Gemini model response was truncated due to max_output_tokens limit.")
 
         # Token usage logging
         token_counts = log_token_usage(
