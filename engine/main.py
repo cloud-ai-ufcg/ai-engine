@@ -234,7 +234,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=30):
         )
     else:
         # Assume it's the old format (array of workloads)
-        logger.info("Processing data in legacy format")
+        logger.warning("Processing data in legacy format")
         workloads = data
 
     return workloads
