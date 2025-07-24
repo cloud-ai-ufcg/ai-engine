@@ -1,3 +1,0 @@
-[submodule "model-pipeline"]
-	path = model-pipeline
-	url = https://github.com/cloud-ai-ufcg/model-pipeline
