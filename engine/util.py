@@ -9,7 +9,6 @@ import json
 
 # Default directory paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-MODELS_DIR = os.path.abspath(os.path.join(BASE_DIR, "model-pipeline/models"))
 OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "data/output"))
 ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "logs"))
 
@@ -250,16 +249,7 @@ def load_config(config_path=None) -> Dict[str, Any]:
 
     # Set up paths from config or use defaults
     paths_config = config.get("paths", {})
-    global MODELS_DIR, OUTPUT_DIR, ENGINE_LOG_DIR
-
-    # Update global paths if specified in config
-    if "models_dir" in paths_config:
-        raw_path = paths_config["models_dir"]
-        MODELS_DIR = (
-            raw_path
-            if os.path.isabs(raw_path)
-            else os.path.abspath(os.path.join(BASE_DIR, raw_path))
-        )
+    global OUTPUT_DIR, ENGINE_LOG_DIR
 
     if "output_dir" in paths_config:
         raw_path = paths_config["output_dir"]
@@ -278,7 +268,6 @@ def load_config(config_path=None) -> Dict[str, Any]:
         )
 
     # Ensure directories exist
-    os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
 

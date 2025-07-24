@@ -10,7 +10,6 @@ from .util import (
     load_config,
     format_message,
     COLORS,
-    MODELS_DIR,
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
