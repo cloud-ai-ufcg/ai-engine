@@ -28,6 +28,7 @@ except ImportError:
 
 # global variables
 REQUEST_COUNTER = 0
+TOKEN_TOTALS = {"input": 0, "output": 0, "total": 0}
 
 # ---------------------------------------------------------------------------
 # Gemini API Helper Functions
@@ -159,6 +160,11 @@ def label_workloads_with_gemini(
             response=response.text,
             model_type="gemini"
         )
+
+        TOKEN_TOTALS["input"] += token_counts["input_tokens"]
+        TOKEN_TOTALS["output"] += token_counts["output_tokens"]
+        TOKEN_TOTALS["total"] += token_counts["total_tokens"]
+
         logger.info(
             f"Token Usage (4 chars = 1 token) | "
             f"Input: {token_counts['input_tokens']} | "
@@ -480,8 +486,9 @@ def _label_workloads_with_heuristics(
 
     return labels.tolist()
 
-# Função para obter os valores atuais
+# Get metrics of token usage and requests
 def get_usage_metrics() -> Dict[str, Any]:
     return {
-        "total_requests": REQUEST_COUNTER
+        "total_requests": REQUEST_COUNTER,
+        "total_tokens": TOKEN_TOTALS  
     }
