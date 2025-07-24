@@ -26,6 +26,8 @@ except ImportError:
     Groq = None
     HAS_GROQ = False
 
+# global variables
+REQUEST_COUNTER = 0
 
 # ---------------------------------------------------------------------------
 # Gemini API Helper Functions
@@ -120,6 +122,8 @@ def label_workloads_with_gemini(
         - List of labels (0 or 1) in the same order
         - Dictionary with explanations for each workload
     """
+    global REQUEST_COUNTER, TOKEN_TOTALS
+
     logger.info("Starting workload analysis for migration decision")
 
     # Dependency validation - early return if not available
@@ -142,8 +146,12 @@ def label_workloads_with_gemini(
     logger.info("Sending request to Gemini model")
 
     try:
+        # Model setup and API call
         model, model_config = _setup_gemini_model(api_key, config)
         response = model.generate_content(prompt, generation_config=model_config["generation_config"])
+
+        REQUEST_COUNTER += 1
+        logger.info(f"Gemini API request count: {REQUEST_COUNTER}")
 
         # Token usage logging
         token_counts = log_token_usage(
@@ -471,3 +479,9 @@ def _label_workloads_with_heuristics(
     )
 
     return labels.tolist()
+
+# Função para obter os valores atuais
+def get_usage_metrics() -> Dict[str, Any]:
+    return {
+        "total_requests": REQUEST_COUNTER
+    }
