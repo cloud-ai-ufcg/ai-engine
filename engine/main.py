@@ -18,6 +18,51 @@ from .agents import label_workloads
 
 logger = get_logger("main")
 
+
+def _filter_and_fill_workloads(
+    latest_workloads: Dict[str, Any],
+    cluster_data: Dict[str, Any],
+    timestamp_lookback_seconds: int,
+) -> List[Dict[str, Any]]:
+    """Filter workloads with non-zero resources and fills them with cluster information.
+
+    Args:
+        latest_workloads: Mapping of workload_id to latest workload dict.
+        cluster_data: Mapping of cluster labels to load/capacity data.
+        timestamp_lookback_seconds: Window size for logging context.
+
+    Returns:
+        List of filled workload dicts.
+    """
+    workloads: List[Dict[str, Any]] = []
+
+    for workload_id, w in latest_workloads.items():
+        # Skip workloads with zero requested resources
+        cpu = w.get("resources", {}).get("cpu", "0")
+        memory = w.get("resources", {}).get("memory", "0")
+        if cpu == "0m" and memory == "0Mi":
+            logger.debug(f"Skipping workload {workload_id} with zero resources")
+            continue
+
+        # Fill cluster details if available
+        cluster_label = w.get("cluster_label")
+        if cluster_label and cluster_label in cluster_data:
+            w["cluster_load"] = cluster_data[cluster_label]["cpu_load"]
+            w["cluster_cpu_capacity"] = cluster_data[cluster_label]["cpu_capacity"]
+            w["cluster_memory_capacity"] = cluster_data[cluster_label]["memory_capacity"]
+
+        workloads.append(w)
+
+    # Summary log
+    logger.info(
+        format_message(
+            f"Filtered to {len(workloads)} unique workloads with non-zero resources from the last {timestamp_lookback_seconds} seconds",
+            icon="🔄",
+            color="GREEN",
+        )
+    )
+    return workloads
+
 def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
     Process monitoring data from different formats and extract workloads.
@@ -47,7 +92,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
         latest_timestamp = str(timestamps[0])
         logger.info(
-            format_message(f"Latest timestamp: {latest_timestamp}", color="CYAN")
+            format_message(f"Latest timestamp: {latest_timestamp}", color="GREEN")
         )
 
         # Select timestamps from the last timestamp_lookback_seconds seconds
@@ -110,35 +155,9 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                 ):
                     latest_workloads[workload_id] = w
 
-        # Filter out workloads with zero resources
-        workloads = []
-        for workload_id, w in latest_workloads.items():
-            # Check if resources are zero
-            cpu = w.get("resources", {}).get("cpu", "0")
-            memory = w.get("resources", {}).get("memory", "0")
-
-            # Skip workloads with zero resources
-            if cpu == "0m" and memory == "0Mi":
-                logger.debug(f"Skipping workload {workload_id} with zero resources")
-                continue
-
-            # Add cluster information to the workload
-            cluster_label = w.get("cluster_label")
-            if cluster_label and cluster_label in cluster_data:
-                w["cluster_load"] = cluster_data[cluster_label]["cpu_load"]
-                w["cluster_cpu_capacity"] = cluster_data[cluster_label]["cpu_capacity"]
-                w["cluster_memory_capacity"] = cluster_data[cluster_label][
-                    "memory_capacity"
-                ]
-
-            workloads.append(w)
-
-        logger.info(
-            format_message(
-                f"Filtered to {len(workloads)} unique workloads with non-zero resources from the last {timestamp_lookback_seconds} seconds",
-                icon="🔄",
-                color="CYAN",
-            )
+        # Filter out zero-resource workloads and fill with cluster info
+        workloads = _filter_and_fill_workloads(
+            latest_workloads, cluster_data, timestamp_lookback_seconds
         )
     else:
         # Assume it's the old format (array of workloads)
