@@ -18,114 +18,22 @@ from .agents import label_workloads
 
 logger = get_logger("main")
 
-
-def load_models(models_dir=MODELS_DIR):
-    """
-    Loads all sklearn models from the given directory.
-    Returns a dict of {model_filename: model_object}
-    """
-    models = {}
-    for fname in os.listdir(models_dir):
-        fpath = os.path.join(models_dir, fname)
-        if os.path.isfile(fpath):
-            try:
-                model = joblib.load(fpath)
-                models[fname] = model
-            except Exception as e:
-                logger.warning(f"Skipping {fname}: {e}")
-    return models
-
-
-def predict_with_models(input_csv, models=None, output_dir=OUTPUT_DIR):
-    """
-    Loads input data from CSV, runs predictions for each model, and writes CSV outputs.
-    Each output is named <model_filename>_predictions.csv in the actuator directory.
-    """
-    if models is None:
-        models = load_models()
-    df = pd.read_csv(input_csv)
-    for model_name, model in models.items():
-        try:
-            preds = model.predict(df)
-            out_df = df.copy()
-            out_df["prediction"] = preds
-            out_name = f"{model_name}_predictions.csv"
-            out_path = os.path.join(output_dir, out_name)
-            out_df.to_csv(out_path, index=False)
-            logger.info(f"Predictions written to {out_path}")
-        except Exception as e:
-            logger.error(f"Prediction failed for {model_name}: {e}")
-
-
-def predict_with_machine_learning(
-    json_path, model=None, output_csv=os.path.join(OUTPUT_DIR, "recommendations.csv")
-):
-    """
-    Reads workload info from JSON, prepares features, uses model to predict migration,
-    and writes (workload_id, kind, label) to output_csv.
-    """
-    with open(json_path, "r") as f:
-        data = json.load(f)
-    df = pd.json_normalize(data)
-    # Feature engineering: select and convert relevant columns
-    feature_cols = [
-        "resources.cpu",
-        "resources.memory",
-        "pods_total",
-        "pods_pending",
-        "percent_pending",
-        "timestamp",
-        "cluster_load",
-        "cluster_label",
-        "cluster_cpu_capacity",
-        "cluster_memory_capacity",
-    ]
-    X = df[feature_cols].copy()
-
-    # Convert cpu/memory to numeric (e.g., '500m' -> 0.5, '1024Mi' -> 1024)
-    def cpu_to_float(cpu):
-        if isinstance(cpu, str) and cpu.endswith("m"):
-            return float(cpu[:-1]) / 1000.0
-        return float(cpu)
-
-    def mem_to_float(mem):
-        if isinstance(mem, str) and mem.endswith("Mi"):
-            return float(mem[:-2])
-        return float(mem)
-
-    X["resources.cpu"] = X["resources.cpu"].apply(cpu_to_float)
-    X["resources.memory"] = X["resources.memory"].apply(mem_to_float)
-    X["cluster_cpu_capacity"] = X["cluster_cpu_capacity"].apply(cpu_to_float)
-    X["cluster_memory_capacity"] = X["cluster_memory_capacity"].apply(mem_to_float)
-    # Encode cluster_label
-    X["cluster_label"] = X["cluster_label"].map({"private": 0, "public": 1})
-    # If model is not provided, load the first available model
-    if model is None:
-        models = load_models()
-        if not models:
-            raise RuntimeError("No models found in models directory")
-        model = list(models.values())[0]
-    # Predict
-    y_pred = model.predict(X)
-    # Output (workload_id, kind, label)
-    result = df[["workload_id", "kind"]].copy()
-    result["label"] = y_pred
-    result.to_csv(output_csv, index=False)
-    logger.info(f"Recommendations written to {output_csv}")
-
-
-def process_monitoring_data(data, timestamp_lookback_seconds=30):
+def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
     Process monitoring data from different formats and extract workloads.
     Processes data from the last timestamp_lookback_seconds seconds of timestamps.
 
     Args:
         data: The loaded JSON data which can be in different formats
-        timestamp_lookback_seconds: Number of seconds to look back in time
+        timestamp_lookback_seconds: Number of seconds to look back in time (defaults to config value)
 
     Returns:
         List of workload objects with relevant cluster information
     """
+    if timestamp_lookback_seconds is None:
+        config = load_config()
+        timestamp_lookback_seconds = config.get('ai', {}).get('timestamp_lookback_seconds', 30)
+
     # Handle different data structures
     if isinstance(data, dict) and all(
         isinstance(key, str) and key.isdigit() for key in data.keys()
@@ -241,16 +149,13 @@ def process_monitoring_data(data, timestamp_lookback_seconds=30):
 
 
 def write_recommendations(result_df, output_dir=OUTPUT_DIR):
-    # Log detailed information about workload migrations
     migrated_workloads = result_df[result_df["label"] == 1]
     non_migrated_workloads = result_df[result_df["label"] == 0]
 
-    # Log summary statistics
     total_workloads = len(result_df)
     migrated_count = len(migrated_workloads)
     non_migrated_count = len(non_migrated_workloads)
 
-    # Use formatted messages with colors and icons
     logger.info(
         format_message(
             f"Total workloads processed: {total_workloads}",
@@ -276,7 +181,6 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
     )
 
-    # Log detailed information about each workload
     if not migrated_workloads.empty:
         logger.info(
             format_message(
@@ -311,7 +215,6 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
                 )
             )
 
-    # Write recommendations to CSV
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
         result_df.to_csv(output_csv, index=False)
@@ -342,7 +245,6 @@ def load_monitoring_data(config):
         logger.error("❌ No input JSON file specified in the configuration")
         return None
 
-    # Make sure the path is absolute or relative to the current directory
     if not os.path.isabs(json_input):
         json_input = os.path.join(os.path.dirname(__file__), json_input)
 
@@ -368,7 +270,6 @@ def analyze_workloads(workloads, config):
     Returns:
         Tuple containing (DataFrame with results, explanations dictionary)
     """
-    # Get AI provider from config
     provider = config.get("ai", {}).get("selected_model", "gemini").lower()
 
     logger.info(
@@ -382,7 +283,6 @@ def analyze_workloads(workloads, config):
 
     labels, explanations = label_workloads(workloads, provider=provider)
 
-    # Create result DataFrame
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
     result["label"] = labels
@@ -398,7 +298,6 @@ def save_and_log_explanations(result_df, explanations):
         result_df: DataFrame with workload results
         explanations: Dictionary with explanations
     """
-    # Save explanations to a JSON file
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     if not os.path.exists(ENGINE_LOG_DIR):
         os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
@@ -410,7 +309,6 @@ def save_and_log_explanations(result_df, explanations):
         json.dump(explanations, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
-    # Log the explanations
     logger.info(
         format_message(
             f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
@@ -426,7 +324,6 @@ def save_and_log_explanations(result_df, explanations):
             kind = result_df.iloc[idx]["kind"]
             label = result_df.iloc[idx]["label"]
             cluster = "public" if label == 1 else "private"
-            # Use different colors based on the cluster
             color = "BLUE" if label == 1 else "GREEN"
             logger.info(
                 format_message(
@@ -444,7 +341,6 @@ def save_and_log_explanations(result_df, explanations):
                 )
             )
 
-    # If there are any additional explanation fields, log them too
     for key, value in explanations.items():
         if key not in ["explanation", "workload_explanations"]:
             logger.info(f"💡 {key}: {value}")
