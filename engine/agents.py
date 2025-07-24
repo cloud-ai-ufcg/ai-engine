@@ -173,9 +173,30 @@ def label_workloads_with_gemini(
         response_data = _extract_json_from_response(text_response)
         decisions, explanations = _validate_and_extract_decisions(response_data)
 
-        # Validate decision count
+        # Validate decision count - handle mismatches gracefully
         if len(decisions) != len(df):
-            raise ValueError(f"Expected {len(df)} decisions, got {len(decisions)}")
+            logger.warning(f"Decision count mismatch: expected {len(df)}, got {len(decisions)}")
+            
+            # Handle mismatch by adjusting decisions list
+            if len(decisions) > len(df):
+                # Too many decisions - truncate
+                decisions = decisions[:len(df)]
+                explanations = explanations[:len(df)] if len(explanations) > len(df) else explanations
+                logger.info(f"Truncated decisions to match {len(df)} workloads")
+            else:
+                # Too few decisions - pad with original cluster labels (no migration)
+                missing_count = len(df) - len(decisions)
+                
+                # Get original cluster labels for missing decisions
+                for i in range(len(decisions), len(df)):
+                    workload_row = df.iloc[i]
+                    original_cluster = workload_row.get('cluster_label', 'private')
+                    # Convert cluster label to decision: private=0, public=1
+                    original_decision = 0 if original_cluster == 'private' else 1
+                    decisions.append(original_decision)
+                    explanations.append(f"Maintaining original cluster ({original_cluster}) due to missing AI decision")
+                
+                logger.info(f"Padded {missing_count} missing decisions with original cluster assignments (no migration)")
 
         # Convert to integers and create output
         labels = [int(decision) for decision in decisions]
