@@ -3,7 +3,7 @@ data:
 
 ai:
   selected_model: gemini
-  scheduler_interval: 3000
+  scheduler_interval: 300
   timestamp_lookback_seconds: 30
   models:
     gemini:
