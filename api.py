@@ -164,9 +164,9 @@ async def start():
             schedule.run_pending()
 
     # Run fetch_metrics immediately
-    asyncio.create_task(fetch_metrics())
+    # asyncio.create_task(fetch_metrics())
 
-    # Start the scheduler to run every 30 seconds after the first execution
+    # Start the scheduler to run every SCHEDULER_INTERVAL seconds after the first execution
     global scheduler_thread
     schedule.every(SCHEDULER_INTERVAL).seconds.do(lambda: asyncio.run(fetch_metrics()))
     scheduler_thread = threading.Thread(
