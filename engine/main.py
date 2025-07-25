@@ -4,6 +4,7 @@ import json
 import pandas as pd
 from typing import Dict, List, Any, Tuple, Union
 import datetime
+import concurrent.futures
 
 from .util import (
     get_logger,
@@ -306,6 +307,48 @@ def analyze_workloads(workloads, config):
     result["label"] = labels
 
     return result, explanations
+
+
+def shard_and_analyze_workloads(workloads, config):
+    """Analyze workloads in shards using threads.
+
+    Args:
+        workloads: List of workload items to analyze.
+        config: Configuration dictionary loaded from YAML.
+
+    Returns:
+        Tuple[pd.DataFrame, dict]: Combined DataFrame with all shard results and aggregated explanations.
+    """
+    # Retrieve shard size from config; fallback to processing all at once
+    shard_size = int(config.get('ai', {}).get('workloads_shard_size', len(workloads))) or len(workloads)
+    if shard_size <= 0:
+        shard_size = len(workloads)
+
+    # Split workloads into shards
+    shards = [workloads[i : i + shard_size] for i in range(0, len(workloads), shard_size)]
+
+    results = []
+    combined_explanations = {"workload_explanations": []}
+
+    def _analyze(shard):
+        return analyze_workloads(shard, config)
+
+    # Create a thread for each shard
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(shards)) as executor:
+        future_to_shard = {executor.submit(_analyze, shard): idx for idx, shard in enumerate(shards)}
+        for future in concurrent.futures.as_completed(future_to_shard):
+            try:
+                shard_df, shard_expl = future.result()
+                results.append(shard_df)
+                if shard_expl:
+                    combined_explanations["workload_explanations"].extend(
+                        shard_expl.get("workload_explanations", [])
+                    )
+            except Exception as exc:
+                logger.error(f"Error analyzing shard: {exc}")
+
+    combined_df = pd.concat(results, ignore_index=True) if results else pd.DataFrame()
+    return combined_df, combined_explanations
 
 
 def save_and_log_explanations(result_df, explanations):

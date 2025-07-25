@@ -11,7 +11,7 @@ from engine.main import (
     process_monitoring_data,
     write_recommendations,
     load_monitoring_data,
-    analyze_workloads,
+    shard_and_analyze_workloads,
     save_and_log_explanations,
 )
 
@@ -31,7 +31,6 @@ import aiohttp
 import json
 import schedule
 import threading
-import time
 
 
 # Global state variables to control the recommendation loop
@@ -46,7 +45,6 @@ stop_event: threading.Event = threading.Event()
 scheduler_thread: Optional[threading.Thread] = None
 
 logger = get_logger("api")
-
 
 class AppState:
     def __init__(self):
@@ -153,9 +151,9 @@ async def start():
 
         workloads = process_monitoring_data(data)
         if workloads:
-            result_df, explanations = analyze_workloads(workloads, app_state.config)
+            result_df, explanations = shard_and_analyze_workloads(workloads, app_state.config)
             save_and_log_explanations(result_df, explanations)
-            # Ensure output directory exists
+
             os.makedirs(OUTPUT_DIR, exist_ok=True)
             write_recommendations(result_df)
             await apply_recommendations(result_df)

@@ -5,6 +5,7 @@ ai:
   selected_model: gemini
   scheduler_interval: 300
   timestamp_lookback_seconds: 30
+  workloads_shard_size: 26
   models:
     gemini:
       model_name: gemini-2.0-flash-001
