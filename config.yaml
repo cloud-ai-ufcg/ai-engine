@@ -45,6 +45,7 @@ api-key:
 monitor:
   host: 0.0.0.0
   port: 8082
+  interval: 30
   route: metrics
 
 actuator:

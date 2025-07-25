@@ -131,8 +131,12 @@ async def start():
         try:
             async with aiohttp.ClientSession() as session:
                 url = f"http://{app_state.config['monitor']['host']}:{app_state.config['monitor']['port']}/{app_state.config['monitor']['route']}"
-                logger.info(f"Fetching metrics from MONITOR: {url}")
-                async with session.get(url, json={}) as response:
+                json={"interval": app_state.config['monitor']['interval']}
+                
+                logger.debug(f"Fetching metrics from MONITOR: {url}")
+                logger.debug(f"Interval: {app_state.config['monitor']['interval']}")
+
+                async with session.get(url, json=json) as response:
                     if response.status == 200:
                         data = await response.json()
                         logger.info(
@@ -154,8 +158,6 @@ async def start():
             result_df, explanations = shard_and_analyze_workloads(workloads, app_state.config)
             save_and_log_explanations(result_df, explanations)
 
-            os.makedirs(OUTPUT_DIR, exist_ok=True)
-            write_recommendations(result_df)
             await apply_recommendations(result_df)
 
     # Function to run the scheduler in a separate thread
