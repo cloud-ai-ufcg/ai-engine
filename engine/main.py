@@ -330,12 +330,30 @@ def shard_and_analyze_workloads(workloads, config):
     results = []
     combined_explanations = {"workload_explanations": []}
 
-    def _analyze(shard):
-        return analyze_workloads(shard, config)
+    def _analyze(shard_idx, shard):
+        """Analyze a shard, logging its thread and position."""
+        import threading  # local import avoids adding a new top-level import
+        logger.info(
+            format_message(
+                f"🔢 Starting shard {shard_idx + 1}/{len(shards)} "
+                f"({len(shard)} workloads) on thread {threading.current_thread().name}",
+                color="CYAN",
+            )
+        )
+        df, expl = analyze_workloads(shard, config)
+        logger.info(
+            format_message(
+                f"✅ Finished shard {shard_idx + 1}/{len(shards)}",
+                color="GREEN",
+            )
+        )
+        return df, expl
 
     # Create a thread for each shard
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(shards)) as executor:
-        future_to_shard = {executor.submit(_analyze, shard): idx for idx, shard in enumerate(shards)}
+        future_to_shard = {
+            executor.submit(_analyze, idx, shard): idx for idx, shard in enumerate(shards)
+        }
         for future in concurrent.futures.as_completed(future_to_shard):
             try:
                 shard_df, shard_expl = future.result()
@@ -405,6 +423,3 @@ def save_and_log_explanations(result_df, explanations):
     for key, value in explanations.items():
         if key not in ["explanation", "workload_explanations"]:
             logger.info(f"💡 {key}: {value}")
-
-
-
