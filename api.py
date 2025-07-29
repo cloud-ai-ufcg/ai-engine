@@ -2,15 +2,11 @@ from fastapi import FastAPI
 
 
 from typing import Optional
-import pandas as pd
-import os
 from contextlib import asynccontextmanager
 import uvicorn
 
 from engine.main import (
     process_monitoring_data,
-    write_recommendations,
-    load_monitoring_data,
     shard_and_analyze_workloads,
     save_and_log_explanations,
 )
@@ -21,9 +17,6 @@ from engine.util import (
     get_logger,
     load_config,
     format_message,
-    COLORS,
-    OUTPUT_DIR,
-    ENGINE_LOG_DIR,
 )
 
 import asyncio
