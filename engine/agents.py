@@ -26,6 +26,9 @@ except ImportError:
     Groq = None
     HAS_GROQ = False
 
+# global variables
+REQUEST_COUNTER = 0
+TOKEN_TOTALS = {"input": 0, "output": 0, "total": 0}
 
 # ---------------------------------------------------------------------------
 # Gemini API Helper Functions
@@ -120,6 +123,8 @@ def label_workloads_with_gemini(
         - List of labels (0 or 1) in the same order
         - Dictionary with explanations for each workload
     """
+    global REQUEST_COUNTER, TOKEN_TOTALS
+
     logger.info("Starting workload analysis for migration decision")
 
     # Dependency validation - early return if not available
@@ -142,6 +147,7 @@ def label_workloads_with_gemini(
     logger.info("Sending request to Gemini model")
 
     try:
+        # Model setup and API call
         model, model_config = _setup_gemini_model(api_key, config)
         logger.info(f"CONFIG: Using Gemini model: {model_config['model_name']}")
         logger.info(f"CONFIG: Using Gemini generation config: {model_config['generation_config']}")
@@ -152,12 +158,20 @@ def label_workloads_with_gemini(
             if getattr(response.prompt_feedback, "block_reason", None) == "MAX_TOKENS":
                 logger.warning("Gemini model response was truncated due to max_output_tokens limit.")
 
+        REQUEST_COUNTER += 1
+        logger.info(f"Gemini API request count: {REQUEST_COUNTER}")
+
         # Token usage logging
         token_counts = log_token_usage(
             prompt=prompt,
             response=response.text,
             model_type="gemini"
         )
+
+        TOKEN_TOTALS["input"] += token_counts["input_tokens"]
+        TOKEN_TOTALS["output"] += token_counts["output_tokens"]
+        TOKEN_TOTALS["total"] += token_counts["total_tokens"]
+
         logger.info(
             f"Token Usage (4 chars = 1 token) | "
             f"Input: {token_counts['input_tokens']} | "
@@ -499,3 +513,10 @@ def _label_workloads_with_heuristics(
     )
 
     return labels.tolist()
+
+# Get metrics of token usage and requests
+def get_usage_metrics() -> Dict[str, Any]:
+    return {
+        "total_requests": REQUEST_COUNTER,
+        "total_tokens": TOKEN_TOTALS  
+    }
