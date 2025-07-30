@@ -1,8 +1,9 @@
 from engine import *
 
-def main():
+
+def cli():
     """
-    Main function that orchestrates the workload analysis process.
+    Analyze workloads in CLI mode
     """
     config = load_config()
 
@@ -13,10 +14,22 @@ def main():
 
     result, explanations = analyze_workloads(workloads, config)
 
+    metrics = get_usage_metrics()
+
+    logger.info(
+        format_message(
+            f"Requisições totais: {metrics['total_requests']} | "
+            f"Tokens usados: {metrics['total_tokens']}",
+            icon="📝",
+            color="MAGENTA",
+            bold=True,
+        )
+    )
+
     save_and_log_explanations(result, explanations)
 
     write_recommendations(result)
 
 
 if __name__ == "__main__":
-    main()
+    cli()

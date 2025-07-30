@@ -4,6 +4,7 @@ This module centralizes all AI-related configurations to make versioning and upd
 """
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
+from .util import load_config
 
 
 # Output structure definitions
@@ -29,40 +30,28 @@ class WorkloadLabelOutput(BaseModel):
         """Validate that decisions and explanations have matching lengths"""
         return len(self.decisions) == len(self.explanations)
 
-# Model configurations
-MODEL_CONFIGS = {
-    "gemini": {
-        "model_name": "gemini-2.0-flash-001",
-        "generation_config": {
-            "temperature": 0.2,
-            "max_output_tokens": 1024
-        }
-    }
-}
+
+MODEL_CONFIGS: Dict[str, Any] = {}  # Deprecated placeholder
 
 # Prompt templates
 PROMPTS = {
     "label_workloads": {
         "version": "1.0",
         "output_schema": WorkloadLabelOutput,
-        "template": """You are a Kubernetes cluster orchestrator. For each workload, decide whether it should stay in the 'private' cluster (0) or migrate to the 'public' cluster (1).
-Decision rules:
-- Workloads with high demand (high CPU or memory usage) while the private cluster is overloaded should go to the public cluster.
-- If percent_pending is high, consider moving to the public cluster.
-- Consider the cluster_load to avoid overloading both the destination cluster and the actual cluster.
+        "template": """You are a Kubernetes orchestrator. For each workload, decide if it should run in the 'private' cluster (0) or 'public' cluster (1).
+Rules:
+- If private is overloaded or workload needs high resources, prefer public (1).
+- If workload is in public and private has capacity, allow migrating back to private (0).
+- Use percent_pending and cluster_load to guide decisions.
 
-For each workload, provide:
-1. The decision (0 for private, 1 for public)
-2. A brief explanation of why you made this decision based on the workload's characteristics
-
-YOUR RESPONSE MUST STRICTLY FOLLOW THIS JSON SCHEMA:
+Respond with JSON:
 {{
-  "decisions": [0, 1, 0, ...],  // Array of 0s and 1s for each workload, required
+  "decisions": [0, 1, ...],
   "explanations": [
-    "Explanation for workload 1",
-    "Explanation for workload 2",
+    "Short explanation for workload 1",
+    "Short explanation for workload 2",
     ...
-  ]  // Array of string explanations, required, must have same length as decisions
+  ]
 }}
 
 Workloads: {workloads_json}
@@ -80,7 +69,8 @@ def get_model_config(model_key="gemini"):
     Returns:
         Dictionary with model configuration
     """
-    return MODEL_CONFIGS.get(model_key, {})
+    cfg = load_config()
+    return cfg.get("ai", {}).get("models", {}).get(model_key, {})
 
 def get_prompt(prompt_key, **kwargs):
     """
