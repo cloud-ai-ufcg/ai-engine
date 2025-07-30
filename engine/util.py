@@ -5,10 +5,10 @@ import logging.handlers
 import yaml
 from typing import Optional, Dict, Any, Union
 import re
+import json
 
 # Default directory paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-MODELS_DIR = os.path.abspath(os.path.join(BASE_DIR, "model-pipeline/models"))
 OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "data/output"))
 ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "logs"))
 
@@ -51,6 +51,11 @@ class ColoredFormatter(logging.Formatter):
 
 # Flag to track if logging has been configured
 _logging_configured = False
+_config_loaded = False  # Flag to prevent repeated config loading
+
+# Global variables for configuration and logging
+config: Optional[Dict[str, Any]] = None
+logger: Optional[logging.Logger] = None
 
 
 def setup_logger(
@@ -205,7 +210,7 @@ def format_message(message, icon=None, color=None, bold=False):
 
 def load_config(config_path=None) -> Dict[str, Any]:
     """
-    Loads configuration from a YAML file and sets up global paths and logging
+    Loads configuration from a YAML file, injects API keys from environment variables (GOOGLE_API_KEY, GROQ_API_KEY), and sets up global paths and logging
 
     Args:
         config_path: Path to the configuration file. If None, uses the default config.yaml
@@ -213,7 +218,12 @@ def load_config(config_path=None) -> Dict[str, Any]:
     Returns:
         dict: Configuration dictionary with all settings
     """
-    global config
+    global config, _config_loaded
+    
+    # Return cached config if already loaded
+    if _config_loaded and config is not None:
+        return config
+    
     if config_path is None:
         # Default to the config.yaml located one directory above the current module
         config_path = os.path.abspath(
@@ -223,22 +233,41 @@ def load_config(config_path=None) -> Dict[str, Any]:
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
+    # ------------------------------------------------------------------
+    # Inject API keys from environment variables, overriding YAML values
+    # ------------------------------------------------------------------
+    api_key_cfg: Dict[str, Any] = config.get("api-key", {}) or {}
+    google_env_key = os.getenv("GOOGLE_API_KEY")
+    if google_env_key:
+        api_key_cfg["google"] = google_env_key
+    groq_env_key = os.getenv("GROQ_API_KEY")
+    if groq_env_key:
+        api_key_cfg["groq"] = groq_env_key
+
+    if api_key_cfg:
+        config["api-key"] = api_key_cfg
+
     # Set up paths from config or use defaults
     paths_config = config.get("paths", {})
-    global MODELS_DIR, OUTPUT_DIR, ENGINE_LOG_DIR
-
-    # Update global paths if specified in config
-    if "models_dir" in paths_config:
-        MODELS_DIR = os.path.abspath(paths_config["models_dir"])
+    global OUTPUT_DIR, ENGINE_LOG_DIR
 
     if "output_dir" in paths_config:
-        OUTPUT_DIR = os.path.abspath(paths_config["output_dir"])
+        raw_path = paths_config["output_dir"]
+        OUTPUT_DIR = (
+            raw_path
+            if os.path.isabs(raw_path)
+            else os.path.abspath(os.path.join(BASE_DIR, raw_path))
+        )
 
     if "log_dir" in paths_config:
-        ENGINE_LOG_DIR = os.path.abspath(paths_config["log_dir"])
+        raw_path = paths_config["log_dir"]
+        ENGINE_LOG_DIR = (
+            raw_path
+            if os.path.isabs(raw_path)
+            else os.path.abspath(os.path.join(BASE_DIR, raw_path))
+        )
 
     # Ensure directories exist
-    os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
 
@@ -259,54 +288,49 @@ def load_config(config_path=None) -> Dict[str, Any]:
     global logger
     logger = setup_logger(level=log_level, log_file=log_file)
 
-    # Log the paths being used
+    # Log the paths being used (only on first load)
     logger.debug(f"Using config file: {config_path}")
     logger.debug(f"Using base directory: {BASE_DIR}")
-    logger.debug(f"Using models directory: {MODELS_DIR}")
     logger.debug(f"Using output directory: {OUTPUT_DIR}")
     logger.debug(f"Using log directory: {ENGINE_LOG_DIR}")
-    logger.debug(f"Log file: {log_file}")
-
+    # Mark config as loaded to prevent repeated loading
+    _config_loaded = True
     return config
 
-# util.py
-import json
-from typing import Union, Dict, Any
 
 def estimate_tokens(text: Union[str, Dict, Any]) -> int:
     """
     Token estimation using strict 4 characters = 1 token rule.
     Handles strings, dictionaries (JSON), and other serializable formats.
-    
+
     Args:
         text: Input text or serializable object to count tokens for
-        
+
     Returns:
         Estimated token count using ceiling(character_count / 4)
     """
     if not isinstance(text, str):
         text = json.dumps(text)
-    
+
     # Count all characters (including spaces and punctuation)
     char_count = len(text)
-    
+
     # Apply 4 chars = 1 token rule with ceiling division
     return (char_count + 3) // 4  # Equivalent to math.ceil(char_count / 4)
 
+
 def log_token_usage(
-    prompt: str, 
-    response: str, 
-    model_type: str = "generic"
+    prompt: str, response: str, model_type: str = "generic"
 ) -> Dict[str, int]:
     """
     Unified token counting using 4 characters = 1 token rule.
     No longer uses exact_counts since we're using generalized counting.
-    
+
     Args:
         prompt: Input prompt text
         response: Model response text
         model_type: LLM provider identifier
-        
+
     Returns:
         Dictionary with token counts and metadata
     """
@@ -315,8 +339,10 @@ def log_token_usage(
         "output_tokens": estimate_tokens(response),
         "model_type": model_type,
         "counting_method": "4_chars_per_token",
-        "is_estimate": True  # Since we're using one consistent method
+        "is_estimate": True,  # Since we're using one consistent method
     }
-    token_counts["total_tokens"] = token_counts["input_tokens"] + token_counts["output_tokens"]
-    
+    token_counts["total_tokens"] = (
+        token_counts["input_tokens"] + token_counts["output_tokens"]
+    )
+
     return token_counts
