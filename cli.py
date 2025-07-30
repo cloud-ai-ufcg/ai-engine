@@ -1,8 +1,9 @@
 from engine import *
 
+
 def cli():
     """
-    Main function that orchestrates the workload analysis process.
+    Analyze workloads in CLI mode
     """
     config = load_config()
 
@@ -16,12 +17,12 @@ def cli():
     metrics = get_usage_metrics()
 
     logger.info(
-         format_message(
-        f"Requisições totais: {metrics['total_requests']} | "
-        f"Tokens usados: {metrics['total_tokens']}",
-        icon="📝",
-        color="MAGENTA",
-        bold=True,    
+        format_message(
+            f"Requisições totais: {metrics['total_requests']} | "
+            f"Tokens usados: {metrics['total_tokens']}",
+            icon="📝",
+            color="MAGENTA",
+            bold=True,
         )
     )
 
