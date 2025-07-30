@@ -158,8 +158,9 @@ async def start():
         while not stop_event.is_set():
             schedule.run_pending()
 
-    # Run fetch_metrics immediately
-    # asyncio.create_task(fetch_metrics())
+    # Run fetch_metrics immediately if configured
+    if app_state.config["ai"]["fetch_metrics_immediately"]:
+        asyncio.run(fetch_metrics())
 
     # Start the scheduler to run every SCHEDULER_INTERVAL seconds after the first execution
     global scheduler_thread
