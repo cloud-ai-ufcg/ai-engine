@@ -1,6 +1,6 @@
 from engine import *
 
-def main():
+def cli():
     """
     Main function that orchestrates the workload analysis process.
     """
@@ -11,7 +11,6 @@ def main():
         logger.error("❌ No workloads found")
         return
 
-    result, explanations = analyze_workloads(workloads, config)
     result, explanations = analyze_workloads(workloads, config)
 
     metrics = get_usage_metrics()
@@ -32,4 +31,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cli()
