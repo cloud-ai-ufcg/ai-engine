@@ -161,22 +161,18 @@ def label_workloads_with_gemini(
         REQUEST_COUNTER += 1
         logger.info(f"Gemini API request count: {REQUEST_COUNTER}")
 
-        # Token usage logging
-        token_counts = log_token_usage(
-            prompt=prompt,
-            response=response.text,
-            model_type="gemini"
-        )
+        input_tokens = model.count_tokens(prompt).total_tokens
+        output_tokens = model.count_tokens(response.text).total_tokens
 
-        TOKEN_TOTALS["input"] += token_counts["input_tokens"]
-        TOKEN_TOTALS["output"] += token_counts["output_tokens"]
-        TOKEN_TOTALS["total"] += token_counts["total_tokens"]
+        TOKEN_TOTALS["input"] += input_tokens
+        TOKEN_TOTALS["output"] += output_tokens
+        TOKEN_TOTALS["total"] += input_tokens + output_tokens
 
         logger.info(
-            f"Token Usage (4 chars = 1 token) | "
-            f"Input: {token_counts['input_tokens']} | "
-            f"Output: {token_counts['output_tokens']} | "
-            f"Total: {token_counts['total_tokens']}"
+            f"Token Usage | "
+            f"Input: {TOKEN_TOTALS['input']} | "
+            f"Output: {TOKEN_TOTALS['output']} | "
+            f"Total: {TOKEN_TOTALS['total']}"
         )
 
         # Response processing
