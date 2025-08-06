@@ -1,12 +1,37 @@
 data:
-  input_json: monitor_outputs_v2.json
+  input_json: monitor_outputs.json
 
 ai:
-  model: gemini
+  selected_model: gemini
+  scheduler_interval: 300
+  timestamp_lookback_seconds: 30
+  workloads_shard_size: 26
+  fetch_metrics_immediately: false
+  models:
+    gemini:
+      model_name: gemini-2.0-flash-001
+      provider: google
+      api_key: ${GOOGLE_API_KEY}
+      generation_config:
+        temperature: 0.1
+        max_output_tokens: 6000
+    llama:
+      model_name: llama-3.1-8b-instant
+      provider: groq
+      api_key: ${GROQ_API_KEY}
+      generation_config:
+        temperature: 0.1
+        max_output_tokens: 6000
+    claude:
+      model_name: claude-3.5-sonnet-20240620
+      provider: anthropic
+      api_key: ${ANTHROPIC_API_KEY}
+      generation_config:
+        temperature: 0.1
+        max_output_tokens: 6000
 
 # Diretórios para diferentes componentes do sistema
 paths:
-  models_dir: ai-engine/model-pipeline/models
   output_dir: ai-engine/data/output
   log_dir: ai-engine/logs
 
@@ -15,11 +40,13 @@ logging:
   file: ai_engine.log
 
 api-key:
-  google: KEY_VALUE
+  groq: 
+  anthropic: 
 
 monitor:
   host: 0.0.0.0
   port: 8082
+  interval: 30
   route: metrics
 
 actuator:
@@ -30,6 +57,6 @@ actuator:
 server:
   host: 0.0.0.0
   port: 8083
-  route: start/stop
+  route: start/stop/analyze
   reload: false
   

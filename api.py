@@ -2,16 +2,12 @@ from fastapi import FastAPI
 
 
 from typing import Optional
-import pandas as pd
-import os
 from contextlib import asynccontextmanager
 import uvicorn
 
 from engine.main import (
     process_monitoring_data,
-    write_recommendations,
-    load_monitoring_data,
-    analyze_workloads,
+    shard_and_analyze_workloads,
     save_and_log_explanations,
 )
 
@@ -21,10 +17,6 @@ from engine.util import (
     get_logger,
     load_config,
     format_message,
-    COLORS,
-    MODELS_DIR,
-    OUTPUT_DIR,
-    ENGINE_LOG_DIR,
 )
 
 import asyncio
@@ -32,18 +24,20 @@ import aiohttp
 import json
 import schedule
 import threading
-import time
 
 
 # Global state variables to control the recommendation loop
-SCHEDULER_INTERVAL: int = 30  # seconds between recommendation cycles
+config = load_config()
+
+SCHEDULER_INTERVAL_DEFAULT = 60 * 5 # 5 minutes
+SCHEDULER_INTERVAL: int = int(config["ai"]["scheduler_interval"]) or int(SCHEDULER_INTERVAL_DEFAULT)  # seconds between recommendation cycles
+
 running: bool = False
 stop_event: threading.Event = threading.Event()
 # Background thread that runs the scheduler; populated when `/start` is called
 scheduler_thread: Optional[threading.Thread] = None
 
 logger = get_logger("api")
-
 
 class AppState:
     def __init__(self):
@@ -130,8 +124,12 @@ async def start():
         try:
             async with aiohttp.ClientSession() as session:
                 url = f"http://{app_state.config['monitor']['host']}:{app_state.config['monitor']['port']}/{app_state.config['monitor']['route']}"
-                logger.info(f"Fetching metrics from MONITOR: {url}")
-                async with session.get(url, json={}) as response:
+                json={"interval": app_state.config['monitor']['interval']}
+                
+                logger.debug(f"Fetching metrics from MONITOR: {url}")
+                logger.debug(f"Interval: {app_state.config['monitor']['interval']}")
+
+                async with session.get(url, json=json) as response:
                     if response.status == 200:
                         data = await response.json()
                         logger.info(
@@ -150,11 +148,9 @@ async def start():
 
         workloads = process_monitoring_data(data)
         if workloads:
-            result_df, explanations = analyze_workloads(workloads, app_state.config)
+            result_df, explanations = shard_and_analyze_workloads(workloads, app_state.config)
             save_and_log_explanations(result_df, explanations)
-            # Ensure output directory exists
-            os.makedirs(OUTPUT_DIR, exist_ok=True)
-            write_recommendations(result_df)
+
             await apply_recommendations(result_df)
 
     # Function to run the scheduler in a separate thread
@@ -162,10 +158,11 @@ async def start():
         while not stop_event.is_set():
             schedule.run_pending()
 
-    # Run fetch_metrics immediately
-    asyncio.create_task(fetch_metrics())
+    # Run fetch_metrics immediately if configured
+    if app_state.config["ai"]["fetch_metrics_immediately"]:
+        asyncio.run(fetch_metrics())
 
-    # Start the scheduler to run every 30 seconds after the first execution
+    # Start the scheduler to run every SCHEDULER_INTERVAL seconds after the first execution
     global scheduler_thread
     schedule.every(SCHEDULER_INTERVAL).seconds.do(lambda: asyncio.run(fetch_metrics()))
     scheduler_thread = threading.Thread(
@@ -175,7 +172,6 @@ async def start():
 
     logger.info(format_message("Recommendations are running", icon="🚀", color="GREEN"))
     return {"status": "Recommendations are running"}
-
 
 @app.post("/stop")
 async def stop():
@@ -189,6 +185,32 @@ async def stop():
         await loop.run_in_executor(None, scheduler_thread.join)
     logger.info(format_message("Recommendations stopped", icon="🛑", color="RED"))
     return {"status": "Recommendations stopped"}
+
+@app.post("/analyze")
+async def analyze_workloads_direct(workloads: list):
+    """
+    Analyze workloads directly from POST request data
+    
+    Args:
+        workloads: List of workload data in JSON format
+    Returns:
+        Dictionary with analysis results and status
+    """
+    try:
+        if not workloads:
+            return {"status": "error", "message": "No workload data provided"}
+            
+        result_df, explanations = analyze_workloads(workloads, app_state.config)
+        save_and_log_explanations(result_df, explanations)
+        
+        return {
+            "status": "success",
+            "message": "Workloads analyzed successfully",
+            "recommendations": result_df.to_dict(orient="records")
+        }
+    except Exception as e:
+        logger.error(f"Error analyzing workloads: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 if __name__ == "__main__":
