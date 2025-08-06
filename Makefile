@@ -11,6 +11,10 @@ OUTPUT_DIR = output
 # Default configuration file
 CONFIG_FILE = config.yaml
 
+AI_ENGINE_CONTAINER_NAME := ai-engine-simulator
+AI_ENGINE_IMAGE_NAME := ai-engine-api
+AI_ENGINE_DIR := ai-engine
+
 # Default target
 all: install run
 
@@ -36,16 +40,24 @@ run-with-config:
 	$(PYTHON) cli.py --config $(CONFIG_FILE)
 
 build-docker-api:
-	docker build -t ai-engine-api:latest -f Dockerfile.api .
+	docker build -t $(AI_ENGINE_IMAGE_NAME) -f Dockerfile.api .
 
 build-docker-cli:
-	docker build -t ai-engine-cli:latest -f Dockerfile.cli .
+	docker build -t $(AI_ENGINE_IMAGE_NAME) -f Dockerfile.cli .
 
 run-docker-api:
-	docker run --name ai-engine-api -p 8083:8083 ai-engine-api:latest
+	sudo docker run -d --rm \
+			--name $(AI_ENGINE_CONTAINER_NAME) \
+			--network host \
+			-p 8083:8083 \
+			$(AI_ENGINE_IMAGE_NAME);
 
 run-docker-cli:
-	docker run --name ai-engine-cli -p 8083:8083 ai-engine-cli:latest
+	docker run --name $(AI_ENGINE_CONTAINER_NAME) -p --rm 8083:8083 $(AI_ENGINE_IMAGE_NAME)
+
+stop-rm-container:
+	docker stop $(AI_ENGINE_CONTAINER_NAME)
+	docker rm $(AI_ENGINE_CONTAINER_NAME)
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
