@@ -6,6 +6,7 @@ import json
 from .ai_config import get_model_config, get_prompt, PROMPTS
 from dotenv import load_dotenv
 from .util import get_logger, load_config, log_token_usage
+from .langgraph_agents.graph.migration_graph import build_graph
 
 
 logger = get_logger("agents")
@@ -430,7 +431,30 @@ def label_workloads_with_llama(
             "explanation": f"Used heuristic rules due to Groq error: {e}",
             "workload_explanations": [],
         }
+# ---------------------------------------------------------------------------
+# MultiAgent implementation
+# ---------------------------------------------------------------------------
 
+def label_workloads_multiagent(
+    workloads: Union[list, "pd.DataFrame"],
+) -> Tuple[List[int], Dict[str, Any]]:
+    state = {
+        "workloads": workloads,
+        "cpu_votes": [],
+        "mem_votes": [],
+        "pending_votes": [],
+        "final_decisions": [],
+        "explanations": {}
+    }
+
+    graph = build_graph()
+    final_state = graph.invoke(state)
+
+    labels = final_state.get("final_decisions", [])
+
+    explanations = final_state.get("explanations", {})
+
+    return labels, explanations
 
 # ---------------------------------------------------------------------------
 # Generic wrapper
@@ -440,12 +464,22 @@ def label_workloads_with_llama(
 def label_workloads(
     workloads: Union[list, "pd.DataFrame"],
     provider: str | None = None,
+    multiagent: bool | None = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
     """Public API to label workloads with the configured AI provider."""
-    if provider is None:
+    
+    if provider is None or multiagent is None:
         cfg = load_config()
+    
+    if provider is None:
         provider = cfg.get("ai", {}).get("selected_model", "gemini")
-
+    
+    if multiagent is None:
+        multiagent = cfg.get("ai", {}).get("multiagent", False)
+    
+    if multiagent:
+        return label_workloads_multiagent(workloads)    
+    
     provider = provider.lower()
     if provider in {"gemini", "google"}:
         return label_workloads_with_gemini(workloads)
