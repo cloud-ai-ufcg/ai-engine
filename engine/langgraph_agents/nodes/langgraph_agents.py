@@ -3,7 +3,7 @@ import json
 from typing import List, Dict
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
-from utils.ai_config import get_groq_llm, get_prompt 
+from ..utils.ai_config import get_groq_llm, get_prompt 
 import re
 
 load_dotenv()

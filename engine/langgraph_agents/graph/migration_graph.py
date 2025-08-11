@@ -1,9 +1,9 @@
 from langgraph.graph import StateGraph, END
-from nodes.langgraph_agents import cpu_checker
-from nodes.langgraph_agents import mem_checker
-from nodes.langgraph_agents import pending_checker
-from nodes.langgraph_agents import decision_agent
-from nodes.langgraph_agents import explainer_agent
+from ..nodes.langgraph_agents import cpu_checker
+from ..nodes.langgraph_agents import mem_checker
+from ..nodes.langgraph_agents import pending_checker
+from ..nodes.langgraph_agents import decision_agent
+from ..nodes.langgraph_agents import explainer_agent
 from engine.data_types import WorkflowState
 
 def run_cpu_checker(state: WorkflowState):
