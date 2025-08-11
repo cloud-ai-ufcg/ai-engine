@@ -3,11 +3,11 @@ import os
 import pandas as pd
 import re
 import json
-from .ai_config import get_model_config, get_prompt, PROMPTS
 from dotenv import load_dotenv
-from .util import get_logger, load_config, log_token_usage
-from .langgraph_agents.graph.migration_graph import build_graph
 
+from .ai_config import get_model_config, get_prompt, PROMPTS
+from .util import get_logger, load_config, log_token_usage
+from .langgraph_agents.graph.migration_graph import create_migration_graph ##erro, aonde está build graph
 
 logger = get_logger("agents")
 
@@ -435,11 +435,10 @@ def label_workloads_with_llama(
 # MultiAgent implementation
 # ---------------------------------------------------------------------------
 
-def label_workloads_multiagent(
-    workloads: Union[list, "pd.DataFrame"],
-) -> Tuple[List[int], Dict[str, Any]]:
+def label_workloads_multiagent(workloads, provider="langgraph"):
+    df = _normalize_workloads_to_dataframe(workloads)  
     state = {
-        "workloads": workloads,
+        "workloads": df,  # já começa o grafo com DataFrame
         "cpu_votes": [],
         "mem_votes": [],
         "pending_votes": [],

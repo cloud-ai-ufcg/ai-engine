@@ -2,10 +2,16 @@
 Configuration management for AI models and prompts.
 This module centralizes all AI-related configurations to make versioning and updates easier.
 """
-from typing import List, Dict, Any, Optional
+import logging
+import os
+from typing import List, Dict, Any
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from .util import load_config
+from langchain_groq import ChatGroq
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 # Output structure definitions
 class WorkloadLabelOutput(BaseModel):
@@ -158,3 +164,21 @@ def get_prompt(prompt_key, **kwargs):
     template = prompt_data.get("template", "")
     return template.format(**kwargs)
     
+def get_groq_llm(
+    model_name="llama3-8b-8192", temperature=0.3, max_tokens=1024
+) -> ChatGroq:
+    """
+    Returns a configured instance of the ChatGroq model.
+    """
+    load_dotenv()
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError(" GROQ_API_KEY not found in .env or environment variables.")
+    
+    logger.info(f"Groq LLM configured with model'{model_name}'")
+    return ChatGroq(
+        model_name=model_name,
+        groq_api_key=api_key,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
