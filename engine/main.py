@@ -290,6 +290,7 @@ def analyze_workloads(workloads, config):
         Tuple containing (DataFrame with results, explanations dictionary)
     """
     provider = config.get("ai", {}).get("selected_model", "gemini").lower()
+    multiagent = cfg.get("ai", {}).get("multiagent", False)
 
     logger.info(
         format_message(
@@ -300,7 +301,7 @@ def analyze_workloads(workloads, config):
         )
     )
 
-    labels, explanations = label_workloads(workloads, provider=provider)
+    labels, explanations = label_workloads(workloads, provider=provider,multiagent=multiagent)
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
