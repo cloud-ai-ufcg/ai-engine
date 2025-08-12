@@ -291,6 +291,7 @@ def analyze_workloads(workloads, config):
         Tuple containing (DataFrame with results, explanations dictionary)
     """
     provider = config.get("ai", {}).get("selected_model", "gemini").lower()
+    multiagent = config.get("ai", {}).get("multiagent", False)
 
     logger.info(
         format_message(
@@ -301,14 +302,13 @@ def analyze_workloads(workloads, config):
         )
     )
 
-    # Aqui usamos o pipeline novo do LangGraph
-    result_df, explanations = run_migration_pipeline(pd.DataFrame(workloads))
+    labels, explanations = label_workloads(workloads, provider=provider,multiagent=multiagent)
 
-    # Garantir que o resultado tenha pelo menos as colunas esperadas
-    if not {"workload_id", "kind", "label"}.issubset(result_df.columns):
-        raise ValueError("O DataFrame retornado pelo pipeline não tem as colunas necessárias.")
+    df = pd.DataFrame(workloads)
+    result = df[["workload_id", "kind"]].copy()
+    result["label"] = labels
 
-    return result_df, explanations
+    return result, explanations
 
 
 def shard_and_analyze_workloads(workloads, config):
