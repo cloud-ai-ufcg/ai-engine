@@ -291,7 +291,7 @@ def analyze_workloads(workloads, config):
         Tuple containing (DataFrame with results, explanations dictionary)
     """
     provider = config.get("ai", {}).get("selected_model", "gemini").lower()
-    multiagent = config.get("ai", {}).get("multiagent", False)
+    multiagent = config.get("ai", {}).get("multiagent", True)
 
     logger.info(
         format_message(

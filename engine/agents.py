@@ -446,7 +446,7 @@ def label_workloads_multiagent(workloads, provider="langgraph"):
         "explanations": {}
     }
 
-    graph = build_graph()
+    graph = create_migration_graph()
     final_state = graph.invoke(state)
 
     labels = final_state.get("final_decisions", [])
