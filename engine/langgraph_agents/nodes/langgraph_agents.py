@@ -1,15 +1,15 @@
 import os
 import json
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Union
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
-from ...ai_config import get_groq_llm, get_prompt
+from ...ai_config import get_prompt, get_model_config
 import re
 
 load_dotenv()
 
-llm = get_groq_llm()
+llm = get_model_config()
 
 
 # -----------------------
@@ -43,21 +43,39 @@ def _parse_llm_response(response: str, expected_length: int) -> List[int]:
 # -----------------------
 # Agentes LangGraph
 # -----------------------
-def cpu_checker(workloads: pd.DataFrame) -> List[int]:
+def cpu_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    # Backup: caso venha lista, converter
+    if isinstance(workloads, list):
+        workloads = pd.DataFrame(workloads)
+
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("cpu_checker", workloads_json=json.dumps(workloads_list, indent=2))
     response = llm.invoke(prompt).content
     return _parse_llm_response(response, len(workloads_list))
 
 
-def mem_checker(workloads: pd.DataFrame) -> List[int]:
+def mem_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    # Backup: caso venha lista, converter
+    if isinstance(workloads, list):
+        workloads = pd.DataFrame(workloads)
+
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("mem_checker", workloads_json=json.dumps(workloads_list, indent=2))
     response = llm.invoke(prompt).content
     return _parse_llm_response(response, len(workloads_list))
 
 
-def pending_checker(workloads: pd.DataFrame) -> List[int]:
+def pending_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    # Backup: caso venha lista, converter
+    if isinstance(workloads, list):
+        workloads = pd.DataFrame(workloads)
+
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("pending_checker", workloads_json=json.dumps(workloads_list, indent=2))
     response = llm.invoke(prompt).content

@@ -2,8 +2,9 @@ import pandas as pd
 from typing import Dict, List
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+import uuid
 
-from ...langgraph_agents import (
+from ..nodes import (
     cpu_checker,
     mem_checker,
     pending_checker,
@@ -11,68 +12,60 @@ from ...langgraph_agents import (
     explainer_agent
 )
 
-
-# -----------------------
-# Estado da simulação
-# -----------------------
-class MigrationState:
-    def __init__(self, workloads: pd.DataFrame):
-        self.workloads = workloads
-        self.cpu_votes: List[int] = []
-        self.mem_votes: List[int] = []
-        self.pending_votes: List[int] = []
-        self.final_decisions: List[int] = []
-        self.explanations: Dict = {}
-
-
 # -----------------------
 # Funções de nós
 # -----------------------
-def cpu_node(state: MigrationState) -> MigrationState:
-    state.cpu_votes = cpu_checker(state.workloads)
+def cpu_node(state: dict) -> dict:
+    # Garantir que workloads seja DataFrame
+    if isinstance(state["workloads"], list):
+        state["workloads"] = pd.DataFrame(state["workloads"])
+    state["cpu_votes"] = cpu_checker(state["workloads"])
     return state
 
-
-def mem_node(state: MigrationState) -> MigrationState:
-    state.mem_votes = mem_checker(state.workloads)
+def mem_node(state: dict) -> dict:
+    if isinstance(state["workloads"], list):
+        state["workloads"] = pd.DataFrame(state["workloads"])
+    state["mem_votes"] = mem_checker(state["workloads"])
     return state
 
-
-def pending_node(state: MigrationState) -> MigrationState:
-    state.pending_votes = pending_checker(state.workloads)
+def pending_node(state: dict) -> dict:
+    if isinstance(state["workloads"], list):
+        state["workloads"] = pd.DataFrame(state["workloads"])
+    state["pending_votes"] = pending_checker(state["workloads"])
     return state
 
-
-def decision_node(state: MigrationState) -> MigrationState:
-    state.final_decisions = decision_agent(
-        state.cpu_votes, state.mem_votes, state.pending_votes
+def decision_node(state: dict) -> dict:
+    state["final_decisions"] = decision_agent(
+        state["cpu_votes"],
+        state["mem_votes"],
+        state["pending_votes"]
     )
     return state
 
-
-def explainer_node(state: MigrationState) -> MigrationState:
-    state.explanations = explainer_agent(
-        state.workloads,
-        {"cpu": state.cpu_votes, "mem": state.mem_votes, "pending": state.pending_votes},
-        state.final_decisions
+def explainer_node(state: dict) -> dict:
+    state["explanations"] = explainer_agent(
+        state["workloads"],
+        {
+            "cpu": state["cpu_votes"],
+            "mem": state["mem_votes"],
+            "pending": state["pending_votes"]
+        },
+        state["final_decisions"]
     )
     return state
-
 
 # -----------------------
 # Criação do grafo
 # -----------------------
 def create_migration_graph():
-    graph = StateGraph(MigrationState)
+    graph = StateGraph(dict)
 
-    # Adiciona os nós
     graph.add_node("cpu", cpu_node)
     graph.add_node("mem", mem_node)
     graph.add_node("pending", pending_node)
     graph.add_node("decision", decision_node)
     graph.add_node("explainer", explainer_node)
 
-    # Ligações
     graph.set_entry_point("cpu")
     graph.add_edge("cpu", "mem")
     graph.add_edge("mem", "pending")
@@ -82,24 +75,33 @@ def create_migration_graph():
 
     return graph.compile(checkpointer=MemorySaver())
 
-
 # -----------------------
-# Função para executar
+# Execução
 # -----------------------
-def run_migration_pipeline(workloads_df: pd.DataFrame):
-    """
-    Executa o pipeline de decisão de migração usando LangGraph.
-    Retorna um DataFrame com as decisões e as explicações.
-    """
-    # Cria o estado inicial
-    state = MigrationState(workloads_df)
-
-    # Executa o grafo
+def run_migration_pipeline(workloads_df):
+    # Padronizar logo no começo
+    if isinstance(workloads_df, list):
+        workloads_df = pd.DataFrame(workloads_df)
+    
+    initial_state = {
+        "workloads": workloads_df,
+        "cpu_votes": [],
+        "mem_votes": [],
+        "pending_votes": [],
+        "final_decisions": [],
+        "explanations": {}
+    }
+    conversation_id = str(uuid.uuid4()) 
+    config = {
+        "configurable": {
+            "thread_id": conversation_id
+        }
+    }
     app = create_migration_graph()
-    final_state: MigrationState = app.invoke(state)
+    final_state = app.invoke(initial_state, config=config)
 
-    # Monta resultado final como DataFrame
-    result_df = workloads_df.copy()
-    result_df["label"] = final_state.final_decisions
+    result_df = final_state["workloads"].copy()
+    result_df["label"] = final_state["final_decisions"]
+    explanations = final_state["explanations"]
 
-    return result_df, final_state.explanations
+    return result_df, explanations
