@@ -16,22 +16,19 @@ from ..nodes import (
 # Funções de nós
 # -----------------------
 def cpu_node(state: dict) -> dict:
-    # Garantir que workloads seja DataFrame
-    if isinstance(state["workloads"], list):
-        state["workloads"] = pd.DataFrame(state["workloads"])
-    state["cpu_votes"] = cpu_checker(state["workloads"])
+    # Converta localmente, mas NÃO sobrescreva state["workloads"]
+    df = pd.DataFrame(state["workloads"])
+    state["cpu_votes"] = cpu_checker(df)
     return state
 
 def mem_node(state: dict) -> dict:
-    if isinstance(state["workloads"], list):
-        state["workloads"] = pd.DataFrame(state["workloads"])
-    state["mem_votes"] = mem_checker(state["workloads"])
+    df = pd.DataFrame(state["workloads"])
+    state["mem_votes"] = mem_checker(df)
     return state
 
 def pending_node(state: dict) -> dict:
-    if isinstance(state["workloads"], list):
-        state["workloads"] = pd.DataFrame(state["workloads"])
-    state["pending_votes"] = pending_checker(state["workloads"])
+    df = pd.DataFrame(state["workloads"])
+    state["pending_votes"] = pending_checker(df)
     return state
 
 def decision_node(state: dict) -> dict:
@@ -43,8 +40,9 @@ def decision_node(state: dict) -> dict:
     return state
 
 def explainer_node(state: dict) -> dict:
+    df = pd.DataFrame(state["workloads"])
     state["explanations"] = explainer_agent(
-        state["workloads"],
+        df,
         {
             "cpu": state["cpu_votes"],
             "mem": state["mem_votes"],
@@ -79,29 +77,20 @@ def create_migration_graph():
 # Execução
 # -----------------------
 def run_migration_pipeline(workloads_df):
-    # Padronizar logo no começo
     if isinstance(workloads_df, list):
         workloads_df = pd.DataFrame(workloads_df)
-    
     initial_state = {
-        "workloads": workloads_df,
+        "workloads": workloads_df.to_dict(orient="records"),  # <-- sempre lista de dicts!
         "cpu_votes": [],
         "mem_votes": [],
         "pending_votes": [],
         "final_decisions": [],
         "explanations": {}
     }
-    conversation_id = str(uuid.uuid4()) 
-    config = {
-        "configurable": {
-            "thread_id": conversation_id
-        }
-    }
-    app = create_migration_graph()
-    final_state = app.invoke(initial_state, config=config)
-
-    result_df = final_state["workloads"].copy()
+    # ...restante igual...
+    graph = create_migration_graph()
+    final_state = graph.invoke(initial_state)
+    result_df = pd.DataFrame(final_state["workloads"]).copy()
     result_df["label"] = final_state["final_decisions"]
     explanations = final_state["explanations"]
-
     return result_df, explanations
