@@ -439,7 +439,7 @@ def label_workloads_with_llama(
 def label_workloads_multiagent(workloads, provider="langgraph"):
     df = _normalize_workloads_to_dataframe(workloads)  
     state = {
-        "workloads": df,  # já começa o grafo com DataFrame
+        "workloads": df.to_dict(orient="records"),  # já começa o grafo com DataFrame
         "cpu_votes": [],
         "mem_votes": [],
         "pending_votes": [],
