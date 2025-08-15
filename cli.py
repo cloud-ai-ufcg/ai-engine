@@ -1,5 +1,15 @@
 from engine import *
 
+from engine.main import (
+    load_config,
+    load_monitoring_data,
+    analyze_workloads,
+    save_and_log_explanations,
+    write_recommendations,
+    format_message,
+    logger,
+)
+from engine.agents import get_usage_metrics
 
 def cli():
     """
