@@ -1,15 +1,28 @@
 import os
 import json
 import pandas as pd
-from typing import List, Dict
-from langchain_groq import ChatGroq
+from typing import List, Dict, Union
 from dotenv import load_dotenv
-from ...ai_config import get_groq_llm, get_prompt
+from ...ai_config import get_prompt, get_model_config
+import google.generativeai as genai
+
 import re
 
 load_dotenv()
 
-llm = get_groq_llm()
+def get_gemini_llm():
+    from ...ai_config import get_model_config
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+    cfg = get_model_config("gemini")
+    api_key = cfg.get("api_key") or os.environ.get("GOOGLE_API_KEY")
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(cfg["model_name"])
+    generation_config = cfg.get("generation_config", {})
+    return model, generation_config
+
+model, generation_config = get_gemini_llm()
 
 
 # -----------------------
@@ -43,32 +56,54 @@ def _parse_llm_response(response: str, expected_length: int) -> List[int]:
 # -----------------------
 # Agentes LangGraph
 # -----------------------
-def cpu_checker(workloads: pd.DataFrame) -> List[int]:
+def cpu_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    # Backup: caso venha lista, converter
+    if isinstance(workloads, list):
+        workloads = pd.DataFrame(workloads)
+
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("cpu_checker", workloads_json=json.dumps(workloads_list, indent=2))
-    response = llm.invoke(prompt).content
-    return _parse_llm_response(response, len(workloads_list))
+    response = model.generate_content(prompt, generation_config=generation_config)
+    text = response.text
+    return _parse_llm_response(text, len(workloads_list))
 
 
-def mem_checker(workloads: pd.DataFrame) -> List[int]:
+def mem_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    # Backup: caso venha lista, converter
+    if isinstance(workloads, list):
+        workloads = pd.DataFrame(workloads)
+
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("mem_checker", workloads_json=json.dumps(workloads_list, indent=2))
-    response = llm.invoke(prompt).content
-    return _parse_llm_response(response, len(workloads_list))
+    response = model.generate_content(prompt, generation_config=generation_config)
+    text = response.text
+    return _parse_llm_response(text, len(workloads_list))
 
 
-def pending_checker(workloads: pd.DataFrame) -> List[int]:
+def pending_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    # Backup: caso venha lista, converter
+    if isinstance(workloads, list):
+        workloads = pd.DataFrame(workloads)
+
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("pending_checker", workloads_json=json.dumps(workloads_list, indent=2))
-    response = llm.invoke(prompt).content
-    return _parse_llm_response(response, len(workloads_list))
+    response = model.generate_content(prompt, generation_config=generation_config)
+    text = response.text
+    return _parse_llm_response(text, len(workloads_list))
 
 
 def decision_agent(cpu_votes: List[int], mem_votes: List[int], pending_votes: List[int]) -> List[int]:
     votes = {"cpu": cpu_votes, "mem": mem_votes, "pending": pending_votes}
     prompt = get_prompt("decision", workload_json=json.dumps(votes, indent=2))
-    response = llm.invoke(prompt).content
-    return _parse_llm_response(response, len(pending_votes))
+    response = model.generate_content(prompt, generation_config=generation_config)
+    text = response.text
+    return _parse_llm_response(text, len(pending_votes))
 
 
 def explainer_agent(workloads: pd.DataFrame, votes: Dict[str, List[int]], final_decisions: List[int]) -> Dict:
@@ -103,12 +138,13 @@ Final decisions: {final_decisions}
 """
 
     try:
-        response = llm.invoke(prompt).content.strip()
-        if not response:
+        response = model.generate_content(prompt, generation_config=generation_config)
+        text = response.text
+        if not text:
             raise ValueError("Empty response from LLM")
 
         # Pega apenas o JSON da resposta
-        match = re.search(r"\{.*\}", response, re.DOTALL)
+        match = re.search(r"\{.*\}", text, re.DOTALL) 
         if match:
             parsed = json.loads(match.group(0))
             return parsed
