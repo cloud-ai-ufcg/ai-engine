@@ -3,11 +3,12 @@ import os
 import pandas as pd
 import re
 import json
+import uuid
 from dotenv import load_dotenv
 
 from .ai_config import get_model_config, get_prompt, PROMPTS
 from .util import get_logger, load_config, log_token_usage
-from .langgraph_agents.graph.migration_graph import create_migration_graph ##erro, aonde está build graph
+from .langgraph_agents.graph.migration_graph import create_migration_graph
 
 logger = get_logger("agents")
 
@@ -438,7 +439,7 @@ def label_workloads_with_llama(
 def label_workloads_multiagent(workloads, provider="langgraph"):
     df = _normalize_workloads_to_dataframe(workloads)  
     state = {
-        "workloads": df,  # já começa o grafo com DataFrame
+        "workloads": df.to_dict(orient="records"),  # já começa o grafo com DataFrame
         "cpu_votes": [],
         "mem_votes": [],
         "pending_votes": [],
@@ -447,7 +448,13 @@ def label_workloads_multiagent(workloads, provider="langgraph"):
     }
 
     graph = create_migration_graph()
-    final_state = graph.invoke(state)
+    
+    thread_id = str(uuid.uuid4())
+
+    final_state = graph.invoke(
+        state,
+        config={"configurable": {"thread_id": thread_id}}
+    )
 
     labels = final_state.get("final_decisions", [])
 
