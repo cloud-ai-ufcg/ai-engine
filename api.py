@@ -1,9 +1,9 @@
 from fastapi import FastAPI
-
-
-from typing import Optional
+from typing import Optional, List, Union, Dict, Any, Tuple
 from contextlib import asynccontextmanager
 import uvicorn
+import json
+from pydantic import BaseModel, Field
 
 from engine.main import (
     process_monitoring_data,
@@ -160,7 +160,8 @@ async def start():
 
     # Run fetch_metrics immediately if configured
     if app_state.config["ai"]["fetch_metrics_immediately"]:
-        asyncio.run(fetch_metrics())
+        # We're already in an async context (FastAPI request handler), so just await
+        await fetch_metrics()
 
     # Start the scheduler to run every SCHEDULER_INTERVAL seconds after the first execution
     global scheduler_thread
@@ -186,8 +187,13 @@ async def stop():
     logger.info(format_message("Recommendations stopped", icon="🛑", color="RED"))
     return {"status": "Recommendations stopped"}
 
+class AnalyzeRequest(BaseModel):
+    """Schema for /analyze endpoint"""
+    input_json: Optional[str] = Field(default=None, description="Path to JSON file containing workloads")
+    workloads: Optional[list] = Field(default=None, description="List of workload dictionaries")
+
 @app.post("/analyze")
-async def analyze_workloads_direct(workloads: list):
+async def analyze_workloads_direct(request: AnalyzeRequest):
     """
     Analyze workloads directly from POST request data
     
@@ -197,9 +203,21 @@ async def analyze_workloads_direct(workloads: list):
         Dictionary with analysis results and status
     """
     try:
+        # Determine source of workload data
+        workloads: Optional[list] = None
+        if request.input_json:
+            try:
+                with open(request.input_json, "r") as f:
+                    workloads = json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to read input_json file: {e}")
+                return {"status": "error", "message": f"Failed to read input_json file: {e}"}
+        else:
+            workloads = request.workloads
+
         if not workloads:
             return {"status": "error", "message": "No workload data provided"}
-            
+
         result_df, explanations = analyze_workloads(workloads, app_state.config)
         save_and_log_explanations(result_df, explanations)
         
