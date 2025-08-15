@@ -301,9 +301,8 @@ def analyze_workloads(workloads, config):
             bold=True,
         )
     )
-
-    #labels, explanations = label_workloads(workloads, provider=provider,multiagent=multiagent)
-    labels, explanations = run_migration_pipeline(workloads)
+    labels, explanations = label_workloads(workloads, provider=provider, multiagent=multiagent)
+    #labels, explanations = run_migration_pipeline(workloads)
     
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
