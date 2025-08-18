@@ -29,8 +29,10 @@ import threading
 # Global state variables to control the recommendation loop
 config = load_config()
 
-SCHEDULER_INTERVAL_DEFAULT = 60 * 5 # 5 minutes
-SCHEDULER_INTERVAL: int = int(config["ai"]["scheduler_interval"]) or int(SCHEDULER_INTERVAL_DEFAULT)  # seconds between recommendation cycles
+SCHEDULER_INTERVAL_DEFAULT = 60 * 5  # 5 minutes
+SCHEDULER_INTERVAL: int = int(config["ai"]["scheduler_interval"]) or int(
+    SCHEDULER_INTERVAL_DEFAULT
+)  # seconds between recommendation cycles
 
 running: bool = False
 stop_event: threading.Event = threading.Event()
@@ -38,6 +40,7 @@ stop_event: threading.Event = threading.Event()
 scheduler_thread: Optional[threading.Thread] = None
 
 logger = get_logger("api")
+
 
 class AppState:
     def __init__(self):
@@ -124,8 +127,8 @@ async def start():
         try:
             async with aiohttp.ClientSession() as session:
                 url = f"http://{app_state.config['monitor']['host']}:{app_state.config['monitor']['port']}/{app_state.config['monitor']['route']}"
-                json={"interval": app_state.config['monitor']['interval']}
-                
+                json = {"interval": app_state.config['monitor']['interval']}
+
                 logger.debug(f"Fetching metrics from MONITOR: {url}")
                 logger.debug(f"Interval: {app_state.config['monitor']['interval']}")
 
@@ -148,7 +151,9 @@ async def start():
 
         workloads = process_monitoring_data(data)
         if workloads:
-            result_df, explanations = shard_and_analyze_workloads(workloads, app_state.config)
+            result_df, explanations = shard_and_analyze_workloads(
+                workloads, app_state.config
+            )
             save_and_log_explanations(result_df, explanations)
 
             await apply_recommendations(result_df)
@@ -160,11 +165,11 @@ async def start():
 
     # Run fetch_metrics immediately if configured
     if app_state.config["ai"]["fetch_metrics_immediately"]:
-        # We're already in an async context (FastAPI request handler), so just await
         await fetch_metrics()
 
     # Start the scheduler to run every SCHEDULER_INTERVAL seconds after the first execution
     global scheduler_thread
+
     schedule.every(SCHEDULER_INTERVAL).seconds.do(lambda: asyncio.run(fetch_metrics()))
     scheduler_thread = threading.Thread(
         target=run_scheduler, name="scheduler-thread", daemon=True
@@ -174,29 +179,40 @@ async def start():
     logger.info(format_message("Recommendations are running", icon="🚀", color="GREEN"))
     return {"status": "Recommendations are running"}
 
+
 @app.post("/stop")
 async def stop():
     """Stop the AI Engine"""
     global running, stop_event, scheduler_thread
+
     running = False
     stop_event.set()
+
     # Wait for the background thread to finish in a non-blocking way
     if scheduler_thread is not None and scheduler_thread.is_alive():
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, scheduler_thread.join)
+
     logger.info(format_message("Recommendations stopped", icon="🛑", color="RED"))
     return {"status": "Recommendations stopped"}
 
+
 class AnalyzeRequest(BaseModel):
     """Schema for /analyze endpoint"""
-    input_json: Optional[str] = Field(default=None, description="Path to JSON file containing workloads")
-    workloads: Optional[list] = Field(default=None, description="List of workload dictionaries")
+
+    input_json: Optional[str] = Field(
+        default=None, description="Path to JSON file containing workloads"
+    )
+    workloads: Optional[list] = Field(
+        default=None, description="List of workload dictionaries"
+    )
+
 
 @app.post("/analyze")
 async def analyze_workloads_direct(request: AnalyzeRequest):
     """
     Analyze workloads directly from POST request data
-    
+
     Args:
         workloads: List of workload data in JSON format
     Returns:
@@ -211,7 +227,10 @@ async def analyze_workloads_direct(request: AnalyzeRequest):
                     workloads = json.load(f)
             except Exception as e:
                 logger.error(f"Failed to read input_json file: {e}")
-                return {"status": "error", "message": f"Failed to read input_json file: {e}"}
+                return {
+                    "status": "error",
+                    "message": f"Failed to read input_json file: {e}",
+                }
         else:
             workloads = request.workloads
 
@@ -220,11 +239,11 @@ async def analyze_workloads_direct(request: AnalyzeRequest):
 
         result_df, explanations = analyze_workloads(workloads, app_state.config)
         save_and_log_explanations(result_df, explanations)
-        
+
         return {
             "status": "success",
             "message": "Workloads analyzed successfully",
-            "recommendations": result_df.to_dict(orient="records")
+            "recommendations": result_df.to_dict(orient="records"),
         }
     except Exception as e:
         logger.error(f"Error analyzing workloads: {e}")
