@@ -4,8 +4,7 @@ import pandas as pd
 import re
 import json
 from .ai_config import get_model_config, get_prompt, PROMPTS
-from dotenv import load_dotenv
-from .util import get_logger, load_config, log_token_usage
+from .util import get_logger, load_config
 
 
 logger = get_logger("agents")
@@ -133,7 +132,6 @@ def label_workloads_with_gemini(
         return _label_workloads_with_heuristics(workloads)
 
     # API key setup - load config once
-    load_dotenv()
     config = load_config()
     api_key = _get_gemini_api_key(config)
     if not api_key:
@@ -349,7 +347,7 @@ def label_workloads_with_llama(
             "workload_explanations": [],
         }
 
-    load_dotenv()
+
     config = load_config()
     api_key = config.get("api-key", {}).get("groq") or os.environ.get("GROQ_API_KEY")
 
