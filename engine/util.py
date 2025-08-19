@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import logging.handlers
+from dotenv import load_dotenv
 import yaml
 from typing import Optional, Dict, Any, Union
 import re
@@ -236,6 +237,8 @@ def load_config(config_path=None) -> Dict[str, Any]:
     # ------------------------------------------------------------------
     # Inject API keys from environment variables, overriding YAML values
     # ------------------------------------------------------------------
+    dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, ".env"))
+    load_dotenv(dotenv_path)
     api_key_cfg: Dict[str, Any] = config.get("api-key", {}) or {}
     google_env_key = os.getenv("GOOGLE_API_KEY")
     if google_env_key:
