@@ -21,3 +21,4 @@ ipython>=9.4.0
 langchain-groq>=0.3.6
 graphviz
 openai>=1.0.0
+langsmith>=0.1.106
