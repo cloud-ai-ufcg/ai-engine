@@ -16,7 +16,6 @@ from ..nodes import (
 # Funções de nós
 # -----------------------
 def cpu_node(state: dict) -> dict:
-    # Converta localmente, mas NÃO sobrescreva state["workloads"]
     df = pd.DataFrame(state["workloads"])
     state["cpu_votes"] = cpu_checker(df)
     return state
@@ -55,8 +54,14 @@ def explainer_node(state: dict) -> dict:
 # -----------------------
 # Criação do grafo
 # -----------------------
+
 def create_migration_graph():
     graph = StateGraph(dict)
+
+
+    # Parallel entry points
+    # graph.set_entry_point("split")
+    # graph.add_node("split", lambda state: state)
 
     graph.add_node("cpu", cpu_node)
     graph.add_node("mem", mem_node)
@@ -65,9 +70,21 @@ def create_migration_graph():
     graph.add_node("explainer", explainer_node)
 
     graph.set_entry_point("cpu")
+
     graph.add_edge("cpu", "mem")
     graph.add_edge("mem", "pending")
     graph.add_edge("pending", "decision")
+
+    # graph.add_edge("split", "cpu")
+    # graph.add_edge("split", "mem")
+    # graph.add_edge("split", "pending")
+
+
+    # graph.add_edge("cpu", "decision")
+    # graph.add_edge("mem", "decision")
+    # graph.add_edge("pending", "decision")
+
+
     graph.add_edge("decision", "explainer")
     graph.add_edge("explainer", END)
 
@@ -80,14 +97,13 @@ def run_migration_pipeline(workloads_df):
     if isinstance(workloads_df, list):
         workloads_df = pd.DataFrame(workloads_df)
     initial_state = {
-        "workloads": workloads_df.to_dict(orient="records"),  # <-- sempre lista de dicts!
+        "workloads": workloads_df.to_dict(orient="records"),
         "cpu_votes": [],
         "mem_votes": [],
         "pending_votes": [],
         "final_decisions": [],
         "explanations": {}
     }
-    # ...restante igual...
     graph = create_migration_graph()
     final_state = graph.invoke(initial_state)
     result_df = pd.DataFrame(final_state["workloads"]).copy()
