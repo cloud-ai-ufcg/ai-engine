@@ -5,7 +5,6 @@ import re
 import json
 import uuid
 from dotenv import load_dotenv
-
 from .ai_config import get_model_config, get_prompt, PROMPTS
 from .util import get_logger, load_config, log_token_usage
 from .langgraph_agents.graph.migration_graph import create_migration_graph
@@ -135,7 +134,6 @@ def label_workloads_with_gemini(
         return _label_workloads_with_heuristics(workloads)
 
     # API key setup - load config once
-    load_dotenv()
     config = load_config()
     api_key = _get_gemini_api_key(config)
     if not api_key:
@@ -351,7 +349,7 @@ def label_workloads_with_llama(
             "workload_explanations": [],
         }
 
-    load_dotenv()
+
     config = load_config()
     api_key = config.get("api-key", {}).get("groq") or os.environ.get("GROQ_API_KEY")
 
