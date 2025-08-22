@@ -3,26 +3,42 @@ import json
 import pandas as pd
 from typing import List, Dict, Union
 from dotenv import load_dotenv
-from ...ai_config import get_prompt, get_model_config
+from engine.ai_config import get_prompt, get_model_config
+from engine.util import load_config
 import google.generativeai as genai
-
+from openai import OpenAI
 import re
 
 load_dotenv()
 
-def get_gemini_llm():
-    from ...ai_config import get_model_config
-    import os
-    from dotenv import load_dotenv
-    load_dotenv()
-    cfg = get_model_config("gemini")
-    api_key = cfg.get("api_key") or os.environ.get("GOOGLE_API_KEY")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(cfg["model_name"])
-    generation_config = cfg.get("generation_config", {})
-    return model, generation_config
+def get_llm():
+    config = load_config()
+    selected_model = config["ai"].get("selected_model", "gemini")
+    model_cfg = config["ai"]["models"].get(selected_model)
 
-model, generation_config = get_gemini_llm()
+    if model_cfg is None:
+        raise ValueError(f"Modelo '{selected_model}' não encontrado")
+
+    provider = model_cfg.get("provider", "").lower()
+    model_name = model_cfg["model_name"]
+    api_key = model_cfg.get("api_key") or os.environ.get("GOOGLE_API_KEY")
+    generation_config = model_cfg.get("generation_config", {})
+
+    if provider == "google":
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(model_name)
+        return model, generation_config
+
+    elif provider == "openai":
+        from openai import OpenAI
+        model = OpenAI(api_key=api_key)
+        return model, generation_config
+    
+    else:
+        raise ValueError(f"Provedor LLM não suportado: {provider}")
+
+    
+model, generation_config = get_llm()
 
 
 # -----------------------
