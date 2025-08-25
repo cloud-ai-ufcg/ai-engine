@@ -3,14 +3,19 @@ import json
 import pandas as pd
 from typing import List, Dict, Union
 from dotenv import load_dotenv
-from engine.ai_config import get_prompt, get_model_config
+from engine.ai_config import get_prompt
 from engine.util import load_config
-import google.generativeai as genai
-from openai import OpenAI
+from langsmith import traceable
 import re
+
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
 
+
+# -----------------------
+# Inicializador de LLM via LangChain
+# -----------------------
 def get_llm():
     config = load_config()
     selected_model = config["ai"].get("selected_model", "gemini")
@@ -21,23 +26,35 @@ def get_llm():
 
     provider = model_cfg.get("provider", "").lower()
     model_name = model_cfg["model_name"]
-    api_key = model_cfg.get("api_key") or os.environ.get("GOOGLE_API_KEY")
+    api_key = (
+        model_cfg.get("api_key")
+        or os.environ.get("GOOGLE_API_KEY")
+    )
     generation_config = model_cfg.get("generation_config", {})
 
     if provider == "google":
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name)
+        model = ChatGoogleGenerativeAI(
+            model=model_name,
+            google_api_key=api_key,
+            temperature=generation_config.get("temperature", 0.1),
+            max_output_tokens=generation_config.get("max_output_tokens", 2048),
+        )
         return model, generation_config
 
     elif provider == "openai":
-        from openai import OpenAI
-        model = OpenAI(api_key=api_key)
+        from langchain_openai import ChatOpenAI
+        model = ChatOpenAI(
+            model=model_name,
+            api_key=api_key,
+            temperature=generation_config.get("temperature", 0.1),
+            max_tokens=generation_config.get("max_output_tokens", 2048),
+        )
         return model, generation_config
-    
+
     else:
         raise ValueError(f"Provedor LLM não suportado: {provider}")
 
-    
+
 model, generation_config = get_llm()
 
 
@@ -69,59 +86,63 @@ def _parse_llm_response(response: str, expected_length: int) -> List[int]:
     return normalize_votes(votes, expected_length)
 
 
+def _invoke_model(prompt: str) -> str:
+    """Centraliza chamada ao modelo para ter consistência e token usage"""
+    resp = model.invoke(prompt)
+
+    # resp é um ChatResult -> pegar texto
+    text = resp.content if hasattr(resp, "content") else str(resp)
+
+    # token usage (se disponível)
+    usage = getattr(resp, "response_metadata", {}).get("token_usage", {})
+    if usage:
+        print("📊 Token usage:", usage)
+
+    return text
+
+
 # -----------------------
 # Agentes LangGraph
 # -----------------------
-def cpu_checker(
-    workloads: Union[list, "pd.DataFrame"],
-) -> List[int]:
-    # Backup: caso venha lista, converter
+@traceable(name="cpu_checker")
+def cpu_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
-
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("cpu_checker", workloads_json=json.dumps(workloads_list, indent=2))
-    response = model.generate_content(prompt, generation_config=generation_config)
-    text = response.text
+    text = _invoke_model(prompt)
     return _parse_llm_response(text, len(workloads_list))
 
 
-def mem_checker(
-    workloads: Union[list, "pd.DataFrame"],
-) -> List[int]:
-    # Backup: caso venha lista, converter
+@traceable(name="mem_checker")
+def mem_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
-
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("mem_checker", workloads_json=json.dumps(workloads_list, indent=2))
-    response = model.generate_content(prompt, generation_config=generation_config)
-    text = response.text
+    text = _invoke_model(prompt)
     return _parse_llm_response(text, len(workloads_list))
 
 
-def pending_checker(
-    workloads: Union[list, "pd.DataFrame"],
-) -> List[int]:
-    # Backup: caso venha lista, converter
+@traceable(name="pending_checker")
+def pending_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
-
     workloads_list = workloads.to_dict(orient="records")
     prompt = get_prompt("pending_checker", workloads_json=json.dumps(workloads_list, indent=2))
-    response = model.generate_content(prompt, generation_config=generation_config)
-    text = response.text
+    text = _invoke_model(prompt)
     return _parse_llm_response(text, len(workloads_list))
 
 
+@traceable(name="decision_agent")
 def decision_agent(cpu_votes: List[int], mem_votes: List[int], pending_votes: List[int]) -> List[int]:
     votes = {"cpu": cpu_votes, "mem": mem_votes, "pending": pending_votes}
     prompt = get_prompt("decision", workload_json=json.dumps(votes, indent=2))
-    response = model.generate_content(prompt, generation_config=generation_config)
-    text = response.text
+    text = _invoke_model(prompt)
     return _parse_llm_response(text, len(pending_votes))
 
 
+@traceable(name="explainer_agent")
 def explainer_agent(workloads: pd.DataFrame, votes: Dict[str, List[int]], final_decisions: List[int]) -> Dict:
     workloads_list = workloads.to_dict(orient="records")
     prompt = f"""
@@ -152,15 +173,12 @@ Pending: {votes["pending"]}
 
 Final decisions: {final_decisions}
 """
-
     try:
-        response = model.generate_content(prompt, generation_config=generation_config)
-        text = response.text
+        text = _invoke_model(prompt)
         if not text:
             raise ValueError("Empty response from LLM")
 
-        # Pega apenas o JSON da resposta
-        match = re.search(r"\{.*\}", text, re.DOTALL) 
+        match = re.search(r"\{.*\}", text, re.DOTALL)
         if match:
             parsed = json.loads(match.group(0))
             return parsed
