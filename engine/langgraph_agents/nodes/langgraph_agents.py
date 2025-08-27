@@ -45,7 +45,6 @@ model, generation_config = get_llm()
 # Utilitários
 # -----------------------
 def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
-    """Garante que a lista de votos tenha exatamente o tamanho esperado."""
     if len(votes) < expected_length:
         votes.extend([0] * (expected_length - len(votes)))
     elif len(votes) > expected_length:
@@ -54,7 +53,6 @@ def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
 
 
 def _parse_llm_response(response: str, expected_length: int) -> List[int]:
-    """Tenta extrair lista de 0/1 de uma resposta do LLM, com múltiplos fallbacks."""
     try:
         parsed = json.loads(response)
         if isinstance(parsed, dict) and "decisions" in parsed:
@@ -75,7 +73,6 @@ def _parse_llm_response(response: str, expected_length: int) -> List[int]:
 def cpu_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -89,7 +86,6 @@ def cpu_checker(
 def mem_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -103,7 +99,6 @@ def mem_checker(
 def pending_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -159,8 +154,7 @@ Final decisions: {final_decisions}
         if not text:
             raise ValueError("Empty response from LLM")
 
-        # Pega apenas o JSON da resposta
-        match = re.search(r"\{.*\}", text, re.DOTALL) 
+            match = re.search(r"\{.*\}", text, re.DOTALL) 
         if match:
             parsed = json.loads(match.group(0))
             return parsed
