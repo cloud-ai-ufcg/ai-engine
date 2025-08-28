@@ -3,6 +3,7 @@ data:
 
 ai:
   selected_model: gemini
+  multi_agent: false
   scheduler_interval: 300
   timestamp_lookback_seconds: 30
   workloads_shard_size: 26

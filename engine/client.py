@@ -1,0 +1,167 @@
+import os
+from abc import ABC, abstractmethod
+from threading import Lock
+from typing import Optional, Dict, Any, Union
+from openai import OpenAI
+import json
+
+
+class Client(ABC):
+    """
+    Abstract base class for AI API clients with structured output support.
+    """
+
+    def __init__(self, api_key: str, base_url: Optional[str] = None):
+        """
+        Initialize the client with API key and optional base URL.
+        
+        Args:
+            api_key (str): API key for authentication
+            base_url (Optional[str]): Base URL for the API
+        """
+        if not api_key:
+            raise ValueError("API key is required")
+        
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url
+        )
+
+    def chat(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        response_format: Optional[Dict[str, Any]] = None,
+        **config,
+    ):
+        """
+        Returns a chat completion for the given model, system prompt, and user prompt.
+
+        Args:
+            model (str): The model to use for the chat completion.
+            system_prompt (str): The system prompt for the chat completion.
+            user_prompt (str): The user prompt for the chat completion.
+            response_format (Optional[Dict[str, Any]]): JSON schema for structured output.
+            **config: Additional configuration for the chat completion.
+
+        Returns:
+            Union[str, Dict]: The chat completion content or parsed JSON if response_format is provided.
+        """
+        if not system_prompt or not user_prompt:
+            raise ValueError("system_prompt and user_prompt are required")
+
+        # Prepare the request parameters
+        request_params = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            **config,
+        }
+
+        # Add response format if provided
+        if response_format:
+            request_params["response_format"] = response_format
+
+        response = self.client.chat.completions.create(**request_params)
+
+        # If structured output was requested, try to parse as JSON
+        if response_format and response_format.get("type") == "json_object":
+            try:
+                return json.loads(response.choices[0].message.content)
+            except json.JSONDecodeError:
+                # Fallback to raw content if JSON parsing fails
+                return response.choices[0].message.content
+
+        return response.choices[0].message.content
+
+    def chat_structured(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        schema: Dict[str, Any],
+        **config,
+    ):
+        """
+        Returns a structured chat completion using JSON schema.
+
+        Args:
+            model (str): The model to use for the chat completion.
+            system_prompt (str): The system prompt for the chat completion.
+            user_prompt (str): The user prompt for the chat completion.
+            schema (Dict[str, Any]): JSON schema defining the expected response structure.
+            **config: Additional configuration for the chat completion.
+
+        Returns:
+            Dict: The parsed JSON response matching the provided schema.
+        """
+        response_format = {"type": "json_object", "schema": schema}
+
+        # Add instruction to follow the schema in the system prompt
+        enhanced_system_prompt = f"{system_prompt}\n\nIMPORTANT: Respond with valid JSON that matches this schema: {schema}"
+
+        return self.chat(
+            model=model,
+            system_prompt=enhanced_system_prompt,
+            user_prompt=user_prompt,
+            response_format=response_format,
+            **config,
+        )
+
+
+class OpenAIClient(Client):
+    """
+    Client for OpenAI API.
+    """
+
+    def __init__(self, api_key: Optional[str] = None):
+        """
+        Initialize OpenAI client.
+        
+        Args:
+            api_key (Optional[str]): OpenAI API key. If not provided, will use OPENAI_API_KEY env var.
+        """
+        if not api_key:
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY is not set in environment variables")
+        
+        super().__init__(api_key=api_key)
+
+
+class OpenRouterClient(Client):
+    """
+    Singleton client for OpenRouter API.
+    """
+
+    _instance = None
+    _lock = Lock()
+
+    def __new__(cls):
+        """
+        Returns a singleton instance of the OpenRouterClient.
+        """
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super(OpenRouterClient, cls).__new__(cls)
+                    cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        """
+        Initializes the OpenRouterClient.
+        """
+        if self._initialized:
+            return
+        
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY is not set in environment variables")
+        
+        # Initialize the parent Client class
+        super().__init__(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+        self._initialized = True
