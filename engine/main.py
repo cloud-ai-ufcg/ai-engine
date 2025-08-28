@@ -5,6 +5,7 @@ import pandas as pd
 from typing import Dict, List, Any, Tuple, Union
 import datetime
 import concurrent.futures
+from .langgraph_agents.graph.migration_graph import run_migration_pipeline
 
 from .util import (
     get_logger,
@@ -290,6 +291,7 @@ def analyze_workloads(workloads, config):
         Tuple containing (DataFrame with results, explanations dictionary)
     """
     provider = config.get("ai", {}).get("selected_model", "gemini").lower()
+    multiagent = config.get("ai", {}).get("multiagent", True)
 
     logger.info(
         format_message(
@@ -299,9 +301,9 @@ def analyze_workloads(workloads, config):
             bold=True,
         )
     )
-
-    labels, explanations = label_workloads(workloads, provider=provider)
-
+    labels, explanations = label_workloads(workloads, provider=provider, multiagent=multiagent)
+    #labels, explanations = run_migration_pipeline(workloads)
+    
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
     result["label"] = labels
