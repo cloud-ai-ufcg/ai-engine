@@ -3,33 +3,48 @@ import json
 import pandas as pd
 from typing import List, Dict, Union
 from dotenv import load_dotenv
-from ...ai_config import get_prompt, get_model_config
+from engine.ai_config import get_prompt, get_model_config
+from engine.util import load_config
 import google.generativeai as genai
-
+from openai import OpenAI
 import re
 
 load_dotenv()
 
-def get_gemini_llm():
-    from ...ai_config import get_model_config
-    import os
-    from dotenv import load_dotenv
-    load_dotenv()
-    cfg = get_model_config("gemini")
-    api_key = cfg.get("api_key") or os.environ.get("GOOGLE_API_KEY")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(cfg["model_name"])
-    generation_config = cfg.get("generation_config", {})
-    return model, generation_config
+def get_llm():
+    config = load_config()
+    selected_model = config["ai"].get("selected_model", "gemini")
+    model_cfg = config["ai"]["models"].get(selected_model)
 
-model, generation_config = get_gemini_llm()
+    if model_cfg is None:
+        raise ValueError(f"Modelo '{selected_model}' não encontrado")
+
+    provider = model_cfg.get("provider", "").lower()
+    model_name = model_cfg["model_name"]
+    api_key = model_cfg.get("api_key") or os.environ.get("GOOGLE_API_KEY")
+    generation_config = model_cfg.get("generation_config", {})
+
+    if provider == "google":
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(model_name)
+        return model, generation_config
+
+    elif provider == "openai":
+        from openai import OpenAI
+        model = OpenAI(api_key=api_key)
+        return model, generation_config
+    
+    else:
+        raise ValueError(f"Provedor LLM não suportado: {provider}")
+
+    
+model, generation_config = get_llm()
 
 
 # -----------------------
 # Utilitários
 # -----------------------
 def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
-    """Garante que a lista de votos tenha exatamente o tamanho esperado."""
     if len(votes) < expected_length:
         votes.extend([0] * (expected_length - len(votes)))
     elif len(votes) > expected_length:
@@ -38,7 +53,6 @@ def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
 
 
 def _parse_llm_response(response: str, expected_length: int) -> List[int]:
-    """Tenta extrair lista de 0/1 de uma resposta do LLM, com múltiplos fallbacks."""
     try:
         parsed = json.loads(response)
         if isinstance(parsed, dict) and "decisions" in parsed:
@@ -59,7 +73,6 @@ def _parse_llm_response(response: str, expected_length: int) -> List[int]:
 def cpu_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -73,7 +86,6 @@ def cpu_checker(
 def mem_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -87,7 +99,6 @@ def mem_checker(
 def pending_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -143,8 +154,7 @@ Final decisions: {final_decisions}
         if not text:
             raise ValueError("Empty response from LLM")
 
-        # Pega apenas o JSON da resposta
-        match = re.search(r"\{.*\}", text, re.DOTALL) 
+            match = re.search(r"\{.*\}", text, re.DOTALL) 
         if match:
             parsed = json.loads(match.group(0))
             return parsed
