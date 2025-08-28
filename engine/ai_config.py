@@ -11,8 +11,8 @@ from .util import load_config
 from langchain_groq import ChatGroq
 
 logger = logging.getLogger(__name__) 
-logging.basicConfig(level=logging.INFO) # gambiarra
-load_dotenv() # gambiarra 
+logging.basicConfig(level=logging.INFO)
+load_dotenv()
 
 # Output structure definitions
 class WorkloadLabelOutput(BaseModel):
@@ -164,22 +164,3 @@ def get_prompt(prompt_key, **kwargs):
     prompt_data = PROMPTS.get(prompt_key, {})
     template = prompt_data.get("template", "")
     return template.format(**kwargs)
-
-# def get_groq_llm(
-#     model_name="llama3-8b-8192", temperature=0.3, max_tokens=1024
-# ) -> ChatGroq:
-#     """
-#     Returns a configured instance of the ChatGroq model.
-#     """
-#     load_dotenv()
-#     api_key = os.getenv("GROQ_API_KEY")
-#     if not api_key:
-#         raise ValueError(" GROQ_API_KEY not found in .env or environment variables.")
-    
-#     logger.info(f"Groq LLM configured with model'{model_name}'")
-#     return ChatGroq(
-#         model_name=model_name,
-#         groq_api_key=api_key,
-#         temperature=temperature,
-#         max_tokens=max_tokens,
-#     )
