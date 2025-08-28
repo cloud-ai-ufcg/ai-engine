@@ -7,9 +7,11 @@ from engine.ai_config import get_prompt
 from engine.util import load_config
 from langsmith import traceable
 import re
+import logging
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+logger = logging.getLogger(__name__) 
 load_dotenv()
 
 
@@ -62,7 +64,6 @@ model, generation_config = get_llm()
 # Utilitários
 # -----------------------
 def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
-    """Garante que a lista de votos tenha exatamente o tamanho esperado."""
     if len(votes) < expected_length:
         votes.extend([0] * (expected_length - len(votes)))
     elif len(votes) > expected_length:
@@ -71,7 +72,6 @@ def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
 
 
 def _parse_llm_response(response: str, expected_length: int) -> List[int]:
-    """Tenta extrair lista de 0/1 de uma resposta do LLM, com múltiplos fallbacks."""
     try:
         parsed = json.loads(response)
         if isinstance(parsed, dict) and "decisions" in parsed:
@@ -186,7 +186,7 @@ Final decisions: {final_decisions}
             raise ValueError("No JSON found in response")
 
     except Exception as e:
-        print("❌ Error processing explanation:", e)
+        logger.error("❌ Error processing explanation: %s", e)
         return {
             "explanation": f"Error generating explanation: {str(e)}",
             "workload_explanations": [
