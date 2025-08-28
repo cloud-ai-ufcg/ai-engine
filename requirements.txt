@@ -20,3 +20,5 @@ langchain_community>=0.3.27
 ipython>=9.4.0
 langchain-groq>=0.3.6
 graphviz
+langsmith>=0.1.106
+openai==1.50.0
