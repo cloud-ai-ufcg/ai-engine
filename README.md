@@ -36,6 +36,11 @@ Turn off recommendations
 curl -X POST http://0.0.0.0:8083/stop
 ```
 
+Analyze a single time
+```bash
+curl -X POST http://0.0.0.0:8083/analyze --data @monitor_outputs.json
+```
+
 ### CLI
 
 Run CLI Mode
