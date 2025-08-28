@@ -8,7 +8,9 @@ from engine.util import load_config
 import google.generativeai as genai
 from openai import OpenAI
 import re
+import logging
 
+logger = logging.getLogger(__name__) 
 load_dotenv()
 
 def get_llm():
@@ -162,7 +164,7 @@ Final decisions: {final_decisions}
             raise ValueError("No JSON found in response")
 
     except Exception as e:
-        print("❌ Error processing explanation:", e)
+        logger.error("❌ Error processing explanation: %s", e)
         return {
             "explanation": f"Error generating explanation: {str(e)}",
             "workload_explanations": [
