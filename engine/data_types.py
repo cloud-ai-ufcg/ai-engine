@@ -1,7 +1,17 @@
 from pydantic import BaseModel
-from typing import Dict, List, Any
+from typing import Dict, List, Any, TypedDict
 
 
+# Defines the shared state between nodes
+class WorkflowState(TypedDict):
+    
+    workloads: List[Dict] 
+    cpu_votes: List[int]
+    mem_votes: List[int]
+    pending_votes: List[int]
+    final_decisions: List[int]
+    explanations: Dict
+    
 class WorkloadBase(BaseModel):
     workload_id: str
     kind: str
