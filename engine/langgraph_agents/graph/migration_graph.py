@@ -1,8 +1,9 @@
+import os
 import pandas as pd
+import yaml
 from typing import Dict, List
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-import uuid
 
 from ..nodes import (
     cpu_checker,
@@ -55,40 +56,56 @@ def explainer_node(state: dict) -> dict:
 # Criação do grafo
 # -----------------------
 
+_node_function_map = {
+    "cpu": cpu_node,
+    "mem": mem_node,
+    "pending": pending_node,
+    "decision": decision_node,
+    "explainer": explainer_node
+}
+
 def create_migration_graph():
     graph = StateGraph(dict)
 
+    pending, cpu, mem = load_config_nodes()
 
-    # Parallel entry points
-    # graph.set_entry_point("split")
-    # graph.add_node("split", lambda state: state)
+    enabled_nodes = []
+    if cpu:
+        enabled_nodes.append("cpu")
+    if mem:
+        enabled_nodes.append("mem")
+    if pending:
+        enabled_nodes.append("pending")
 
-    graph.add_node("cpu", cpu_node)
-    graph.add_node("mem", mem_node)
-    graph.add_node("pending", pending_node)
-    graph.add_node("decision", decision_node)
-    graph.add_node("explainer", explainer_node)
+    if not enabled_nodes:
+        enabled_nodes = ["decision", "explainer"]
+    else:
+        enabled_nodes += ["decision", "explainer"]
 
-    graph.set_entry_point("cpu")
+    for node in enabled_nodes:
+        graph.add_node(node, _node_function_map[node])
 
-    graph.add_edge("cpu", "mem")
-    graph.add_edge("mem", "pending")
-    graph.add_edge("pending", "decision")
+    for i in range(len(enabled_nodes) - 1):
+        graph.add_edge(enabled_nodes[i], enabled_nodes[i+1])
 
-    # graph.add_edge("split", "cpu")
-    # graph.add_edge("split", "mem")
-    # graph.add_edge("split", "pending")
-
-
-    # graph.add_edge("cpu", "decision")
-    # graph.add_edge("mem", "decision")
-    # graph.add_edge("pending", "decision")
-
-
-    graph.add_edge("decision", "explainer")
-    graph.add_edge("explainer", END)
+    graph.set_entry_point(enabled_nodes[0])
 
     return graph.compile(checkpointer=MemorySaver())
+
+def load_config_nodes() -> tuple[bool, bool, bool]:
+    config_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, "config.yaml")
+    )
+
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    nodes = config.get("nodes", {})
+    cpu = nodes.get("cpu", {}).get("execute", False)
+    mem = nodes.get("memory", {}).get("execute", False)
+    pending = nodes.get("pending", {}).get("execute", False)
+
+    return pending, cpu, mem
 
 # -----------------------
 # Execução

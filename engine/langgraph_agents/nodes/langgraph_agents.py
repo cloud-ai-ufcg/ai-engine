@@ -80,7 +80,7 @@ def cpu_checker(
         workloads = pd.DataFrame(workloads)
 
     workloads_list = workloads.to_dict(orient="records")
-    prompt = get_prompt("cpu_checker", workloads_json=json.dumps(workloads_list, indent=2))
+    prompt = get_prompt("", workloads_json=json.dumps(workloads_list, indent=2))
     response = model.generate_content(prompt, generation_config=generation_config)
     text = response.text
     return _parse_llm_response(text, len(workloads_list))
