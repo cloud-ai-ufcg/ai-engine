@@ -4,11 +4,12 @@ import pandas as pd
 from typing import List, Dict, Union
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt, get_model_config
-from engine.util import load_config
+from engine.util import load_config, get_logger
 import google.generativeai as genai
 from openai import OpenAI
 import re
 
+logger = get_logger("agents")
 load_dotenv()
 
 def get_llm():
@@ -80,7 +81,7 @@ def cpu_checker(
         workloads = pd.DataFrame(workloads)
 
     workloads_list = workloads.to_dict(orient="records")
-    prompt = get_prompt("", workloads_json=json.dumps(workloads_list, indent=2))
+    prompt = get_prompt("cpu_checker", workloads_json=json.dumps(workloads_list, indent=2))
     response = model.generate_content(prompt, generation_config=generation_config)
     text = response.text
     return _parse_llm_response(text, len(workloads_list))
@@ -168,7 +169,7 @@ Final decisions: {final_decisions}
             raise ValueError("No JSON found in response")
 
     except Exception as e:
-        print("❌ Error processing explanation:", e)
+        logger.error(f"❌ Error processing explanation: {e}")
         return {
             "explanation": f"Error generating explanation: {str(e)}",
             "workload_explanations": [
