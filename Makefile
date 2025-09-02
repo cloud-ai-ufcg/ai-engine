@@ -50,10 +50,11 @@ run-docker-api:
 			--name $(AI_ENGINE_CONTAINER_NAME) \
 			--network host \
 			-p 8083:8083 \
+			--env-file .env \
 			$(AI_ENGINE_IMAGE_NAME);
 
 run-docker-cli:
-	docker run --name $(AI_ENGINE_CONTAINER_NAME) -p --rm 8083:8083 $(AI_ENGINE_IMAGE_NAME)
+	docker run --rm --name $(AI_ENGINE_CONTAINER_NAME) -p 8083:8083 --env-file .env $(AI_ENGINE_IMAGE_NAME)
 
 stop-rm-container:
 	docker stop $(AI_ENGINE_CONTAINER_NAME)
