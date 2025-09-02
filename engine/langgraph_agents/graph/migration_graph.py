@@ -14,24 +14,56 @@ from ..nodes import (
 )
 
 # -----------------------
-# Funções de nós
+# Functions for each node
 # -----------------------
 def cpu_node(state: dict) -> dict:
+    """Process CPU information skipping workloads.
+    
+    Args:
+        state (dict): Current state containing workloads.
+    
+    Returns:
+        Dict: Updated state with CPU votes.
+    """ 
     df = pd.DataFrame(state["workloads"])
     state["cpu_votes"] = cpu_checker(df)
     return state
 
 def mem_node(state: dict) -> dict:
+    """Process Memory information, skipping workloads.
+
+    Args:
+        state (dict): Current state containing workloads.
+
+    Returns:
+        Dict: Updated state with Memory votes.
+    """
     df = pd.DataFrame(state["workloads"])
     state["mem_votes"] = mem_checker(df)
     return state
 
 def pending_node(state: dict) -> dict:
+    """Process Pending information, skipping workloads.
+
+    Args:
+        state (dict): Current state containing workloads.
+
+    Returns:
+        Dict: Updated state with Pending votes.
+    """
     df = pd.DataFrame(state["workloads"])
     state["pending_votes"] = pending_checker(df)
     return state
 
 def decision_node(state: dict) -> dict:
+    """Make final decisions based on votes from previous nodes.
+    
+    Args:
+        state (dict): Current state containing votes.
+    
+    Returns:
+        Dict: Updated state with final decisions.
+    """
     state["final_decisions"] = decision_agent(
         state["cpu_votes"],
         state["mem_votes"],
@@ -40,6 +72,14 @@ def decision_node(state: dict) -> dict:
     return state
 
 def explainer_node(state: dict) -> dict:
+    """Generate explanations for the final decisions made.
+    
+    Args:
+        state (dict): Current state containing workloads and final decisions.
+    
+    Returns:
+        Dict: Updated state with explanations.
+    """
     df = pd.DataFrame(state["workloads"])
     state["explanations"] = explainer_agent(
         df,
@@ -53,7 +93,7 @@ def explainer_node(state: dict) -> dict:
     return state
 
 # -----------------------
-# Criação do grafo
+# Graph Creation
 # -----------------------
 
 _node_function_map = {
@@ -65,6 +105,11 @@ _node_function_map = {
 }
 
 def create_migration_graph():
+    """Create a migration graph based on configuration.
+    
+    Returns:
+        StateGraph: Configured state graph for migration analysis.
+    """
     graph = StateGraph(dict)
 
     pending, cpu, mem = load_config_nodes()
@@ -78,6 +123,7 @@ def create_migration_graph():
         enabled_nodes.append("pending")
 
     if not enabled_nodes:
+        enabled_nodes.append("cpu")
         enabled_nodes = ["decision", "explainer"]
     else:
         enabled_nodes += ["decision", "explainer"]
@@ -93,6 +139,10 @@ def create_migration_graph():
     return graph.compile(checkpointer=MemorySaver())
 
 def load_config_nodes() -> tuple[bool, bool, bool]:
+    """Load node execution configuration from YAML file.
+    Returns:
+        Tuple[bool, bool, bool]: Flags indicating whether to execute pending, cpu, and mem nodes.
+    """
     config_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), os.pardir, "config.yaml")
     )
@@ -108,7 +158,7 @@ def load_config_nodes() -> tuple[bool, bool, bool]:
     return pending, cpu, mem
 
 # -----------------------
-# Execução
+# Execution Function
 # -----------------------
 def run_migration_pipeline(workloads_df):
     if isinstance(workloads_df, list):
