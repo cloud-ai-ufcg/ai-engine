@@ -18,7 +18,7 @@ def get_llm():
     model_cfg = config["ai"]["models"].get(selected_model)
 
     if model_cfg is None:
-        raise ValueError(f"Modelo '{selected_model}' não encontrado")
+        raise ValueError(f"Model '{selected_model}' not found in configuration.")
 
     provider = model_cfg.get("provider", "").lower()
     model_name = model_cfg["model_name"]
@@ -36,17 +36,24 @@ def get_llm():
         return model, generation_config
     
     else:
-        raise ValueError(f"Provedor LLM não suportado: {provider}")
+        raise ValueError(f"Provider LLM not support: {provider}")
 
     
 model, generation_config = get_llm()
 
 
 # -----------------------
-# Utilitários
+# Helper Functions
 # -----------------------
 def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
-    """Garante que a lista de votos tenha exatamente o tamanho esperado."""
+    """Normalize a list of votes to ensure it matches the expected length.
+    Args:
+        votes (List[int]): List of votes (0 or 1).
+        expected_length (int): The expected number of votes.
+    
+    Returns:
+        List[int]: Normalized list of votes with the expected length.
+    """
     if len(votes) < expected_length:
         votes.extend([0] * (expected_length - len(votes)))
     elif len(votes) > expected_length:
@@ -55,7 +62,15 @@ def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
 
 
 def _parse_llm_response(response: str, expected_length: int) -> List[int]:
-    """Tenta extrair lista de 0/1 de uma resposta do LLM, com múltiplos fallbacks."""
+    """Parse LLM response to extract votes as a list of integers (0 or 1).
+    
+    Args:
+        response (str): The raw response from the LLM.
+        expected_length (int): The expected number of votes.
+    
+    Returns:
+        List[int]: A list of votes (0 or 1) normalized to the expected length
+    """
     try:
         parsed = json.loads(response)
         if isinstance(parsed, dict) and "decisions" in parsed:
@@ -71,12 +86,17 @@ def _parse_llm_response(response: str, expected_length: int) -> List[int]:
 
 
 # -----------------------
-# Agentes LangGraph
+# Langraph agents
 # -----------------------
 def cpu_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
+    """Check CPU usage of workloads and return migration votes.
+    Args:
+        workloads (Union[list, pd.DataFrame]): List or DataFrame of workload items.
+    Returns:
+        List[int]: List of votes (0 or 1) for each workload.
+    """
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -90,7 +110,15 @@ def cpu_checker(
 def mem_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
+    """Check Memory usage of workloads and return migration votes.
+
+    Args:
+        workloads (Union[list, pd.DataFrame]): List or DataFrame of workload items.
+
+    Returns:
+        List[int]: List of votes (0 or 1) for each workload.
+    """
+    
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -104,7 +132,14 @@ def mem_checker(
 def pending_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
-    # Backup: caso venha lista, converter
+    """Check Pending status of workloads and return migration votes.
+    
+    Args:
+        workloads (Union[list, pd.DataFrame]): List or DataFrame of workload items.
+        
+    Returns:
+        List[int]: List of votes (0 or 1) for each workload.
+    """
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
 
@@ -116,6 +151,16 @@ def pending_checker(
 
 
 def decision_agent(cpu_votes: List[int], mem_votes: List[int], pending_votes: List[int]) -> List[int]:
+    """Make final migration decisions based on votes from CPU, Memory, and Pending agents.
+    
+    Args:
+        cpu_votes (List[int]): Votes from CPU checker.
+        mem_votes (List[int]): Votes from Memory checker.
+        pending_votes (List[int]): Votes from Pending checker.
+    
+    Returns:
+        List[int]: Final migration decisions (0 or 1) for each workload.
+    """
     votes = {"cpu": cpu_votes, "mem": mem_votes, "pending": pending_votes}
     prompt = get_prompt("decision", workload_json=json.dumps(votes, indent=2))
     response = model.generate_content(prompt, generation_config=generation_config)
@@ -124,6 +169,16 @@ def decision_agent(cpu_votes: List[int], mem_votes: List[int], pending_votes: Li
 
 
 def explainer_agent(workloads: pd.DataFrame, votes: Dict[str, List[int]], final_decisions: List[int]) -> Dict:
+    """Generate explanations for migration decisions based on votes and workload characteristics.
+    
+    Args:
+        workloads (pd.DataFrame): DataFrame of workload items.
+        votes (Dict[str, List[int]]): Dictionary of votes from different agents.
+        final_decisions (List[int]): Final migration decisions for each workload.
+    
+    Returns:
+        Dict: Explanation of decisions including per-workload explanations.
+    """
     workloads_list = workloads.to_dict(orient="records")
     prompt = f"""
 You are a Kubernetes systems expert.
