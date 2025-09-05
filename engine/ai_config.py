@@ -2,6 +2,7 @@
 Configuration management for AI models and prompts.
 This module centralizes all AI-related configurations to make versioning and updates easier.
 """
+
 import logging
 import os
 from typing import List, Dict, Any
@@ -10,29 +11,31 @@ from pydantic import BaseModel, Field
 from .util import load_config
 from langchain_groq import ChatGroq
 
-logger = logging.getLogger(__name__) 
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
+
 
 # Output structure definitions
 class WorkloadLabelOutput(BaseModel):
     """Structured output for workload labeling"""
+
     decisions: List[int] = Field(
         description="Array of decisions where 0=private, 1=public for each workload"
     )
     explanations: List[str] = Field(
         description="Array of explanations for each decision"
     )
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary representation"""
         return self.model_dump()
-        
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'WorkloadLabelOutput':
+    def from_dict(cls, data: Dict[str, Any]) -> "WorkloadLabelOutput":
         """Create instance from dictionary"""
         return cls(**data)
-    
+
     def validate_output(self) -> bool:
         """Validate that decisions and explanations have matching lengths"""
         return len(self.decisions) == len(self.explanations)
@@ -62,8 +65,8 @@ Respond with JSON:
 }}
 
 Workloads: {workloads_json}
-"""
-        },
+""",
+    },
     "cpu_checker": {
         "version": "1.0",
         "template": """You are a CPU usage specialist for Kubernetes clusters.
@@ -79,7 +82,7 @@ Respond with a JSON list of 0s and 1s only.
 Example: [0, 1, 1, 0]
 
 Workloads: {workloads_json}
-"""
+""",
     },
     "mem_checker": {
         "version": "1.0",
@@ -96,9 +99,8 @@ Respond with a JSON list of 0s and 1s only.
 Example: [1, 0, 1, 0]
 
 Workloads: {workloads_json}
-"""
+""",
     },
-
     "pending_checker": {
         "version": "1.0",
         "template": """You are a pending pod specialist in Kubernetes.
@@ -115,10 +117,10 @@ Respond with a JSON list of 0s and 1s only.
 Example: [0, 1, 1, 0]
 
 Workloads: {workloads_json}
-"""
-    }, 
-    "decision":{
-        "version": "1.0", 
+""",
+    },
+    "decision": {
+        "version": "1.0",
         "output_schema": WorkloadLabelOutput,
         "template": """You are a pending pod specialist in kubernetes.
 
@@ -132,32 +134,33 @@ workload should migrate to the public or remain in the private.
 Respond with a JSON list of 0s and 1s only.
 Example: [0, 1, 1, 0]
 Votes: {workload_json}
-"""
-    }
-
+""",
+    },
 }
+
 
 def get_model_config(model_key="gemini"):
     """
     Get model configuration by key.
-    
+
     Args:
         model_key: The key for the model configuration
-        
+
     Returns:
         Dictionary with model configuration
     """
     cfg = load_config()
     return cfg.get("ai", {}).get("models", {}).get(model_key, {})
 
+
 def get_prompt(prompt_key, **kwargs):
     """
     Get a prompt by key and format it with provided kwargs.
-    
+
     Args:
         prompt_key: The key for the prompt template
         **kwargs: Format arguments for the prompt template
-        
+
     Returns:
         Formatted prompt string
     """
