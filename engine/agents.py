@@ -124,7 +124,7 @@ def _create_explanation_output(
 
 def label_workloads_with_llm(
     workloads: Union[list, "pd.DataFrame"],
-    model: str = "google/gemini-2.0-flash",
+    model: str = "google/gemini-2.0-flash-exp:free",
     client: OpenRouterClient = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
     """
@@ -132,7 +132,7 @@ def label_workloads_with_llm(
     Each label: 0 = private, 1 = public.
     Args:
         workloads: list of dicts or DataFrame with workload fields.
-        model: Model to use via Provider (default: google/gemini-pro)
+        model: Model to use via Provider (default: google/gemini-2.0-flash-exp:free)
     Returns:
         Tuple containing:
         - List of labels (0 or 1) in the same order
@@ -159,7 +159,6 @@ def label_workloads_with_llm(
     logger.info(f"Sending request to OpenRouter with model: {model}")
 
     try:
-        # Use OpenRouter client for API call
         config = load_config()
         model_config = config.get("ai", {}).get("models", {}).get("gemini", {})
         generation_config = model_config.get("generation_config", {})
@@ -167,7 +166,6 @@ def label_workloads_with_llm(
         logger.info(f"CONFIG: Using OpenRouter model: {model}")
         logger.info(f"CONFIG: Using generation config: {generation_config}")
 
-        # Make the API call using OpenRouter
         text_response = openrouter_client.chat(
             model=model,
             system_prompt=system_prompt,
@@ -265,7 +263,7 @@ def label_workloads_with_llm(
 
         all_digits = re.findall(r"[01]", text_response)
         if len(all_digits) >= len(df):
-            logger.info(f"Extracting labels from Gemini response: {text_response}")
+            logger.info(f"Extracting labels from {model} response: {text_response}")
             labels = [int(digit) for digit in all_digits[: len(df)]]
 
             # Create a basic explanation output
@@ -387,7 +385,9 @@ def label_workloads(
 
     provider = provider.lower()
     if provider in {"gemini", "google"}:
-        return label_workloads_with_llm(workloads, model="google/gemini-2.0-flash-exp:free")
+        return label_workloads_with_llm(
+            workloads, model="google/gemini-2.0-flash-exp:free"
+        )
     if provider in {"llama", "groq", "llama_groq"}:
         return label_workloads_with_llama(workloads)
     if provider in {"openrouter"}:
