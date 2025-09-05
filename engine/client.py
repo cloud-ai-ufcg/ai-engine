@@ -22,10 +22,14 @@ class Client(ABC):
         if not api_key:
             raise ValueError("API key is required")
         
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url
-        )
+        # Filter out any unsupported arguments that might be passed
+        client_kwargs = {
+            "api_key": api_key
+        }
+        if base_url:
+            client_kwargs["base_url"] = base_url
+            
+        self.client = OpenAI(**client_kwargs)
 
     def chat(
         self,

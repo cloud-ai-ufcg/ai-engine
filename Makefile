@@ -1,7 +1,7 @@
 .PHONY: run clean install
 
 # Default Python interpreter
-PYTHON = python3
+PYTHON = python
 
 # Project directories
 ENGINE_DIR = engine
