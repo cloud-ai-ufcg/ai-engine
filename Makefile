@@ -16,13 +16,10 @@ AI_ENGINE_IMAGE_NAME := ai-engine-api
 AI_ENGINE_DIR := ai-engine
 
 # Default target
-all: install run
+all: install cli
 
 install:
 	pip install -r requirements.txt
-
-run:
-	$(PYTHON) cli.py
 
 cli:
 	$(PYTHON) cli.py
@@ -75,9 +72,27 @@ clean:
 
 help:
 	@echo "Available targets:"
-	@echo "  all          : Default target, runs the engine"
-	@echo "  install      : Install dependencies"
-	@echo "  run          : Run the engine module"
-	@echo "  run-with-config : Run with a specific config file"
-	@echo "  clean        : Clean generated files"
 	@echo "  help         : Show this help message"
+	@echo "  ---"
+	@echo "> API Mode:"
+	@echo "  ---"
+	@echo "  api          : Run the engine module on api mode"
+	@echo "  run-docker-api : Run the engine module on api mode on docker"
+	@echo "  build-docker-api : Build the engine module on api mode on docker"
+	@echo "  stop-rm-container : Stop and remove the docker container"
+	@echo "  fake-monitor : Run the fake monitor module"
+	@echo "  fake-actuator : Run the fake actuator module" 
+	@echo "  ---"
+	
+	@echo "> CLI Mode:"
+	@echo "  ---"
+	@echo "  cli          : Run the engine module on cli mode"
+	@echo "  all          : Default target, install and runs the engine on cli mode"
+	@echo "  install      : Install dependencies"
+	@echo "  run-with-config : Run with a specific config file on cli mode"
+	@echo "  clean        : Clean generated files"
+	@echo "  build-docker-cli : Build the engine module on cli mode on docker"
+	@echo "  run-docker-cli : Run the engine module on cli mode on docker"
+	@echo "  stop-rm-container : Stop and remove the docker container"
+	@echo "  ---"
+	
