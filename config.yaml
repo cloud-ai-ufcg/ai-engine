@@ -5,7 +5,7 @@ ai:
   selected_model: gemini
   multi_agent: false
   scheduler_interval: 300
-  timestamp_lookback_seconds: 30
+  timestamp_lookback_seconds: 600
   workloads_shard_size: 20
   fetch_metrics_immediately: false
   models:
@@ -47,7 +47,7 @@ api-key:
 monitor:
   host: 0.0.0.0
   port: 8082
-  interval: 30
+  interval: 600
   route: metrics
 
 actuator:
