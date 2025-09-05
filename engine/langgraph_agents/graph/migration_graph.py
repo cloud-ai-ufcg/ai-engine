@@ -112,29 +112,20 @@ def create_migration_graph():
     """
     graph = StateGraph(dict)
 
-    pending, cpu, mem = load_config_nodes()
+    graph.add_node("cpu", cpu_node)
+    graph.add_node("mem", mem_node)
+    graph.add_node("pending", pending_node)
+    graph.add_node("decision", decision_node)
+    graph.add_node("explainer", explainer_node)
 
-    enabled_nodes = []
-    if cpu:
-        enabled_nodes.append("cpu")
-    if mem:
-        enabled_nodes.append("mem")
-    if pending:
-        enabled_nodes.append("pending")
+    graph.set_entry_point("cpu")
 
-    if not enabled_nodes:
-        enabled_nodes.append("cpu")
-        enabled_nodes = ["decision", "explainer"]
-    else:
-        enabled_nodes += ["decision", "explainer"]
+    graph.add_edge("cpu", "mem")
+    graph.add_edge("mem", "pending")
+    graph.add_edge("pending", "decision")
 
-    for node in enabled_nodes:
-        graph.add_node(node, _node_function_map[node])
-
-    for i in range(len(enabled_nodes) - 1):
-        graph.add_edge(enabled_nodes[i], enabled_nodes[i+1])
-
-    graph.set_entry_point(enabled_nodes[0])
+    graph.add_edge("decision", "explainer")
+    graph.add_edge("explainer", END)
 
     return graph.compile(checkpointer=MemorySaver())
 
