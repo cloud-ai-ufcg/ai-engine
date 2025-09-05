@@ -11,5 +11,6 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 ENV MODE=cli
 
+
 # Run in CLI mode
-ENTRYPOINT ["python", "-m", "main.py"]
+ENTRYPOINT ["python", "cli.py"]

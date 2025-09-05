@@ -11,7 +11,6 @@ client = Client(
     api_url=os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
 )
 
-# pega todos os runs do projeto MultiAgent-engine
 runs = client.list_runs(project_name="MultiAgent-engine")
 
 for run in runs:
@@ -23,8 +22,8 @@ for run in runs:
     print("Status:", run.status)
     print("Extra info:", run.extra)
     print("Reference example:", run.reference_example_id)
-    print(run.inputs)      # dados de entrada do run
-    print(run.outputs)     # resultados gerados pelo LLM
-    print(run.metadata)    # informações extras do run
+    print(run.inputs)     
+    print(run.outputs)    
+    print(run.metadata)   
 
     print("-" * 40)
