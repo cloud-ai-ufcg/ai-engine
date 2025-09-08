@@ -10,7 +10,7 @@ ai:
   fetch_metrics_immediately: false
   models:
     gemini:
-      model_name: gemini-2.0-flash-exp:free
+      model_name: google/gemini-2.0-flash-001
       provider: google
       api_key: ${GOOGLE_API_KEY}
       generation_config:
