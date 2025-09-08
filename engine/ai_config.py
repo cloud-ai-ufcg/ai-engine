@@ -38,9 +38,8 @@ class WorkloadLabelOutput(BaseModel):
         return len(self.decisions) == len(self.explanations)
 
 
-MODEL_CONFIGS: Dict[str, Any] = {}  # Deprecated placeholder
+MODEL_CONFIGS: Dict[str, Any] = {}
 
-# Prompt templates
 PROMPTS = {
     "label_workloads": {
         "version": "1.0",
@@ -116,9 +115,9 @@ Example: [0, 1, 1, 0]
 
 Workloads: {workloads_json}
 """
-    }, 
+    },
     "decision":{
-        "version": "1.0", 
+        "version": "1.0",
         "output_schema": WorkloadLabelOutput,
         "template": """You are a pending pod specialist in kubernetes.
 
