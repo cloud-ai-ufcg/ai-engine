@@ -9,14 +9,12 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from .util import load_config
-from langchain_groq import ChatGroq
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 
-# Output structure definitions
 class WorkloadLabelOutput(BaseModel):
     """Structured output for workload labeling"""
 
@@ -39,6 +37,16 @@ class WorkloadLabelOutput(BaseModel):
     def validate_output(self) -> bool:
         """Validate that decisions and explanations have matching lengths"""
         return len(self.decisions) == len(self.explanations)
+
+
+class WorkloadRecommendation(BaseModel):
+    """Structured output for workload recommendations"""
+
+    workload_id: str
+    kind: str
+    origin_cluster: int
+    destination_cluster: int
+    reason: str  # Explanation for the decision
 
 
 MODEL_CONFIGS: Dict[str, Any] = {}  # Deprecated placeholder
