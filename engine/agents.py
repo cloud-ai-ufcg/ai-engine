@@ -35,26 +35,9 @@ except ImportError:
 REQUEST_COUNTER = 0
 TOKEN_TOTALS = {"input": 0, "output": 0, "total": 0}
 
-# ---------------------------------------------------------------------------
-# Gemini API Helper Functions
-# ---------------------------------------------------------------------------
-
-
-def _get_gemini_api_key(config: Dict[str, Any]) -> Optional[str]:
-    """Retrieve Gemini API key from config or environment."""
-    return config.get("api-key", {}).get("google") or os.environ.get("GOOGLE_API_KEY")
-
-
-def _setup_gemini_model(api_key: str, config: Dict[str, Any]):
-    """Configure and return Gemini model with config."""
-    model_config = config.get("ai", {}).get("models", {}).get("gemini", {})
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(model_config["model_name"])
-    return model, model_config
-
 
 def _normalize_workloads_to_dataframe(
-    workloads: Union[list, "pd.DataFrame"]
+    workloads: Union[list, "pd.DataFrame"],
 ) -> "pd.DataFrame":
     """Convert workloads input to DataFrame format."""
     return pd.DataFrame(workloads) if isinstance(workloads, list) else workloads
@@ -71,7 +54,7 @@ def _extract_json_from_response(text_response: str) -> Dict[str, Any]:
 
 
 def _validate_and_extract_decisions(
-    response_data: Dict[str, Any]
+    response_data: Dict[str, Any],
 ) -> Tuple[List[int], List[str]]:
     """Validate response using schema and extract decisions/explanations."""
     prompt_config = PROMPTS.get("label_workloads", {})
@@ -124,7 +107,7 @@ def _create_explanation_output(
 
 def label_workloads_with_llm(
     workloads: Union[list, "pd.DataFrame"],
-    model: str = "google/gemini-2.0-flash-exp:free",
+    model: str = "google/gemini-2.0-flash-001",
     client: OpenRouterClient = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
     """
@@ -132,7 +115,7 @@ def label_workloads_with_llm(
     Each label: 0 = private, 1 = public.
     Args:
         workloads: list of dicts or DataFrame with workload fields.
-        model: Model to use via Provider (default: google/gemini-2.0-flash-exp:free)
+        model: Model to use via Provider (default: google/gemini-2.0-flash-001)
     Returns:
         Tuple containing:
         - List of labels (0 or 1) in the same order
@@ -386,10 +369,8 @@ def label_workloads(
     provider = provider.lower()
     if provider in {"gemini", "google"}:
         return label_workloads_with_llm(
-            workloads, model="google/gemini-2.0-flash-exp:free"
+            workloads, model="google/gemini-2.0-flash-001"
         )
-    if provider in {"llama", "groq", "llama_groq"}:
-        return label_workloads_with_llama(workloads)
     if provider in {"openrouter"}:
         return label_workloads_with_llm(workloads)
 
