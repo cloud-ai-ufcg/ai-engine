@@ -11,13 +11,14 @@ class Client(ABC):
     Abstract base class for AI API clients with structured output support.
     """
 
-    def __init__(self, api_key: str, base_url: Optional[str] = None):
+    def __init__(self, api_key: str, base_url: Optional[str] = None, **kwargs):
         """
         Initialize the client with API key and optional base URL.
         
         Args:
             api_key (str): API key for authentication
             base_url (Optional[str]): Base URL for the API
+            **kwargs: Extra optional arguments (e.g., proxies) accepted for compatibility
         """
         if not api_key:
             raise ValueError("API key is required")
@@ -28,6 +29,17 @@ class Client(ABC):
         }
         if base_url:
             client_kwargs["base_url"] = base_url
+        
+        # Optionally support proxies via httpx client if provided
+        # We don't fail if unsupported; we just ignore unknown extras gracefully
+        proxies = kwargs.get("proxies")
+        if proxies:
+            try:
+                import httpx
+                client_kwargs["http_client"] = httpx.Client(proxies=proxies)
+            except Exception:
+                # Silently ignore if httpx or proxies fail; fall back to default client
+                pass
             
         self.client = OpenAI(**client_kwargs)
 
@@ -155,9 +167,11 @@ class OpenRouterClient(Client):
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         """
         Initializes the OpenRouterClient.
+
+        Accepts extra kwargs (e.g., proxies) and forwards to base Client.
         """
         if self._initialized:
             return
@@ -167,5 +181,5 @@ class OpenRouterClient(Client):
             raise ValueError("OPENROUTER_API_KEY is not set in environment variables")
         
         # Initialize the parent Client class
-        super().__init__(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+        super().__init__(api_key=api_key, base_url="https://openrouter.ai/api/v1", **kwargs)
         self._initialized = True
