@@ -220,11 +220,11 @@ def load_config(config_path=None) -> Dict[str, Any]:
         dict: Configuration dictionary with all settings
     """
     global config, _config_loaded
-    
+
     # Return cached config if already loaded
     if _config_loaded and config is not None:
         return config
-    
+
     if config_path is None:
         # Default to the config.yaml located one directory above the current module
         config_path = os.path.abspath(
@@ -237,18 +237,10 @@ def load_config(config_path=None) -> Dict[str, Any]:
     # ------------------------------------------------------------------
     # Inject API keys from environment variables, overriding YAML values
     # ------------------------------------------------------------------
-    dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, ".env"))
+    dotenv_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, ".env")
+    )
     load_dotenv(dotenv_path)
-    api_key_cfg: Dict[str, Any] = config.get("api-key", {}) or {}
-    google_env_key = os.getenv("GOOGLE_API_KEY")
-    if google_env_key:
-        api_key_cfg["google"] = google_env_key
-    groq_env_key = os.getenv("GROQ_API_KEY")
-    if groq_env_key:
-        api_key_cfg["groq"] = groq_env_key
-
-    if api_key_cfg:
-        config["api-key"] = api_key_cfg
 
     # Set up paths from config or use defaults
     paths_config = config.get("paths", {})
