@@ -51,7 +51,6 @@ class WorkloadRecommendation(BaseModel):
 
 MODEL_CONFIGS: Dict[str, Any] = {}  # Deprecated placeholder
 
-# Prompt templates
 PROMPTS = {
     "label_workloads": {
         "version": "1.0",
@@ -125,9 +124,9 @@ Respond with a JSON list of 0s and 1s only.
 Example: [0, 1, 1, 0]
 
 Workloads: {workloads_json}
-""",
+"""
     },
-    "decision": {
+    "decision":{
         "version": "1.0",
         "output_schema": WorkloadLabelOutput,
         "template": """You are a pending pod specialist in kubernetes.
