@@ -3,16 +3,18 @@ import json
 import pandas as pd
 from typing import List, Dict, Union
 from dotenv import load_dotenv
+from engine.ai_config import get_prompt, get_model_config
+from engine.util import load_config, get_logger
+import google.generativeai as genai
+from openai import OpenAI
 from engine.ai_config import get_prompt
 from engine.util import load_config, log_token_usage
 from engine.client import OpenRouterClient
 from langsmith import traceable
 import re
-import logging
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+logger = get_logger("langgraph_agents")
 
-logger = logging.getLogger(__name__)
 load_dotenv()
 
 
@@ -51,6 +53,8 @@ def get_llm():
         config = load_config()
         selected_model = config["ai"].get("selected_model", "gemini")
         model_cfg = config["ai"]["models"].get(selected_model, {})
+        if model_cfg is None:
+            raise ValueError(f"Model '{selected_model}' not found in configuration.")
 
         # Map internal model names to OpenRouter model names
         model_mapping = {
@@ -60,9 +64,7 @@ def get_llm():
             "llama": "meta-llama/llama-3.1-8b-instruct",
         }
 
-        model_name = model_mapping.get(
-            selected_model, "google/gemini-2.0-flash-001"
-        )
+        model_name = model_mapping.get(selected_model, "google/gemini-2.0-flash-001")
         generation_config = model_cfg.get("generation_config", {})
 
         system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
@@ -73,16 +75,24 @@ def get_llm():
         return model
     except Exception as e:
         logger.error(f"Failed to initialize OpenRouter client/model: {e}")
-        raise
+        raise ValueError(f"Failed to initialize OpenRouter client/model: {e}")
 
 
 model = get_llm()
 
 
 # -----------------------
-# Utilitários
+# Helper Functions
 # -----------------------
 def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
+    """Normalize a list of votes to ensure it matches the expected length.
+    Args:
+        votes (List[int]): List of votes (0 or 1).
+        expected_length (int): The expected number of votes.
+
+    Returns:
+        List[int]: Normalized list of votes with the expected length.
+    """
     if len(votes) < expected_length:
         votes.extend([0] * (expected_length - len(votes)))
     elif len(votes) > expected_length:
@@ -91,6 +101,15 @@ def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
 
 
 def _parse_llm_response(response: str, expected_length: int) -> List[int]:
+    """Parse LLM response to extract votes as a list of integers (0 or 1).
+
+    Args:
+        response (str): The raw response from the LLM.
+        expected_length (int): The expected number of votes.
+
+    Returns:
+        List[int]: A list of votes (0 or 1) normalized to the expected length
+    """
     try:
         parsed = json.loads(response)
         if isinstance(parsed, dict) and "decisions" in parsed:
@@ -125,10 +144,18 @@ def _invoke_model(prompt: str) -> str:
 
 
 # -----------------------
-# Agentes LangGraph
+# Langraph agents
 # -----------------------
 @traceable(name="cpu_checker")
-def cpu_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
+def cpu_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    """Check CPU usage of workloads and return migration votes.
+    Args:
+        workloads (Union[list, pd.DataFrame]): List or DataFrame of workload items.
+    Returns:
+        List[int]: List of votes (0 or 1) for each workload.
+    """
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
     workloads_list = workloads.to_dict(orient="records")
@@ -140,7 +167,18 @@ def cpu_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
 
 
 @traceable(name="mem_checker")
-def mem_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
+def mem_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    """Check Memory usage of workloads and return migration votes.
+
+    Args:
+        workloads (Union[list, pd.DataFrame]): List or DataFrame of workload items.
+
+    Returns:
+        List[int]: List of votes (0 or 1) for each workload.
+    """
+
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
     workloads_list = workloads.to_dict(orient="records")
@@ -152,7 +190,17 @@ def mem_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
 
 
 @traceable(name="pending_checker")
-def pending_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
+def pending_checker(
+    workloads: Union[list, "pd.DataFrame"],
+) -> List[int]:
+    """Check Pending status of workloads and return migration votes.
+
+    Args:
+        workloads (Union[list, pd.DataFrame]): List or DataFrame of workload items.
+
+    Returns:
+        List[int]: List of votes (0 or 1) for each workload.
+    """
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
     workloads_list = workloads.to_dict(orient="records")
@@ -167,6 +215,16 @@ def pending_checker(workloads: Union[list, "pd.DataFrame"]) -> List[int]:
 def decision_agent(
     cpu_votes: List[int], mem_votes: List[int], pending_votes: List[int]
 ) -> List[int]:
+    """Make final migration decisions based on votes from CPU, Memory, and Pending agents.
+
+    Args:
+        cpu_votes (List[int]): Votes from CPU checker.
+        mem_votes (List[int]): Votes from Memory checker.
+        pending_votes (List[int]): Votes from Pending checker.
+
+    Returns:
+        List[int]: Final migration decisions (0 or 1) for each workload.
+    """
     votes = {"cpu": cpu_votes, "mem": mem_votes, "pending": pending_votes}
     prompt = get_prompt("decision", workload_json=json.dumps(votes, indent=2))
     text = _invoke_model(prompt)
@@ -177,6 +235,16 @@ def decision_agent(
 def explainer_agent(
     workloads: pd.DataFrame, votes: Dict[str, List[int]], final_decisions: List[int]
 ) -> Dict:
+    """Generate explanations for migration decisions based on votes and workload characteristics.
+
+    Args:
+        workloads (pd.DataFrame): DataFrame of workload items.
+        votes (Dict[str, List[int]]): Dictionary of votes from different agents.
+        final_decisions (List[int]): Final migration decisions for each workload.
+
+    Returns:
+        Dict: Explanation of decisions including per-workload explanations.
+    """
     workloads_list = workloads.to_dict(orient="records")
     prompt = f"""
 You are a Kubernetes systems expert.
@@ -219,6 +287,7 @@ Final decisions: {final_decisions}
             raise ValueError("No JSON found in response")
 
     except Exception as e:
+
         logger.error("❌ Error processing explanation: %s", e)
         return {
             "explanation": f"Error generating explanation: {str(e)}",
