@@ -3,7 +3,7 @@ from langchain.tools import tool
 @tool("pending_percentage", return_direct=False)
 def pending_percentage(data: dict) -> dict:
     """
-    Calculate the percentage of pending tasks for each workload from the latest timestamp.
+    Calculate the percentage of pending pods for each workload from the latest timestamp.
     Input:
       - dict with timestamps as keys and workload data as values
     Output:
