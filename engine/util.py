@@ -5,7 +5,6 @@ import logging.handlers
 from dotenv import load_dotenv
 import yaml
 from typing import Optional, Dict, Any, Union
-import re
 import json
 
 # Default directory paths
