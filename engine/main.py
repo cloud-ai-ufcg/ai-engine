@@ -6,6 +6,7 @@ from typing import Dict, List, Any, Tuple, Union
 import datetime
 import concurrent.futures
 from .langgraph_agents.graph.migration_graph import run_migration_pipeline
+from .ai_config import WorkloadRecommendation
 
 from .util import (
     get_logger,
@@ -18,6 +19,7 @@ from .util import (
 from .agents import label_workloads
 
 logger = get_logger("main")
+CURRENT_BATCH_ID = 1
 
 
 def _filter_and_fill_workloads(
@@ -442,7 +444,7 @@ def shard_and_analyze_workloads(workloads, config):
     return combined_df, combined_explanations
 
 
-def save_and_log_explanations(result_df, explanations, workloads=None):
+def save_and_log_explanations(result_df, explanations, workloads=None, batch_id: int | None = None):
     """
     Save recommendations log using the WorkloadRecommendation schema and log them.
 
@@ -452,6 +454,13 @@ def save_and_log_explanations(result_df, explanations, workloads=None):
         workloads: Optional original workloads list to infer origin_cluster
     """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Ensure we have a batch_id; if not provided, increment global counter
+    global CURRENT_BATCH_ID
+
+    if batch_id is None:
+        CURRENT_BATCH_ID += 1
+        batch_id = CURRENT_BATCH_ID
+        
     if not os.path.exists(ENGINE_LOG_DIR):
         os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
     explanations_file = os.path.join(
@@ -485,17 +494,24 @@ def save_and_log_explanations(result_df, explanations, workloads=None):
         )
 
         recs_payload.append(
-            {
-                "workload_id": wid,
-                "kind": kind,
-                "origin_cluster": origin_cluster,
-                "destination_cluster": destination_cluster,
-                "reason": reason,
-            }
+            WorkloadRecommendation(
+                batch_id=batch_id,
+                workload_id=wid,
+                kind=kind,
+                origin_cluster=origin_cluster,
+                destination_cluster=destination_cluster,
+                reason=reason,
+            )
         )
 
+    # Serialize Pydantic models to plain dicts for JSON output
+    recs_payload_serialized = [
+        r.model_dump() if hasattr(r, "model_dump") else (r.dict() if hasattr(r, "dict") else r)
+        for r in recs_payload
+    ]
+
     with open(explanations_file, "w") as f:
-        json.dump(recs_payload, f, indent=2)
+        json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
     logger.info(
