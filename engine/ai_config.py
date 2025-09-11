@@ -41,7 +41,7 @@ class WorkloadLabelOutput(BaseModel):
 
 class WorkloadRecommendation(BaseModel):
     """Structured output for workload recommendations"""
-
+    batch_id: int | None = None
     workload_id: str
     kind: str
     origin_cluster: int
