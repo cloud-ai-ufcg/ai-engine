@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from typing import Optional, List, Union, Dict, Any, Tuple
+from typing import Optional
 from contextlib import asynccontextmanager
 import uvicorn
 import json
@@ -18,6 +18,7 @@ from engine.util import (
     load_config,
     format_message,
 )
+from engine.ai_config import WorkloadRecommendation
 
 import asyncio
 import aiohttp
@@ -33,6 +34,8 @@ SCHEDULER_INTERVAL_DEFAULT = 60 * 5  # 5 minutes
 SCHEDULER_INTERVAL: int = int(config["ai"]["scheduler_interval"]) or int(
     SCHEDULER_INTERVAL_DEFAULT
 )  # seconds between recommendation cycles
+
+CURRENT_BATCH_ID = 0
 
 running: bool = False
 stop_event: threading.Event = threading.Event()
@@ -89,8 +92,26 @@ async def apply_recommendations(recommendations):
             # Backward compatibility: accept DataFrame
             payload = recommendations.to_dict(orient="records")
         else:
-            # Assume already a list[dict]
-            payload = recommendations
+            # Convert Pydantic models to dicts if needed
+            if isinstance(recommendations, list):
+                payload = [
+                    (
+                        r.model_dump()
+                        if hasattr(r, "model_dump")
+                        else (r.dict() if hasattr(r, "dict") else r)
+                    )
+                    for r in recommendations
+                ]
+            else:
+                payload = (
+                    recommendations.model_dump()
+                    if hasattr(recommendations, "model_dump")
+                    else (
+                        recommendations.dict()
+                        if hasattr(recommendations, "dict")
+                        else recommendations
+                    )
+                )
 
         recommendations_json = json.dumps(payload, ensure_ascii=False)
         async with aiohttp.ClientSession() as session:
@@ -134,7 +155,8 @@ def _build_workload_recommendations(result_df, explanations, workloads):
             origin_by_id[wid] = w.get("cluster_label", "private")
 
     explanations_list = (explanations or {}).get("workload_explanations", [])
-
+    global CURRENT_BATCH_ID
+    CURRENT_BATCH_ID += 1
     recs = []
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
@@ -154,13 +176,14 @@ def _build_workload_recommendations(result_df, explanations, workloads):
         )
 
         recs.append(
-            {
-                "workload_id": wid,
-                "kind": kind,
-                "origin_cluster": origin_cluster,
-                "destination_cluster": destination_cluster,
-                "reason": reason,
-            }
+            WorkloadRecommendation(
+                batch_id=CURRENT_BATCH_ID,
+                workload_id=wid,
+                kind=kind,
+                origin_cluster=origin_cluster,
+                destination_cluster=destination_cluster,
+                reason=reason,
+            )
         )
 
     return recs
