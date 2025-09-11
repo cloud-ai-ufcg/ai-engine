@@ -2,6 +2,9 @@ from engine.main import *
 
 from engine.agents import get_usage_metrics
 
+# Maintain a local batch counter for CLI runs
+CURRENT_BATCH_ID = 0
+
 def cli():
     """
     Analyze workloads in CLI mode
@@ -60,6 +63,11 @@ def _build_workload_recommendations_cli(result_df, explanations, workloads):
 
     explanations_list = (explanations or {}).get("workload_explanations", [])
 
+    # Increment batch id for this CLI build
+    global CURRENT_BATCH_ID
+    CURRENT_BATCH_ID += 1
+    batch_id = CURRENT_BATCH_ID
+
     recs = []
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
@@ -79,13 +87,14 @@ def _build_workload_recommendations_cli(result_df, explanations, workloads):
         )
 
         recs.append(
-            {
-                "workload_id": wid,
-                "kind": kind,
-                "origin_cluster": origin_cluster,
-                "destination_cluster": destination_cluster,
-                "reason": reason,
-            }
+            WorkloadRecommendation(
+                batch_id=batch_id,
+                workload_id=wid,
+                kind=kind,
+                origin_cluster=origin_cluster,
+                destination_cluster=destination_cluster,
+                reason=reason,
+            )
         )
 
     return recs
