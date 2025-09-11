@@ -9,11 +9,22 @@ MODEL_PIPELINE_DIR = model-pipeline
 OUTPUT_DIR = output
 
 # Default configuration file
-CONFIG_FILE = config.yaml
+CONFIG_FILE = config-test.yaml
 
 AI_ENGINE_CONTAINER_NAME := ai-engine-simulator
 AI_ENGINE_IMAGE_NAME := ai-engine-api
 AI_ENGINE_DIR := ai-engine
+PROJECT_DIR := $(shell pwd)
+
+# OS detection
+UNAME_S := $(shell uname -s)
+
+# Function-like variable to open a new terminal and run a make target depending on OS
+ifeq ($(UNAME_S),Darwin)
+RUN_IN_TERMINAL = @osascript -e 'tell application "Terminal" to do script "cd $(PROJECT_DIR); make $(1)"'
+else
+RUN_IN_TERMINAL = gnome-terminal -- bash -lc 'cd $(PROJECT_DIR); make $(1); exec bash'
+endif
 
 # Default target
 all: install cli
@@ -32,6 +43,29 @@ fake-monitor:
 
 fake-actuator:
 	$(PYTHON) -m uvicorn fake_actuator:app --host 0.0.0.0 --port 8084 --reload
+
+# --- Cross-platform helpers to open new terminal windows and run services ---
+.PHONY: start-api-terminal start-fake-monitor-terminal start-fake-actuator-terminal start-all-terminals dev-start curl-start
+
+start-api-terminal:
+	$(call RUN_IN_TERMINAL,api)
+
+start-fake-monitor-terminal:
+	$(call RUN_IN_TERMINAL,fake-monitor)
+
+start-fake-actuator-terminal:
+	$(call RUN_IN_TERMINAL,fake-actuator)
+
+start-all-terminals: start-api-terminal start-fake-monitor-terminal start-fake-actuator-terminal
+	@echo "Launched API, Fake Monitor, and Fake Actuator in separate terminal windows."
+
+curl-start:
+	@curl -X POST http://0.0.0.0:8083/start || true
+
+# Launch all services in terminals and then trigger the start curl
+dev-start: start-all-terminals
+	@sleep 5
+	@$(MAKE) curl-start
 
 run-with-config:
 	$(PYTHON) cli.py --config $(CONFIG_FILE)
@@ -82,6 +116,11 @@ help:
 	@echo "  stop-rm-container : Stop and remove the docker container"
 	@echo "  fake-monitor : Run the fake monitor module"
 	@echo "  fake-actuator : Run the fake actuator module" 
+	@echo "  start-api-terminal : Open a new terminal window (macOS Terminal or gnome-terminal) and run the API"
+	@echo "  start-fake-monitor-terminal : Open a new terminal window (macOS Terminal or gnome-terminal) and run the Fake Monitor"
+	@echo "  start-fake-actuator-terminal : Open a new terminal window (macOS Terminal or gnome-terminal) and run the Fake Actuator"
+	@echo "  start-all-terminals : Launch API, Fake Monitor, and Fake Actuator in separate terminal windows"
+	@echo "  dev-start : Start all terminals and trigger the start curl (POST /start)"
 	@echo "  ---"
 	
 	@echo "> CLI Mode:"
