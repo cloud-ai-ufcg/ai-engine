@@ -1,11 +1,9 @@
-import os
 import json
 import pandas as pd
 from typing import List, Dict, Union
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt, get_model_config
 from engine.util import load_config, get_logger
-import google.generativeai as genai
 from openai import OpenAI
 from engine.ai_config import get_prompt
 from engine.util import load_config, log_token_usage

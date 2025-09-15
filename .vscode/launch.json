@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "python",
+            "args": [
+                "${input.api_or_cli}",
+                "--reload"
+            ]
+        },
+        {
+            "name": "Python Debugger: CLI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "python",
+            "args": [
+                "${input.api_or_cli}",
+                "--reload"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "api_or_cli",
+            "type": "pickString",
+            "description": "Choose api or cli",
+            "options": [
+                "api",
+                "cli"
+            ],
+            "default": "cli"
+        }
+    ]
+}
