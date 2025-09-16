@@ -84,7 +84,7 @@ def _validate_and_extract_decisions(response_data: Dict[str, Any]) -> Tuple[List
     explanations = response_data.get("explanations", [])
     return decisions, explanations
 
-# ok, listas serão acumuladas (operator.add)
+
 def _create_explanation_output(labels: List[int], explanations: List[str], df: "pd.DataFrame") -> Dict[str, Any]:
     """Create structured explanation output and log decisions."""
     explanation_output = {
@@ -436,15 +436,14 @@ def label_workloads_with_llama(
 
 def label_workloads_multiagent(workloads, provider="langgraph"):
     df = _normalize_workloads_to_dataframe(workloads)  
-    state: MigrationState = {
-    "workloads": df.to_dict(orient="records"),
-    "cpu_votes": [],       
-    "mem_votes": [],
-    "pending_votes": [],
-    "final_decisions": [],
-    "explanations": {},
-    "pending_tool_result": {}
-}
+    state = {
+        "workloads": df.to_dict(orient="records"),
+        "cpu_votes": [],
+        "mem_votes": [],
+        "pending_votes": [],
+        "final_decisions": [],
+        "explanations": {}
+    }
 
     graph = create_migration_graph()
     
