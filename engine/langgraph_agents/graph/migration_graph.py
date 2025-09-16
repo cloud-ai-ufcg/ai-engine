@@ -1,11 +1,9 @@
 import os
 import pandas as pd
 import yaml
-from typing import Dict, List, TypedDict
+from typing import Dict, List
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from ..tools import pending_by_cluster
-
 
 from ..nodes import (
     cpu_checker,
@@ -15,33 +13,9 @@ from ..nodes import (
     explainer_agent
 )
 
-class MigrationState(TypedDict):
-    workloads: List[Dict]
-    cpu_votes: List[int]
-    mem_votes: List[int]
-    pending_votes: List[int]
-    final_decisions: List[int]
-    explanations: Dict
-    pending_tool_result: Dict
-
-
-
 # -----------------------
 # Functions for each node
 # -----------------------
-
-def pending_tool_node(state: dict) -> dict:
-    """Node that uses tool pending_by_cluster to analyze workloads."""
-    workloads = state.get("workloads", [])
-    if not workloads:
-        return {"pending_tool_result": {"error": "no workloads provided"}}
-
-    result = pending_by_cluster.invoke({
-        "input_dict": {"data": {"latest": {"workloads": workloads}}}
-    })
-
-    return {"pending_tool_result": result}
-
 def cpu_node(state: dict) -> dict:
     """Process CPU information skipping workloads.
     
@@ -52,7 +26,8 @@ def cpu_node(state: dict) -> dict:
         Dict: Updated state with CPU votes.
     """ 
     df = pd.DataFrame(state["workloads"])
-    return {"cpu_votes": cpu_checker(df)}
+    state["cpu_votes"] = cpu_checker(df)
+    return state
 
 def mem_node(state: dict) -> dict:
     """Process Memory information, skipping workloads.
@@ -64,7 +39,8 @@ def mem_node(state: dict) -> dict:
         Dict: Updated state with Memory votes.
     """
     df = pd.DataFrame(state["workloads"])
-    return {"mem_votes": mem_checker(df)}
+    state["mem_votes"] = mem_checker(df)
+    return state
 
 def pending_node(state: dict) -> dict:
     """Process Pending information, skipping workloads.
@@ -76,8 +52,8 @@ def pending_node(state: dict) -> dict:
         Dict: Updated state with Pending votes.
     """
     df = pd.DataFrame(state["workloads"])
-    return {"pending_votes": pending_checker(df)}
-
+    state["pending_votes"] = pending_checker(df)
+    return state
 
 def decision_node(state: dict) -> dict:
     """Make final decisions based on votes from previous nodes.
@@ -88,13 +64,12 @@ def decision_node(state: dict) -> dict:
     Returns:
         Dict: Updated state with final decisions.
     """
-    return {
-        "final_decisions": decision_agent(
-            state.get("cpu_votes", []),
-            state.get("mem_votes", []),
-            state.get("pending_votes", [])
-        )
-    }
+    state["final_decisions"] = decision_agent(
+        state["cpu_votes"],
+        state["mem_votes"],
+        state["pending_votes"]
+    )
+    return state
 
 def explainer_node(state: dict) -> dict:
     """Generate explanations for the final decisions made.
@@ -106,17 +81,16 @@ def explainer_node(state: dict) -> dict:
         Dict: Updated state with explanations.
     """
     df = pd.DataFrame(state["workloads"])
-    return {
-        "explanations": explainer_agent(
-            df,
-            {
-                "cpu": state.get("cpu_votes", []),
-                "mem": state.get("mem_votes", []),
-                "pending": state.get("pending_votes", [])
-            },
-            state.get("final_decisions", [])
-        )
-    }
+    state["explanations"] = explainer_agent(
+        df,
+        {
+            "cpu": state["cpu_votes"],
+            "mem": state["mem_votes"],
+            "pending": state["pending_votes"]
+        },
+        state["final_decisions"]
+    )
+    return state
 
 # -----------------------
 # Graph Creation
@@ -136,27 +110,19 @@ def create_migration_graph():
     Returns:
         StateGraph: Configured state graph for migration analysis.
     """
-    graph = StateGraph(MigrationState)
+    graph = StateGraph(dict)
 
-    
     graph.add_node("cpu", cpu_node)
     graph.add_node("mem", mem_node)
     graph.add_node("pending", pending_node)
     graph.add_node("decision", decision_node)
     graph.add_node("explainer", explainer_node)
-    graph.add_node("pending_tool", pending_tool_node)
 
-    graph.set_entry_point("split")
-    graph.add_node("split", lambda state: state)
+    graph.set_entry_point("cpu")
 
-    graph.add_edge("split", "cpu")
-    graph.add_edge("split", "mem")
-    graph.add_edge("split", "pending")
-    graph.add_edge("split", "pending_tool")
-    graph.add_edge("cpu", "decision")
-    graph.add_edge("mem", "decision")
+    graph.add_edge("cpu", "mem")
+    graph.add_edge("mem", "pending")
     graph.add_edge("pending", "decision")
-    graph.add_edge("pending_tool", "decision")
 
     graph.add_edge("decision", "explainer")
     graph.add_edge("explainer", END)
@@ -194,8 +160,7 @@ def run_migration_pipeline(workloads_df):
         "mem_votes": [],
         "pending_votes": [],
         "final_decisions": [],
-        "explanations": {},
-        "pending_tool_result": {} 
+        "explanations": {}
     }
     graph = create_migration_graph()
     final_state = graph.invoke(initial_state)
