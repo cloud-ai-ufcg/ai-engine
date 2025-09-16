@@ -6,6 +6,7 @@ from typing import Dict, List, Any, Tuple, Union
 import datetime
 import concurrent.futures
 from .langgraph_agents.graph.migration_graph import run_migration_pipeline
+from .ai_config import WorkloadRecommendation
 
 from .util import (
     get_logger,
@@ -18,6 +19,7 @@ from .util import (
 from .agents import label_workloads
 
 logger = get_logger("main")
+CURRENT_BATCH_ID = 1
 
 
 def _filter_and_fill_workloads(
@@ -50,7 +52,9 @@ def _filter_and_fill_workloads(
         if cluster_label and cluster_label in cluster_data:
             w["cluster_load"] = cluster_data[cluster_label]["cpu_load"]
             w["cluster_cpu_capacity"] = cluster_data[cluster_label]["cpu_capacity"]
-            w["cluster_memory_capacity"] = cluster_data[cluster_label]["memory_capacity"]
+            w["cluster_memory_capacity"] = cluster_data[cluster_label][
+                "memory_capacity"
+            ]
 
         workloads.append(w)
 
@@ -63,6 +67,7 @@ def _filter_and_fill_workloads(
         )
     )
     return workloads
+
 
 def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
@@ -78,7 +83,9 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
     if timestamp_lookback_seconds is None:
         config = load_config()
-        timestamp_lookback_seconds = config.get('ai', {}).get('timestamp_lookback_seconds', 30)
+        timestamp_lookback_seconds = config.get('ai', {}).get(
+            'timestamp_lookback_seconds', 30
+        )
 
     # Handle different data structures
     if isinstance(data, dict) and all(
@@ -169,10 +176,36 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
 
 def write_recommendations(result_df, output_dir=OUTPUT_DIR):
-    migrated_workloads = result_df[result_df["label"] == 1]
-    non_migrated_workloads = result_df[result_df["label"] == 0]
+    """
+    Write recommendations summary and CSV output.
 
-    total_workloads = len(result_df)
+    Accepts either:
+      - A pandas DataFrame with columns [workload_id, kind, label] (legacy), or
+      - A list of dicts shaped like WorkloadRecommendation with fields
+        [workload_id, kind, origin_cluster, destination_cluster, reason].
+
+    Behavior remains backward compatible (CSV with workload_id, kind, label).
+    """
+    structured_input = False
+    df = result_df
+    # If recommendations come in the new structured list[dict] form, convert to DataFrame
+    if not hasattr(result_df, "to_dict") and isinstance(result_df, list):
+        structured_input = True
+        try:
+            df = pd.DataFrame(result_df)
+            # Map destination_cluster -> label for legacy-compatible reporting
+            if "label" not in df.columns and "destination_cluster" in df.columns:
+                df["label"] = df["destination_cluster"].astype(int)
+        except Exception as e:
+            logger.error(
+                f"Failed to convert structured recommendations to DataFrame: {e}"
+            )
+            return None
+
+    migrated_workloads = df[df["label"] == 1]
+    non_migrated_workloads = df[df["label"] == 0]
+
+    total_workloads = len(df)
     migrated_count = len(migrated_workloads)
     non_migrated_count = len(non_migrated_workloads)
 
@@ -213,7 +246,7 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         for _, row in migrated_workloads.iterrows():
             logger.info(
                 format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}",
+                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
                     color="BLUE",
                 )
             )
@@ -230,14 +263,30 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         for _, row in non_migrated_workloads.iterrows():
             logger.info(
                 format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}",
+                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
                     color="GREEN",
                 )
             )
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
-        result_df.to_csv(output_csv, index=False)
+        # Persist legacy CSV columns
+        columns_to_save = [
+            c
+            for c in [
+                "workload_id",
+                "kind",
+                "origin_cluster",
+                "destination_cluster",
+                "reason",
+            ]
+            if c in df.columns
+        ]
+        if columns_to_save:
+            df[columns_to_save].to_csv(output_csv, index=False)
+        else:
+            # Fallback: write everything
+            df.to_csv(output_csv, index=False)
         logger.info(
             format_message(
                 f"Recommendations written to {output_csv}", icon="📝", color="MAGENTA"
@@ -245,7 +294,23 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
     except Exception as e:
         logger.error(f"Error writing recommendations to CSV: {e}")
-    
+
+    # If we received structured recommendations, also write a JSON artifact
+    if structured_input:
+        try:
+            output_json = os.path.join(output_dir, "recommendations_structured.json")
+            with open(output_json, "w") as f:
+                json.dump(result_df, f, indent=2)
+            logger.info(
+                format_message(
+                    f"Structured recommendations written to {output_json}",
+                    icon="📝",
+                    color="MAGENTA",
+                )
+            )
+        except Exception as e:
+            logger.error(f"Error writing structured recommendations JSON: {e}")
+
     return output_csv
 
 
@@ -301,9 +366,11 @@ def analyze_workloads(workloads, config):
             bold=True,
         )
     )
-    labels, explanations = label_workloads(workloads, provider=provider, multiagent=multiagent)
-    #labels, explanations = run_migration_pipeline(workloads)
-    
+    labels, explanations = label_workloads(
+        workloads, provider=provider, multiagent=multiagent
+    )
+    # labels, explanations = run_migration_pipeline(workloads)
+
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
     result["label"] = labels
@@ -322,12 +389,16 @@ def shard_and_analyze_workloads(workloads, config):
         Tuple[pd.DataFrame, dict]: Combined DataFrame with all shard results and aggregated explanations.
     """
     # Retrieve shard size from config; fallback to processing all at once
-    shard_size = int(config.get('ai', {}).get('workloads_shard_size', len(workloads))) or len(workloads)
+    shard_size = int(
+        config.get('ai', {}).get('workloads_shard_size', len(workloads))
+    ) or len(workloads)
     if shard_size <= 0:
         shard_size = len(workloads)
 
     # Split workloads into shards
-    shards = [workloads[i : i + shard_size] for i in range(0, len(workloads), shard_size)]
+    shards = [
+        workloads[i : i + shard_size] for i in range(0, len(workloads), shard_size)
+    ]
 
     results = []
     combined_explanations = {"workload_explanations": []}
@@ -335,6 +406,7 @@ def shard_and_analyze_workloads(workloads, config):
     def _analyze(shard_idx, shard):
         """Analyze a shard, logging its thread and position."""
         import threading  # local import avoids adding a new top-level import
+
         logger.info(
             format_message(
                 f"🔢 Starting shard {shard_idx + 1}/{len(shards)} "
@@ -354,7 +426,8 @@ def shard_and_analyze_workloads(workloads, config):
     # Create a thread for each shard
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(shards)) as executor:
         future_to_shard = {
-            executor.submit(_analyze, idx, shard): idx for idx, shard in enumerate(shards)
+            executor.submit(_analyze, idx, shard): idx
+            for idx, shard in enumerate(shards)
         }
         for future in concurrent.futures.as_completed(future_to_shard):
             try:
@@ -371,23 +444,74 @@ def shard_and_analyze_workloads(workloads, config):
     return combined_df, combined_explanations
 
 
-def save_and_log_explanations(result_df, explanations):
+def save_and_log_explanations(result_df, explanations, workloads=None, batch_id: int | None = None):
     """
-    Save explanations to a file and log them.
+    Save recommendations log using the WorkloadRecommendation schema and log them.
 
     Args:
         result_df: DataFrame with workload results
         explanations: Dictionary with explanations
+        workloads: Optional original workloads list to infer origin_cluster
     """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Ensure we have a batch_id; if not provided, increment global counter
+    global CURRENT_BATCH_ID
+
+    if batch_id is None:
+        CURRENT_BATCH_ID += 1
+        batch_id = CURRENT_BATCH_ID
+        
     if not os.path.exists(ENGINE_LOG_DIR):
         os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
     explanations_file = os.path.join(
         ENGINE_LOG_DIR, f"recommendations_explanations_{timestamp}.json"
     )
 
+    # Build WorkloadRecommendation-shaped list[dict]
+    origin_by_id = {}
+    if workloads:
+        for w in workloads:
+            wid = w.get("workload_id")
+            if wid is not None:
+                origin_by_id[wid] = w.get("cluster_label", "private")
+
+    explanations_list = (explanations or {}).get("workload_explanations", [])
+
+    recs_payload = []
+    for idx, row in result_df.iterrows():
+        wid = row.get("workload_id")
+        kind = row.get("kind")
+        destination_cluster = int(row.get("label", 0))
+        origin_label = origin_by_id.get(wid, "private")
+        origin_cluster = 0 if origin_label == "private" else 1
+
+        reason = (
+            explanations_list[idx]
+            if idx < len(explanations_list)
+            else (
+                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
+            )
+        )
+
+        recs_payload.append(
+            WorkloadRecommendation(
+                batch_id=batch_id,
+                workload_id=wid,
+                kind=kind,
+                origin_cluster=origin_cluster,
+                destination_cluster=destination_cluster,
+                reason=reason,
+            )
+        )
+
+    # Serialize Pydantic models to plain dicts for JSON output
+    recs_payload_serialized = [
+        r.model_dump() if hasattr(r, "model_dump") else (r.dict() if hasattr(r, "dict") else r)
+        for r in recs_payload
+    ]
+
     with open(explanations_file, "w") as f:
-        json.dump(explanations, f, indent=2)
+        json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
     logger.info(
