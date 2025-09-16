@@ -1,6 +1,5 @@
 from langchain.tools import tool
 from typing import Dict, Any
-import time
 
 
 @tool("pending_by_cluster", return_direct=False)
@@ -54,8 +53,8 @@ def pending_by_cluster(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             percent_pending = (pending / total * 100) if total > 0 else 0.0
             timestamp_result[cluster] = {
                 "percent_pending_workloads": round(percent_pending, 2),
-                "pending_workloads": stats["pending_workloads"]
-        }
+                "pending_workloads": stats["pending_workloads"],
+            }
 
         all_timestamps_results[timestamp] = timestamp_result
 
