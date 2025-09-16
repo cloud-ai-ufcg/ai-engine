@@ -1,68 +1,82 @@
-import os
 import json
 import pandas as pd
 from typing import List, Dict, Union
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt, get_model_config
 from engine.util import load_config, get_logger
-import google.generativeai as genai
 from openai import OpenAI
 from engine.ai_config import get_prompt
-from engine.util import load_config
+from engine.util import load_config, log_token_usage
+from engine.client import OpenRouterClient
 from langsmith import traceable
 import re
-import logging
 
-logger = get_logger("agents")
-from langchain_google_genai import ChatGoogleGenerativeAI
+logger = get_logger("langgraph_agents")
 
-logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-# -----------------------
-# Inicializador de LLM via LangChain
-# -----------------------
+class OpenRouterInvokeModel:
+    """
+    Lightweight wrapper exposing a LangChain-like `.invoke(input)` interface,
+    backed by our OpenRouterClient (OpenAI compatible).
+    """
+
+    def __init__(
+        self, client: OpenRouterClient, model_name: str, system_prompt: str, **gen_cfg
+    ):
+        self._client = client
+        self._model_name = model_name
+        self._system_prompt = system_prompt
+        # Normalize generation config keys to OpenAI chat params
+        self._gen_cfg = {
+            "temperature": gen_cfg.get("temperature", 0.1),
+            # In config we may store as max_output_tokens; OpenAI param is max_tokens
+            "max_tokens": gen_cfg.get("max_output_tokens", 2048),
+        }
+
+    def invoke(self, user_prompt: str) -> str:
+        return self._client.chat(
+            model=self._model_name,
+            system_prompt=self._system_prompt,
+            user_prompt=user_prompt,
+            **self._gen_cfg,
+        )
+
+
 def get_llm():
-    config = load_config()
-    selected_model = config["ai"].get("selected_model", "gemini")
-    model_cfg = config["ai"]["models"].get(selected_model)
+    """Initialize and return a model wrapper with `.invoke` and its config."""
+    try:
+        client = OpenRouterClient()
+        config = load_config()
+        selected_model = config["ai"].get("selected_model", "gemini")
+        model_cfg = config["ai"]["models"].get(selected_model, {})
+        if model_cfg is None:
+            raise ValueError(f"Model '{selected_model}' not found in configuration.")
 
-    if model_cfg is None:
-        raise ValueError(f"Model '{selected_model}' not found in configuration.")
+        # Map internal model names to OpenRouter model names
+        model_mapping = {
+            "gemini": "google/gemini-2.0-flash-001",
+            "gpt-4": "openai/gpt-4",
+            "gpt-3.5-turbo": "openai/gpt-3.5-turbo",
+            "llama": "meta-llama/llama-3.1-8b-instruct",
+        }
 
-    provider = model_cfg.get("provider", "").lower()
-    model_name = model_cfg["model_name"]
-    api_key = (
-        model_cfg.get("api_key")
-        or os.environ.get("GOOGLE_API_KEY")
-    )
-    generation_config = model_cfg.get("generation_config", {})
+        model_name = model_mapping.get(selected_model, "google/gemini-2.0-flash-001")
+        generation_config = model_cfg.get("generation_config", {})
 
-    if provider == "google":
-        model = ChatGoogleGenerativeAI(
-            model=model_name,
-            google_api_key=api_key,
-            temperature=generation_config.get("temperature", 0.1),
-            max_output_tokens=generation_config.get("max_output_tokens", 2048),
+        system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
+
+        model = OpenRouterInvokeModel(
+            client, model_name, system_prompt, **generation_config
         )
-        return model, generation_config
-
-    elif provider == "openai":
-        from langchain_openai import ChatOpenAI
-        model = ChatOpenAI(
-            model=model_name,
-            api_key=api_key,
-            temperature=generation_config.get("temperature", 0.1),
-            max_tokens=generation_config.get("max_output_tokens", 2048),
-        )
-        return model, generation_config
-
-    else:
-        raise ValueError(f"Provider LLM not support: {provider}")
+        return model
+    except Exception as e:
+        logger.error(f"Failed to initialize OpenRouter client/model: {e}")
+        raise ValueError(f"Failed to initialize OpenRouter client/model: {e}")
 
 
-model, generation_config = get_llm()
+model = get_llm()
 
 
 # -----------------------
@@ -73,7 +87,7 @@ def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
     Args:
         votes (List[int]): List of votes (0 or 1).
         expected_length (int): The expected number of votes.
-    
+
     Returns:
         List[int]: Normalized list of votes with the expected length.
     """
@@ -86,11 +100,11 @@ def normalize_votes(votes: List[int], expected_length: int) -> List[int]:
 
 def _parse_llm_response(response: str, expected_length: int) -> List[int]:
     """Parse LLM response to extract votes as a list of integers (0 or 1).
-    
+
     Args:
         response (str): The raw response from the LLM.
         expected_length (int): The expected number of votes.
-    
+
     Returns:
         List[int]: A list of votes (0 or 1) normalized to the expected length
     """
@@ -109,18 +123,22 @@ def _parse_llm_response(response: str, expected_length: int) -> List[int]:
 
 
 def _invoke_model(prompt: str) -> str:
-    """Centraliza chamada ao modelo para ter consistência e token usage"""
-    resp = model.invoke(prompt)
+    """Centraliza chamada ao modelo OpenRouter para ter consistência"""
+    try:
+        # Use the LangChain-like interface with `.invoke`
+        response_text = model.invoke(prompt)
 
-    # resp é um ChatResult -> pegar texto
-    text = resp.content if hasattr(resp, "content") else str(resp)
+        # Token accounting (estimate) for observability
+        token_counts = log_token_usage(prompt, response_text, model_type="openrouter")
+        logger.info(
+            f"Token usage (estimate): input={token_counts['input_tokens']}, output={token_counts['output_tokens']}, total={token_counts['total_tokens']}"
+        )
 
-    # token usage (se disponível)
-    usage = getattr(resp, "response_metadata", {}).get("token_usage", {})
-    if usage:
-        print("📊 Token usage:", usage)
-
-    return text
+        logger.debug(f"OpenRouter response: {response_text}")
+        return response_text
+    except Exception as e:
+        logger.error(f"Error calling OpenRouter: {e}")
+        raise
 
 
 # -----------------------
@@ -139,9 +157,12 @@ def cpu_checker(
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
     workloads_list = workloads.to_dict(orient="records")
-    prompt = get_prompt("cpu_checker", workloads_json=json.dumps(workloads_list, indent=2))
+    prompt = get_prompt(
+        "cpu_checker", workloads_json=json.dumps(workloads_list, indent=2)
+    )
     text = _invoke_model(prompt)
     return _parse_llm_response(text, len(workloads_list))
+
 
 @traceable(name="mem_checker")
 def mem_checker(
@@ -155,43 +176,50 @@ def mem_checker(
     Returns:
         List[int]: List of votes (0 or 1) for each workload.
     """
-    
+
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
     workloads_list = workloads.to_dict(orient="records")
-    prompt = get_prompt("mem_checker", workloads_json=json.dumps(workloads_list, indent=2))
+    prompt = get_prompt(
+        "mem_checker", workloads_json=json.dumps(workloads_list, indent=2)
+    )
     text = _invoke_model(prompt)
     return _parse_llm_response(text, len(workloads_list))
+
 
 @traceable(name="pending_checker")
 def pending_checker(
     workloads: Union[list, "pd.DataFrame"],
 ) -> List[int]:
     """Check Pending status of workloads and return migration votes.
-    
+
     Args:
         workloads (Union[list, pd.DataFrame]): List or DataFrame of workload items.
-        
+
     Returns:
         List[int]: List of votes (0 or 1) for each workload.
     """
     if isinstance(workloads, list):
         workloads = pd.DataFrame(workloads)
     workloads_list = workloads.to_dict(orient="records")
-    prompt = get_prompt("pending_checker", workloads_json=json.dumps(workloads_list, indent=2))
+    prompt = get_prompt(
+        "pending_checker", workloads_json=json.dumps(workloads_list, indent=2)
+    )
     text = _invoke_model(prompt)
     return _parse_llm_response(text, len(workloads_list))
 
 
 @traceable(name="decision_agent")
-def decision_agent(cpu_votes: List[int], mem_votes: List[int], pending_votes: List[int]) -> List[int]:
+def decision_agent(
+    cpu_votes: List[int], mem_votes: List[int], pending_votes: List[int]
+) -> List[int]:
     """Make final migration decisions based on votes from CPU, Memory, and Pending agents.
-    
+
     Args:
         cpu_votes (List[int]): Votes from CPU checker.
         mem_votes (List[int]): Votes from Memory checker.
         pending_votes (List[int]): Votes from Pending checker.
-    
+
     Returns:
         List[int]: Final migration decisions (0 or 1) for each workload.
     """
@@ -202,14 +230,16 @@ def decision_agent(cpu_votes: List[int], mem_votes: List[int], pending_votes: Li
 
 
 @traceable(name="explainer_agent")
-def explainer_agent(workloads: pd.DataFrame, votes: Dict[str, List[int]], final_decisions: List[int]) -> Dict:
+def explainer_agent(
+    workloads: pd.DataFrame, votes: Dict[str, List[int]], final_decisions: List[int]
+) -> Dict:
     """Generate explanations for migration decisions based on votes and workload characteristics.
-    
+
     Args:
         workloads (pd.DataFrame): DataFrame of workload items.
         votes (Dict[str, List[int]]): Dictionary of votes from different agents.
         final_decisions (List[int]): Final migration decisions for each workload.
-    
+
     Returns:
         Dict: Explanation of decisions including per-workload explanations.
     """
@@ -262,9 +292,11 @@ Final decisions: {final_decisions}
             "workload_explanations": [
                 {
                     "workload_id": w.get("workload_id", f"#{i}"),
-                    "decision": final_decisions[i] if i < len(final_decisions) else "unknown",
-                    "explanation": "No explanation."
+                    "decision": (
+                        final_decisions[i] if i < len(final_decisions) else "unknown"
+                    ),
+                    "explanation": "No explanation.",
                 }
                 for i, w in enumerate(workloads_list)
-            ]
+            ],
         }
