@@ -129,6 +129,11 @@ def create_migration_graph():
 
     return graph.compile(checkpointer=MemorySaver())
 
+def create_migration_graph_with_tools():
+    graph = StateGraph(dict)
+    graph.add_tools([percent_pending_tool, input_filter_tool, workload_pricing_tool])
+    return graph
+
 def load_config_nodes() -> tuple[bool, bool, bool]:
     """Load node execution configuration from YAML file.
     Returns:
