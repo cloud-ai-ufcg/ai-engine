@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import re
+from typing import Any, Dict
 
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt
@@ -67,7 +68,7 @@ model, generation_config = get_llm()
 # -----------------------
 
 @traceable(name="explanations_node")
-def explanations(state: dict) -> dict:
+def explanations(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Invokes the LLM to generate migration recommendations and explanations.
     """
@@ -94,7 +95,6 @@ def explanations(state: dict) -> dict:
     }
 
     prompt = get_prompt("label_workloads", **prompt_data)
-    
     resp = model.invoke(prompt)
 
     if "tool_output" in state and isinstance(state["tool_output"], dict):
@@ -108,21 +108,23 @@ def explanations(state: dict) -> dict:
 
     overall_explanation = result.get("overall_explanation", "No overall explanation provided.")
     decisions_list = result.get("decisions", [])
-    
     workload_explanations = []
+    final_decisions = []
     
     for decision_data in decisions_list:
         if isinstance(decision_data, dict):
+            final_decisions.append(decision_data.get("decision", 0))
             workload_explanations.append(decision_data.get("reason", "No explanation provided."))
         else:
             label = int(decision_data) if isinstance(decision_data, (int, str)) and str(decision_data).isdigit() else 0
+            final_decisions.append(label)
             if label == 1:
                 explanation = "Workload recommended for public cluster."
             else:
                 explanation = "Workload recommended for private cluster."
             workload_explanations.append(explanation)
 
-    state["final_decisions"] = [int(d) for d in decisions_list if isinstance(d, (int, str)) and str(d).isdigit()]
+    state["final_decisions"] = final_decisions
     state["explanations"] = {
         "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations

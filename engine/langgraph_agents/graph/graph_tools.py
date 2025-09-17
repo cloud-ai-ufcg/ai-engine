@@ -1,3 +1,4 @@
+from typing import Dict, List, TypedDict
 import pandas as pd
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
@@ -7,30 +8,27 @@ from ..nodes import (
     explanations
 )
 
+class MigrationState(TypedDict):
+    workloads: List[Dict]
+    explanations: Dict
+    pending_tool_result: Dict
+
 # -----------------------
 # Functions for each node
 # -----------------------
 
-def explainer_node(state: dict) -> dict:
-    """Generate explanations for the final decisions made.
+def pending_tool_node(state: dict) -> dict:
+    """Node that uses tool pending_by_cluster to analyze workloads."""
+    workloads = state.get("workloads", [])
+    if not workloads:
+        return {"pending_tool_result": {"error": "no workloads provided"}}
+
+    result = pending_percentage.invoke({
+        "input_dict": {"data": {"latest": {"workloads": workloads}}}
+    })
     
-    Args:
-        state (dict): Current state containing workloads and final decisions.
-    
-    Returns:
-        Dict: Updated state with explanations.
-    """
-    df = pd.DataFrame(state["workloads"])
-    state["explanations"] = explanations(
-        df,
-        {
-            "cpu": state["cpu_votes"],
-            "mem": state["mem_votes"],
-            "pending": state["pending_votes"]
-        },
-        state["final_decisions"]
-    )
-    return state
+    return {"pending_tool_result": result}
+
 
 def prepare_pending_data(state: dict) -> dict:
     workloads = state.get("workloads", [])
@@ -46,15 +44,14 @@ def create_migration_graph():
     Returns:
         StateGraph: Configured state graph for migration analysis.
     """
-    graph = StateGraph(dict)
+    graph = StateGraph(MigrationState)
 
-    graph.add_node("prepare_data", prepare_pending_data)
-    graph.add_node("pending_percentage", pending_percentage.invoke)
-    graph.add_node("explanations", explanations)
+    graph.add_node("pending_tool", pending_tool_node)
+    graph.add_node("ai_explainer", explainer_agent_node)
 
-    graph.add_edge(START, "prepare_data")
-    graph.add_edge("prepare_data", "pending_percentage")
-    graph.add_edge("pending_percentage", "explanations")
-    graph.add_edge("explanations", END)
+    # Define as arestas
+    graph.add_edge(START, "pending_tool")
+    graph.add_edge("pending_tool", "ai_explainer")
+    graph.add_edge("ai_explainer", END)
     
     return graph.compile(checkpointer=MemorySaver())
