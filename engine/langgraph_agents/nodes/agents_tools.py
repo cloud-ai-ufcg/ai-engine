@@ -63,31 +63,6 @@ def get_llm():
 model, generation_config = get_llm()
 
 # -----------------------
-# Helper Functions
-# -----------------------
-
-def _invoke_model(prompt: str) -> str:
-    resp = model.invoke(prompt)
-    
-    tool_calls = resp.additional_kwargs.get("tool_calls")
-    if tool_calls and tool_calls[0]['function']['name'] == 'final_recommendations':
-        try:
-            return json.dumps(tool_calls[0]['function']['arguments'])
-        except (KeyError, TypeError):
-            return json.dumps({"decisions": [], "overall_explanation": "LLM returned invalid tool call arguments."})
-    
-    try:
-        json_match = re.search(r"\{[\s\S]*\}", resp.content)
-        if json_match:
-            return json_match.group(0)
-    except (json.JSONDecodeError, ValueError):
-        pass
-
-    return json.dumps({
-        "decisions": [0, 0, 0, 0, 0, 0],
-        "overall_explanation": "LLM failed to generate a tool call and text-based JSON extraction failed. Using a fallback decision."
-    })
-# -----------------------
 # Langraph agents
 # -----------------------
 
