@@ -7,7 +7,8 @@ import uuid
 from dotenv import load_dotenv
 from .ai_config import get_model_config, get_prompt, PROMPTS
 from .util import get_logger, load_config, log_token_usage
-from .langgraph_agents.graph.migration_graph import create_migration_graph
+#from .langgraph_agents.graph.migration_graph import create_migration_graph
+from .langgraph_agents.graph.graph_tools import create_migration_graph
 
 logger = get_logger("agents")
 
@@ -434,14 +435,11 @@ def label_workloads_with_llama(
 # MultiAgent implementation
 # ---------------------------------------------------------------------------
 
-def label_workloads_multiagent(workloads, provider="langgraph"):
-    df = _normalize_workloads_to_dataframe(workloads)  
+def label_workloads_multiagent(workloads: List[dict], cluster_info: List[dict]) -> Tuple[List[int], Dict[str, Any]]:
+    df = _normalize_workloads_to_dataframe(workloads)
     state = {
         "workloads": df.to_dict(orient="records"),
-        "cpu_votes": [],
-        "mem_votes": [],
-        "pending_votes": [],
-        "final_decisions": [],
+        "cluster_info": cluster_info,
         "explanations": {}
     }
 
@@ -454,11 +452,24 @@ def label_workloads_multiagent(workloads, provider="langgraph"):
         config={"configurable": {"thread_id": thread_id}}
     )
 
-    labels = final_state.get("final_decisions", [])
+    explanations_dict = final_state.get("explanations", {})
 
-    explanations = final_state.get("explanations", {})
+    final_decisions = final_state.get("final_decisions", [])
+    workload_explanations = explanations_dict.get("workload_explanations", [])
+    overall_explanation = explanations_dict.get("overall_explanation", "No overall explanation provided.")
 
-    return labels, explanations
+    if not final_decisions or len(final_decisions) != len(workloads):
+        labels = [0] * len(workloads)
+        workload_explanations = ["Agent did not return a valid label format."] * len(workloads)
+    else:
+        labels = final_decisions
+        
+    final_explanations = {
+        "overall_explanation": overall_explanation,
+        "workload_explanations": workload_explanations
+    }
+    
+    return labels, final_explanations
 
 # ---------------------------------------------------------------------------
 # Generic wrapper
@@ -471,31 +482,43 @@ def label_workloads(
     multiagent: bool | None = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
     """Public API to label workloads with the configured AI provider."""
-    
-    if provider is None or multiagent is None:
-        cfg = load_config()
-    
+
+    cfg = load_config()
+
     if provider is None:
         provider = cfg.get("ai", {}).get("selected_model", "gemini")
-    
+
     if multiagent is None:
         multiagent = cfg.get("ai", {}).get("multiagent", False)
-    
-    if multiagent:
-        return label_workloads_multiagent(workloads)    
-    
-    provider = provider.lower()
-    if provider in {"gemini", "google"}:
-        return label_workloads_with_gemini(workloads)
-    if provider in {"llama", "groq", "llama_groq"}:
-        return label_workloads_with_llama(workloads)
 
-    logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
-    labels = _label_workloads_with_heuristics(workloads)
-    return labels, {
-        "explanation": "Used heuristic rules due to unknown provider.",
-        "workload_explanations": [],
-    }
+    provider = provider.lower()
+
+    labels = []
+    explanations = {}
+
+    if multiagent:
+        cluster_info = cfg.get("cluster_info", [])
+        labels, explanations = label_workloads_multiagent(workloads, cluster_info)
+    elif provider in {"gemini", "google"}:
+        labels, explanations = label_workloads_with_gemini(workloads)
+    elif provider in {"llama", "groq", "llama_groq"}:
+        labels, explanations = label_workloads_with_llama(workloads)
+    else:
+        logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
+        labels = _label_workloads_with_heuristics(workloads)
+        explanations = {
+            "overall_explanation": "Used heuristic rules due to unknown provider.",
+            "workload_explanations": [],
+        }
+
+    if isinstance(explanations, list):
+        workload_explanations = explanations
+        explanations = {
+            "overall_explanation": "Recommendations for each workload:",
+            "workload_explanations": workload_explanations
+        }
+
+    return labels, explanations
 
 
 def _label_workloads_with_heuristics(
