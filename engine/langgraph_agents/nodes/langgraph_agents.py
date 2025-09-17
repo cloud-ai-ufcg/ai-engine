@@ -1,6 +1,9 @@
 import os
 import json
 import pandas as pd
+import re
+import logging
+
 from typing import List, Dict, Union
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt
@@ -8,12 +11,9 @@ from engine.util import load_config, get_logger
 from engine.ai_config import get_prompt
 from engine.util import load_config
 from langsmith import traceable
-import re
-import logging
-
-logger = get_logger("agents")
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+logger = get_logger("agents")
 logger = logging.getLogger(__name__)
 load_dotenv()
 

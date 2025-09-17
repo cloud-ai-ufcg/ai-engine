@@ -1,9 +1,8 @@
 import os
 import json
 import logging
-import re
-from typing import Any, Dict
 
+from typing import Any, Dict
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt
 from engine.util import load_config, get_logger
