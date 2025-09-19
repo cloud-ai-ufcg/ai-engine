@@ -30,3 +30,6 @@ go.work.sum
 # csv file
 *.csv
 .DS_Store
+
+# logs
+logs

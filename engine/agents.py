@@ -9,9 +9,20 @@ from .ai_config import get_model_config, get_prompt, PROMPTS
 from .util import get_logger, load_config, log_token_usage
 #from .langgraph_agents.graph.migration_graph import create_migration_graph
 from .langgraph_agents.graph.graph_tools import create_migration_graph
+from .client import OpenRouterClient
 
 logger = get_logger("agents")
 
+# Initialize OpenRouter client
+try:
+    openrouter_client = OpenRouterClient()
+    HAS_OPENROUTER = True
+except Exception as e:
+    logger.warning(f"Failed to initialize OpenRouterClient: {e}")
+    openrouter_client = None
+    HAS_OPENROUTER = False
+
+# Keep legacy imports for fallback
 try:
     import google.generativeai as genai
 
@@ -20,36 +31,15 @@ except ImportError:
     genai = None
     HAS_GENAI = False
 
-# Try to import Groq client for Llama models
-try:
-    from groq import Groq  # Groq Python client
-    HAS_GROQ = True
-except ImportError:
-    Groq = None
-    HAS_GROQ = False
 
 # global variables
 REQUEST_COUNTER = 0
 TOKEN_TOTALS = {"input": 0, "output": 0, "total": 0}
 
-# ---------------------------------------------------------------------------
-# Gemini API Helper Functions
-# ---------------------------------------------------------------------------
 
-def _get_gemini_api_key(config: Dict[str, Any]) -> Optional[str]:
-    """Retrieve Gemini API key from config or environment."""
-    return config.get("api-key", {}).get("google") or os.environ.get("GOOGLE_API_KEY")
-
-
-def _setup_gemini_model(api_key: str, config: Dict[str, Any]):
-    """Configure and return Gemini model with config."""
-    model_config = config.get("ai", {}).get("models", {}).get("gemini", {})
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(model_config["model_name"])
-    return model, model_config
-
-
-def _normalize_workloads_to_dataframe(workloads: Union[list, "pd.DataFrame"]) -> "pd.DataFrame":
+def _normalize_workloads_to_dataframe(
+    workloads: Union[list, "pd.DataFrame"],
+) -> "pd.DataFrame":
     """Convert workloads input to DataFrame format."""
     return pd.DataFrame(workloads) if isinstance(workloads, list) else workloads
 
@@ -59,16 +49,18 @@ def _extract_json_from_response(text_response: str) -> Dict[str, Any]:
     json_match = re.search(r"\{[\s\S]*\}", text_response)
     if not json_match:
         raise ValueError("No JSON object found in model response")
-    
+
     json_str = json_match.group(0)
     return json.loads(json_str)
 
 
-def _validate_and_extract_decisions(response_data: Dict[str, Any]) -> Tuple[List[int], List[str]]:
+def _validate_and_extract_decisions(
+    response_data: Dict[str, Any],
+) -> Tuple[List[int], List[str]]:
     """Validate response using schema and extract decisions/explanations."""
     prompt_config = PROMPTS.get("label_workloads", {})
     output_schema = prompt_config.get("output_schema")
-    
+
     if output_schema:
         try:
             output = output_schema.from_dict(response_data)
@@ -79,28 +71,30 @@ def _validate_and_extract_decisions(response_data: Dict[str, Any]) -> Tuple[List
             return output.decisions, output.explanations
         except Exception as e:
             logger.error(f"Failed to validate response with schema: {e}")
-    
+
     # Fallback to direct extraction
     decisions = response_data.get("decisions", [])
     explanations = response_data.get("explanations", [])
     return decisions, explanations
 
 
-def _create_explanation_output(labels: List[int], explanations: List[str], df: "pd.DataFrame") -> Dict[str, Any]:
+def _create_explanation_output(
+    labels: List[int], explanations: List[str], df: "pd.DataFrame"
+) -> Dict[str, Any]:
     """Create structured explanation output and log decisions."""
     explanation_output = {
         "explanation": "Migration decisions based on AI analysis of workload characteristics",
         "workload_explanations": [],
     }
-    
+
     for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
         workload_id = workload[1].get("workload_id", f"workload-{idx}")
         kind = workload[1].get("kind", "unknown")
         destination = "public" if label == 1 else "private"
-        
+
         # Log the decision
         logger.info(f"Decision for {workload_id} ({kind}): Cluster {destination}")
-        
+
         # Add explanation for this workload
         explanation = (
             explanations[idx]
@@ -108,18 +102,21 @@ def _create_explanation_output(labels: List[int], explanations: List[str], df: "
             else f"Workload {workload_id} recommended for {destination} cluster based on resource requirements"
         )
         explanation_output["workload_explanations"].append(explanation)
-    
+
     return explanation_output
 
 
-def label_workloads_with_gemini(
+def label_workloads_with_llm(
     workloads: Union[list, "pd.DataFrame"],
+    model: str = "google/gemini-2.0-flash-001",
+    client: OpenRouterClient = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
     """
-    Uses Gemini API to decide workload labels with explanations.
+    Uses LLM API to decide workload labels with explanations.
     Each label: 0 = private, 1 = public.
     Args:
         workloads: list of dicts or DataFrame with workload fields.
+        model: Model to use via Provider (default: google/gemini-2.0-flash-001)
     Returns:
         Tuple containing:
         - List of labels (0 or 1) in the same order
@@ -127,58 +124,43 @@ def label_workloads_with_gemini(
     """
     global REQUEST_COUNTER, TOKEN_TOTALS
 
-    logger.info("Starting workload analysis for migration decision")
+    logger.info("Starting workload analysis for migration decision using OpenRouter")
 
     # Dependency validation - early return if not available
-    if not HAS_GENAI:
-        logger.warning("Gemini model not available. Using traditional model as fallback.")
-        return _label_workloads_with_heuristics(workloads)
-
-    # API key setup - load config once
-    config = load_config()
-    api_key = _get_gemini_api_key(config)
-    if not api_key:
-        logger.warning("API Key for Gemini not found. Using traditional model as fallback.")
+    if not HAS_OPENROUTER or not openrouter_client:
+        logger.warning(
+            "OpenRouter client not available. Using traditional model as fallback."
+        )
         return _label_workloads_with_heuristics(workloads)
 
     # Data preparation
     df = _normalize_workloads_to_dataframe(workloads)
-    prompt = get_prompt("label_workloads", workloads_json=df.to_json(orient="records", indent=2))
-    
-    logger.info("Sending request to Gemini model")
+    user_prompt = get_prompt(
+        "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
+    )
+    system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
+
+    logger.info(f"Sending request to OpenRouter with model: {model}")
 
     try:
-        # Model setup and API call
-        model, model_config = _setup_gemini_model(api_key, config)
-        logger.info(f"CONFIG: Using Gemini model: {model_config['model_name']}")
-        logger.info(f"CONFIG: Using Gemini generation config: {model_config['generation_config']}")
-        
-        response = model.generate_content(prompt, generation_config=model_config["generation_config"])
-        
-        if hasattr(response, "prompt_feedback") and response.prompt_feedback:
-            if getattr(response.prompt_feedback, "block_reason", None) == "MAX_TOKENS":
-                logger.warning("Gemini model response was truncated due to max_output_tokens limit.")
+        config = load_config()
+        model_config = config.get("ai", {}).get("models", {}).get("gemini", {})
+        generation_config = model_config.get("generation_config", {})
 
-        REQUEST_COUNTER += 1
-        logger.info(f"Gemini API request count: {REQUEST_COUNTER}")
+        logger.info(f"CONFIG: Using OpenRouter model: {model}")
+        logger.info(f"CONFIG: Using generation config: {generation_config}")
 
-        input_tokens = model.count_tokens(prompt).total_tokens
-        output_tokens = model.count_tokens(response.text).total_tokens
-
-        TOKEN_TOTALS["input"] += input_tokens
-        TOKEN_TOTALS["output"] += output_tokens
-        TOKEN_TOTALS["total"] += input_tokens + output_tokens
-
-        logger.info(
-            f"Token Usage | "
-            f"Input: {TOKEN_TOTALS['input']} | "
-            f"Output: {TOKEN_TOTALS['output']} | "
-            f"Total: {TOKEN_TOTALS['total']}"
+        text_response = openrouter_client.chat(
+            model=model,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=generation_config.get("temperature", 0.1),
+            max_tokens=generation_config.get("max_output_tokens", 8000),
         )
 
-        # Response processing
-        text_response = response.text
-        logger.debug(f"Complete Gemini response: {text_response}")
+        REQUEST_COUNTER += 1
+        logger.info(f"OpenRouter API request count: {REQUEST_COUNTER}")
+        logger.debug(f"Complete OpenRouter response: {text_response}")
 
         # Parse and validate response
         response_data = _extract_json_from_response(text_response)
@@ -186,18 +168,24 @@ def label_workloads_with_gemini(
 
         # Validate decision count - handle mismatches gracefully
         if len(decisions) != len(df):
-            logger.warning(f"Decision count mismatch: expected {len(df)}, got {len(decisions)}")
-            
+            logger.warning(
+                f"Decision count mismatch: expected {len(df)}, got {len(decisions)}"
+            )
+
             # Handle mismatch by adjusting decisions list
             if len(decisions) > len(df):
                 # Too many decisions - truncate
-                decisions = decisions[:len(df)]
-                explanations = explanations[:len(df)] if len(explanations) > len(df) else explanations
+                decisions = decisions[: len(df)]
+                explanations = (
+                    explanations[: len(df)]
+                    if len(explanations) > len(df)
+                    else explanations
+                )
                 logger.info(f"Truncated decisions to match {len(df)} workloads")
             else:
                 # Too few decisions - pad with original cluster labels (no migration)
                 missing_count = len(df) - len(decisions)
-                
+
                 # Get original cluster labels for missing decisions
                 for i in range(len(decisions), len(df)):
                     workload_row = df.iloc[i]
@@ -205,14 +193,18 @@ def label_workloads_with_gemini(
                     # Convert cluster label to decision: private=0, public=1
                     original_decision = 0 if original_cluster == 'private' else 1
                     decisions.append(original_decision)
-                    explanations.append(f"Maintaining original cluster ({original_cluster}) due to missing AI decision")
-                
-                logger.info(f"Padded {missing_count} missing decisions with original cluster assignments (no migration)")
+                    explanations.append(
+                        f"Maintaining original cluster ({original_cluster}) due to missing AI decision"
+                    )
+
+                logger.info(
+                    f"Padded {missing_count} missing decisions with original cluster assignments (no migration)"
+                )
 
         # Convert to integers and create output
         labels = [int(decision) for decision in decisions]
         logger.info("Migration decisions extracted from JSON response")
-        
+
         explanation_output = _create_explanation_output(labels, explanations, df)
         return labels, explanation_output
 
@@ -255,7 +247,7 @@ def label_workloads_with_gemini(
 
         all_digits = re.findall(r"[01]", text_response)
         if len(all_digits) >= len(df):
-            logger.info(f"Extracting labels from Gemini response: {text_response}")
+            logger.info(f"Extracting labels from {model} response: {text_response}")
             labels = [int(digit) for digit in all_digits[: len(df)]]
 
             # Create a basic explanation output
@@ -282,9 +274,7 @@ def label_workloads_with_gemini(
 
             return labels, explanation_output
 
-        logger.warning(
-            f"Could not extract labels from Gemini response: {text_response}"
-        )
+        logger.warning(f"Could not extract labels from LLM, response: {text_response}")
         labels = _label_workloads_with_heuristics(workloads)
 
         # Create a fallback explanation output
@@ -306,7 +296,7 @@ def label_workloads_with_gemini(
 
         return labels, explanation_output
     except Exception as e:
-        logger.warning(f"Error using Gemini API: {e}")
+        logger.warning(f"Error using {client} API: {e}")
         labels = _label_workloads_with_heuristics(workloads)
 
         # Create a fallback explanation output
@@ -444,13 +434,10 @@ def label_workloads_multiagent(workloads: List[dict], cluster_info: List[dict]) 
     }
 
     graph = create_migration_graph()
-    
+
     thread_id = str(uuid.uuid4())
 
-    final_state = graph.invoke(
-        state,
-        config={"configurable": {"thread_id": thread_id}}
-    )
+    final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
 
     explanations_dict = final_state.get("explanations", {})
 
@@ -470,6 +457,7 @@ def label_workloads_multiagent(workloads: List[dict], cluster_info: List[dict]) 
     }
     
     return labels, final_explanations
+
 
 # ---------------------------------------------------------------------------
 # Generic wrapper
@@ -519,6 +507,7 @@ def label_workloads(
         }
 
     return labels, explanations
+    }
 
 
 def _label_workloads_with_heuristics(
@@ -571,9 +560,7 @@ def _label_workloads_with_heuristics(
 
     return labels.tolist()
 
+
 # Get metrics of token usage and requests
 def get_usage_metrics() -> Dict[str, Any]:
-    return {
-        "total_requests": REQUEST_COUNTER,
-        "total_tokens": TOKEN_TOTALS  
-    }
+    return {"total_requests": REQUEST_COUNTER, "total_tokens": TOKEN_TOTALS}
