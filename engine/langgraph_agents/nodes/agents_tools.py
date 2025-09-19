@@ -7,66 +7,83 @@ from dotenv import load_dotenv
 from engine.ai_config import get_prompt
 from engine.util import load_config, get_logger
 from engine.ai_config import get_prompt
-from engine.util import load_config
+from engine.util import load_config, log_token_usage
 from langsmith import traceable
 from ..tools.tool_percent_pending import pending_percentage
 from ..tools.tool_output import final_recommendations
 from langchain_google_genai import ChatGoogleGenerativeAI
-
+from engine.client import OpenRouterClient
 logger = get_logger("agents")
 logger = logging.getLogger(__name__)
+logger = get_logger("langgraph_agents")
+
 load_dotenv()
 
-# -----------------------
-# Inicializador de LLM via LangChain
-# -----------------------
+class OpenRouterInvokeModel:
+    """
+    Lightweight wrapper exposing a LangChain-like `.invoke(input)` interface,
+    backed by our OpenRouterClient (OpenAI compatible).
+    """
+
+    def __init__(
+        self, client: OpenRouterClient, model_name: str, system_prompt: str, **gen_cfg
+    ):
+        self._client = client
+        self._model_name = model_name
+        self._system_prompt = system_prompt
+        # Normalize generation config keys to OpenAI chat params
+        self._gen_cfg = {
+            "temperature": gen_cfg.get("temperature", 0.1),
+            # In config we may store as max_output_tokens; OpenAI param is max_tokens
+            "max_tokens": gen_cfg.get("max_output_tokens", 2048),
+        }
+
+    def invoke(self, user_prompt: str) -> str:
+        return self._client.chat(
+            model=self._model_name,
+            system_prompt=self._system_prompt,
+            user_prompt=user_prompt,
+            **self._gen_cfg,
+        )
+
+
 def get_llm():
-    config = load_config()
-    selected_model = config["ai"].get("selected_model", "gemini")
-    model_cfg = config["ai"]["models"].get(selected_model)
+    """Initialize and return a model wrapper with `.invoke` and its config."""
+    try:
+        client = OpenRouterClient()
+        config = load_config()
+        selected_model = config["ai"].get("selected_model", "gemini")
+        model_cfg = config["ai"]["models"].get(selected_model, {})
+        if model_cfg is None:
+            raise ValueError(f"Model '{selected_model}' not found in configuration.")
 
-    if model_cfg is None:
-        raise ValueError(f"Model '{selected_model}' not found in configuration.")
+        # Map internal model names to OpenRouter model names
+        model_mapping = {
+            "gemini": "google/gemini-2.0-flash-001",
+            "gpt-4": "openai/gpt-4",
+            "gpt-3.5-turbo": "openai/gpt-3.5-turbo",
+            "llama": "meta-llama/llama-3.1-8b-instruct",
+        }
 
-    provider = model_cfg.get("provider", "").lower()
-    model_name = model_cfg["model_name"]
-    api_key = (
-        model_cfg.get("api_key")
-        or os.environ.get("GOOGLE_API_KEY")
-    )
-    generation_config = model_cfg.get("generation_config", {})
+        model_name = model_mapping.get(selected_model, "google/gemini-2.0-flash-001")
+        generation_config = model_cfg.get("generation_config", {})
 
-    tools = [pending_percentage, final_recommendations] # Add more tools as needed
+        system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
 
-    if provider == "google":
-        model = ChatGoogleGenerativeAI(
-            model=model_name,
-            google_api_key=api_key,
-            temperature=generation_config.get("temperature", 0.1),
-            max_output_tokens=generation_config.get("max_output_tokens", 2048),
-        ).bind_tools(tools=tools)
-        return model, generation_config
+        model = OpenRouterInvokeModel(
+            client, model_name, system_prompt, **generation_config
+        )
+        return model
+    except Exception as e:
+        logger.error(f"Failed to initialize OpenRouter client/model: {e}")
+        raise ValueError(f"Failed to initialize OpenRouter client/model: {e}")
 
-    elif provider == "openai":
-        from langchain_openai import ChatOpenAI
-        model = ChatOpenAI(
-            model=model_name,
-            api_key=api_key,
-            temperature=generation_config.get("temperature", 0.1),
-            max_tokens=generation_config.get("max_output_tokens", 2048),
-        ).bind_tools(tools=tools)
-        return model, generation_config
 
-    else:
-        raise ValueError(f"Provider LLM not support: {provider}")
-
-model, generation_config = get_llm()
+model = get_llm()
 
 # -----------------------
 # Langraph agents
 # -----------------------
-
-import json
 
 @traceable(name="explanations_node")
 def explanations(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -76,7 +93,6 @@ def explanations(state: Dict[str, Any]) -> Dict[str, Any]:
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
     
-    # Adicionando o resultado da ferramenta ao contexto para o LLM
     pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
     valid_timestamps = [key for key in pending_percentage_result_all_timestamps.keys() if key.isdigit()]

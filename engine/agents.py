@@ -318,109 +318,6 @@ def label_workloads_with_llm(
 
         return labels, explanation_output
 
-
-# ---------------------------------------------------------------------------
-# Groq / Llama implementation
-# ---------------------------------------------------------------------------
-
-
-def label_workloads_with_llama(
-    workloads: Union[list, "pd.DataFrame"],
-) -> Tuple[List[int], Dict[str, Any]]:
-    """
-    Uses Groq's Llama model to decide workload labels with explanations.
-    Each label: 0 = private, 1 = public.
-    """
-    logger.info("Starting workload analysis with Groq Llama model")
-
-    if not HAS_GROQ:
-        logger.warning("Groq client not available. Falling back to heuristics.")
-        return _label_workloads_with_heuristics(workloads), {
-            "explanation": "Used heuristic rules because Groq client is missing.",
-            "workload_explanations": [],
-        }
-
-
-    config = load_config()
-    api_key = config.get("api-key", {}).get("groq") or os.environ.get("GROQ_API_KEY")
-
-    if not api_key:
-        logger.warning("GROQ_API_KEY missing. Falling back to heuristics.")
-        return _label_workloads_with_heuristics(workloads), {
-            "explanation": "Used heuristic rules due to missing Groq API key.",
-            "workload_explanations": [],
-        }
-
-    # Ensure DataFrame
-    df = pd.DataFrame(workloads) if isinstance(workloads, list) else workloads
-
-    prompt = get_prompt(
-        "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
-    )
-
-    try:
-        model_cfg = get_model_config("llama")
-        client = Groq(api_key=api_key)
-        completion = client.chat.completions.create(
-            model=model_cfg.get("model_name", "llama-3.1-8b-instant"),
-            messages=[{"role": "user", "content": prompt}],
-            temperature=model_cfg.get("generation_config", {}).get("temperature", 0.1),
-            max_tokens=model_cfg.get("generation_config", {}).get(
-                "max_output_tokens", 8000
-            ),
-        )
-        text_response = completion.choices[0].message.content  # type: ignore[attr-defined]
-        logger.debug(f"Complete Groq response: {text_response}")
-
-        json_match = re.search(r"\{[\s\S]*\}", text_response)
-        if not json_match:
-            raise ValueError("No JSON object found in Groq response")
-
-        response_data = json.loads(json_match.group(0))
-        prompt_cfg = PROMPTS.get("label_workloads", {})
-        output_schema = prompt_cfg.get("output_schema")
-
-        if output_schema:
-            try:
-                output = output_schema.from_dict(response_data)  # type: ignore[attr-defined]
-                decisions = output.decisions
-                explanations = output.explanations
-            except Exception as e:
-                logger.warning(f"Schema validation failed: {e}")
-                decisions = response_data.get("decisions", [])
-                explanations = response_data.get("explanations", [])
-        else:
-            decisions = response_data.get("decisions", [])
-            explanations = response_data.get("explanations", [])
-
-        if len(decisions) != len(df):
-            raise ValueError("Mismatch between decisions and workloads length")
-
-        labels = [int(d) for d in decisions]
-        explanation_output = {
-            "explanation": "Migration decisions based on Groq Llama AI model",
-            "workload_explanations": [],
-        }
-        for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get("workload_id", f"workload-{idx}")
-            kind = workload[1].get("kind", "unknown")
-            destination = "public" if label == 1 else "private"
-            exp = (
-                explanations[idx]
-                if idx < len(explanations)
-                else f"Workload {workload_id} recommended for {destination} cluster based on resource requirements"
-            )
-            explanation_output["workload_explanations"].append(exp)
-            logger.info(f"Decision for {workload_id} ({kind}): Cluster {destination}")
-
-        return labels, explanation_output
-
-    except Exception as e:
-        logger.error(f"Error using Groq Llama model: {e}")
-        return _label_workloads_with_heuristics(workloads), {
-            "explanation": f"Used heuristic rules due to Groq error: {e}",
-            "workload_explanations": [],
-        }
 # ---------------------------------------------------------------------------
 # MultiAgent implementation
 # ---------------------------------------------------------------------------
@@ -455,8 +352,32 @@ def label_workloads_multiagent(workloads: List[dict], cluster_info: List[dict]) 
         "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations
     }
-    
+
     return labels, final_explanations
+
+
+def label_workloads_multiagent_votes(workloads, provider="langgraph"):
+    df = _normalize_workloads_to_dataframe(workloads)
+    state = {
+        "workloads": df.to_dict(orient="records"),
+        "cpu_votes": [],
+        "mem_votes": [],
+        "pending_votes": [],
+        "final_decisions": [],
+        "explanations": {},
+    }
+
+    graph = create_migration_graph()
+
+    thread_id = str(uuid.uuid4())
+
+    final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
+
+    labels = final_state.get("final_decisions", [])
+
+    explanations = final_state.get("explanations", {})
+
+    return labels, explanations
 
 
 # ---------------------------------------------------------------------------
