@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from typing import Optional, List, Union, Dict, Any, Tuple
+from typing import Optional
 from contextlib import asynccontextmanager
 import uvicorn
 import json
@@ -18,6 +18,7 @@ from engine.util import (
     load_config,
     format_message,
 )
+from engine.ai_config import WorkloadRecommendation
 
 import asyncio
 import aiohttp
@@ -33,6 +34,8 @@ SCHEDULER_INTERVAL_DEFAULT = 60 * 5  # 5 minutes
 SCHEDULER_INTERVAL: int = int(config["ai"]["scheduler_interval"]) or int(
     SCHEDULER_INTERVAL_DEFAULT
 )  # seconds between recommendation cycles
+
+CURRENT_BATCH_ID = 0
 
 running: bool = False
 stop_event: threading.Event = threading.Event()
@@ -73,20 +76,44 @@ async def root():
     return {"status": "healthy", "message": "AI Engine API is running"}
 
 
-async def apply_recommendations(result_df):
+async def apply_recommendations(recommendations):
     """
     Sends a POST request to the Actuator service endpoint with the recommendations
 
     Args:
-        result_df: DataFrame containing the recommendations
+        recommendations: Either a DataFrame with columns (workload_id, kind, label)
+                         or a list of dicts in the WorkloadRecommendation shape.
     Returns:
         None
     """
     try:
         # Apply recommendations
-        recommendations_json = json.dumps(
-            result_df.to_dict(orient="records"), ensure_ascii=False
-        )
+        if hasattr(recommendations, "to_dict"):
+            # Backward compatibility: accept DataFrame
+            payload = recommendations.to_dict(orient="records")
+        else:
+            # Convert Pydantic models to dicts if needed
+            if isinstance(recommendations, list):
+                payload = [
+                    (
+                        r.model_dump()
+                        if hasattr(r, "model_dump")
+                        else (r.dict() if hasattr(r, "dict") else r)
+                    )
+                    for r in recommendations
+                ]
+            else:
+                payload = (
+                    recommendations.model_dump()
+                    if hasattr(recommendations, "model_dump")
+                    else (
+                        recommendations.dict()
+                        if hasattr(recommendations, "dict")
+                        else recommendations
+                    )
+                )
+
+        recommendations_json = json.dumps(payload, ensure_ascii=False)
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"http://{app_state.config['actuator']['host']}:{app_state.config['actuator']['port']}/{app_state.config['actuator']['route']}",
@@ -107,6 +134,59 @@ async def apply_recommendations(result_df):
     except Exception as e:
         logger.error(f"Error applying recommendations: {e}")
         # raise HTTPException(status_code=500, detail=str(e))
+
+
+def _build_workload_recommendations(result_df, explanations, workloads):
+    """
+    Transform analysis outputs into WorkloadRecommendation-shaped dictionaries.
+
+    WorkloadRecommendation fields:
+      - workload_id: str
+      - kind: str
+      - origin_cluster: int  (0=private, 1=public)
+      - destination_cluster: int (0=private, 1=public) from result_df['label']
+      - reason: str
+    """
+    # Map workload_id -> origin cluster label from original workloads
+    origin_by_id = {}
+    for w in workloads:
+        wid = w.get("workload_id")
+        if wid is not None:
+            origin_by_id[wid] = w.get("cluster_label", "private")
+
+    explanations_list = (explanations or {}).get("workload_explanations", [])
+    global CURRENT_BATCH_ID
+    CURRENT_BATCH_ID += 1
+    recs = []
+    for idx, row in result_df.iterrows():
+        wid = row.get("workload_id")
+        kind = row.get("kind")
+        label = int(row.get("label", 0))
+
+        origin_label = origin_by_id.get(wid, "private")
+        origin_cluster = 0 if origin_label == "private" else 1
+        destination_cluster = label
+
+        reason = (
+            explanations_list[idx]
+            if idx < len(explanations_list)
+            else (
+                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
+            )
+        )
+
+        recs.append(
+            WorkloadRecommendation(
+                batch_id=CURRENT_BATCH_ID,
+                workload_id=wid,
+                kind=kind,
+                origin_cluster=origin_cluster,
+                destination_cluster=destination_cluster,
+                reason=reason,
+            )
+        )
+
+    return recs
 
 
 @app.post("/start")
@@ -154,11 +234,16 @@ async def start():
             result_df, explanations = shard_and_analyze_workloads(
                 workloads, app_state.config
             )
-            save_and_log_explanations(result_df, explanations)
+            save_and_log_explanations(result_df, explanations, workloads)
 
-            await apply_recommendations(result_df)
+            # Transform into WorkloadRecommendation-shaped list[dict]
+            recommendations = _build_workload_recommendations(
+                result_df, explanations, workloads
+            )
 
-    # Function to run the scheduler in a separate thread
+            await apply_recommendations(recommendations)
+
+    # run the scheduler in a separate thread
     def run_scheduler():
         while not stop_event.is_set():
             schedule.run_pending()
@@ -238,7 +323,7 @@ async def analyze_workloads_direct(request: AnalyzeRequest):
             return {"status": "error", "message": "No workload data provided"}
 
         result_df, explanations = analyze_workloads(workloads, app_state.config)
-        save_and_log_explanations(result_df, explanations)
+        save_and_log_explanations(result_df, explanations, workloads)
 
         return {
             "status": "success",
