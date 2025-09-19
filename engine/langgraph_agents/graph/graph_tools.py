@@ -4,6 +4,7 @@ from typing import Dict, List, TypedDict
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 from ..tools.tool_percent_pending import pending_percentage
+from ..nodes import explanations
 
 class MigrationState(TypedDict):
     workloads: List[Dict]
@@ -21,7 +22,7 @@ def pending_tool_node(state: dict) -> dict:
         return {"pending_tool_result": {"error": "no workloads provided"}}
 
     result = pending_percentage.invoke({
-        "input_dict": {"data": {"latest": {"workloads": workloads}}}
+        "data": {"latest": {"workloads": workloads}}
     })
     
     return {"pending_tool_result": result}
@@ -44,11 +45,10 @@ def create_migration_graph():
     graph = StateGraph(MigrationState)
 
     graph.add_node("pending_tool", pending_tool_node)
-    graph.add_node("ai_explainer", explainer_agent_node)
+    graph.add_node("explanations", explanations)
 
-    # Define as arestas
     graph.add_edge(START, "pending_tool")
-    graph.add_edge("pending_tool", "ai_explainer")
-    graph.add_edge("ai_explainer", END)
+    graph.add_edge("pending_tool", "explanations")
+    graph.add_edge("explanations", END)
     
     return graph.compile(checkpointer=MemorySaver())

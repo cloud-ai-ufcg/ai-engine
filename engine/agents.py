@@ -488,9 +488,9 @@ def label_workloads(
         cluster_info = cfg.get("cluster_info", [])
         labels, explanations = label_workloads_multiagent(workloads, cluster_info)
     elif provider in {"gemini", "google"}:
-        labels, explanations = label_workloads_with_gemini(workloads)
+        labels, explanations = label_workloads_with_llm(workloads)
     elif provider in {"llama", "groq", "llama_groq"}:
-        labels, explanations = label_workloads_with_llama(workloads)
+        labels, explanations = label_workloads_with_llm(workloads)
     else:
         logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
         labels = _label_workloads_with_heuristics(workloads)
@@ -507,7 +507,6 @@ def label_workloads(
         }
 
     return labels, explanations
-    }
 
 
 def _label_workloads_with_heuristics(

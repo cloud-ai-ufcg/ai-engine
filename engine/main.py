@@ -4,7 +4,6 @@ import pandas as pd
 from typing import Dict, List, Any
 import datetime
 import concurrent.futures
-from .langgraph_agents.graph.migration_graph import run_migration_pipeline
 from .ai_config import WorkloadRecommendation
 
 from .util import (
@@ -368,7 +367,6 @@ def analyze_workloads(workloads, config):
     labels, explanations = label_workloads(
         workloads, provider=provider, multiagent=multiagent
     )
-    # labels, explanations = run_migration_pipeline(workloads)
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
