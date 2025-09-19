@@ -66,6 +66,8 @@ model, generation_config = get_llm()
 # Langraph agents
 # -----------------------
 
+import json
+
 @traceable(name="explanations_node")
 def explanations(state: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -74,6 +76,7 @@ def explanations(state: Dict[str, Any]) -> Dict[str, Any]:
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
     
+    # Adicionando o resultado da ferramenta ao contexto para o LLM
     pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
     valid_timestamps = [key for key in pending_percentage_result_all_timestamps.keys() if key.isdigit()]
@@ -96,10 +99,10 @@ def explanations(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = get_prompt("label_workloads", **prompt_data)
     resp = model.invoke(prompt)
 
-    if "tool_output" in state and isinstance(state["tool_output"], dict):
-        result = state["tool_output"]
-    else:
-        logger.warning("LLM failed to generate a tool call. Using fallback.")
+    try:
+        result = json.loads(resp.content)
+    except (json.JSONDecodeError, AttributeError):
+        logger.warning("LLM failed to generate a valid JSON. Using fallback.")
         result = {
             "decisions": [0] * len(workloads),
             "overall_explanation": "LLM failed to generate a tool call. Using a fallback decision."
