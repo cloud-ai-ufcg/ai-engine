@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 from langchain_core.tools import tool
 
-@tool
+@tool("calculate_workload_pricing", return_direct=False)
 def calculate_workload_pricing(workloads: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     LangGraph tool to calculate total pricing information for workloads.
