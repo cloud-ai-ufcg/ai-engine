@@ -1,10 +1,9 @@
 import os
 import pandas as pd
 import yaml
-from typing import Dict, List
+
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-
 from ..nodes import (
     cpu_checker,
     mem_checker,
@@ -152,24 +151,3 @@ def load_config_nodes() -> tuple[bool, bool, bool]:
     pending = nodes.get("pending", {}).get("execute", False)
 
     return pending, cpu, mem
-
-# -----------------------
-# Execution Function
-# -----------------------
-def run_migration_pipeline(workloads_df):
-    if isinstance(workloads_df, list):
-        workloads_df = pd.DataFrame(workloads_df)
-    initial_state = {
-        "workloads": workloads_df.to_dict(orient="records"),
-        "cpu_votes": [],
-        "mem_votes": [],
-        "pending_votes": [],
-        "final_decisions": [],
-        "explanations": {}
-    }
-    graph = create_migration_graph()
-    final_state = graph.invoke(initial_state)
-    result_df = pd.DataFrame(final_state["workloads"]).copy()
-    result_df["label"] = final_state["final_decisions"]
-    explanations = final_state["explanations"]
-    return result_df, explanations
