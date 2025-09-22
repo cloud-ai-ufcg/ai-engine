@@ -1,1 +1,538 @@
-{"1756491164":{"workloads":[{"workload_id":"default/1","kind":"deployment","resources":{"cpu":"7000m","memory":"12288Mi"},"pods_total":1,"pods_pending":0,"percent_pending":0,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/2","kind":"deployment","resources":{"cpu":"4000m","memory":"2048Mi"},"pods_total":1,"pods_pending":1,"percent_pending":100,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0011,"instance_type":"t4g.xlarge (4.0 vCPUs, 16.0 GiB)"}},{"workload_id":"default/3","kind":"deployment","resources":{"cpu":"7000m","memory":"6144Mi"},"pods_total":1,"pods_pending":1,"percent_pending":100,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/4-1","kind":"job","resources":{"cpu":"1000m","memory":"12288Mi"},"pods_total":4,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0011,"instance_type":"t4g.xlarge (4.0 vCPUs, 16.0 GiB)"}},{"workload_id":"default/6-1","kind":"job","resources":{"cpu":"4000m","memory":"30720Mi"},"pods_total":10,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/5-1","kind":"job","resources":{"cpu":"4000m","memory":"30720Mi"},"pods_total":10,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}}],"cluster_info":[{"cluster_label":"private","cluster_load":{"cpu":0.35,"memory":0.19},"cluster_cpu_capacity":"20000m","cluster_memory_capacity":"64550Mi","pricing":{"interval_duration":"30s","interval_cost":0.0055}},{"cluster_label":"public","cluster_load":{"cpu":0,"memory":0},"cluster_cpu_capacity":"44000m","cluster_memory_capacity":"162854Mi","pricing":{"interval_duration":"30s","interval_cost":0.0055}}]},"1756491194":{"workloads":[{"workload_id":"default/1","kind":"deployment","resources":{"cpu":"7000m","memory":"12288Mi"},"pods_total":1,"pods_pending":0,"percent_pending":0,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/2","kind":"deployment","resources":{"cpu":"4000m","memory":"2048Mi"},"pods_total":1,"pods_pending":1,"percent_pending":100,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0011,"instance_type":"t4g.xlarge (4.0 vCPUs, 16.0 GiB)"}},{"workload_id":"default/3","kind":"deployment","resources":{"cpu":"7000m","memory":"6144Mi"},"pods_total":1,"pods_pending":1,"percent_pending":100,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/4-1","kind":"job","resources":{"cpu":"1000m","memory":"12288Mi"},"pods_total":4,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0011,"instance_type":"t4g.xlarge (4.0 vCPUs, 16.0 GiB)"}},{"workload_id":"default/6-1","kind":"job","resources":{"cpu":"4000m","memory":"30720Mi"},"pods_total":10,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/5-1","kind":"job","resources":{"cpu":"4000m","memory":"30720Mi"},"pods_total":10,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}}],"cluster_info":[{"cluster_label":"private","cluster_load":{"cpu":0.35,"memory":0.19},"cluster_cpu_capacity":"20000m","cluster_memory_capacity":"64550Mi","pricing":{"interval_duration":"30s","interval_cost":0.0055}},{"cluster_label":"public","cluster_load":{"cpu":0,"memory":0},"cluster_cpu_capacity":"44000m","cluster_memory_capacity":"162854Mi","pricing":{"interval_duration":"30s","interval_cost":0.0055}}]},"1756491224":{"workloads":[{"workload_id":"default/1","kind":"deployment","resources":{"cpu":"7000m","memory":"12288Mi"},"pods_total":1,"pods_pending":0,"percent_pending":0,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/2","kind":"deployment","resources":{"cpu":"4000m","memory":"2048Mi"},"pods_total":1,"pods_pending":1,"percent_pending":100,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0011,"instance_type":"t4g.xlarge (4.0 vCPUs, 16.0 GiB)"}},{"workload_id":"default/3","kind":"deployment","resources":{"cpu":"7000m","memory":"6144Mi"},"pods_total":1,"pods_pending":1,"percent_pending":100,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/4-1","kind":"job","resources":{"cpu":"1000m","memory":"12288Mi"},"pods_total":4,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0011,"instance_type":"t4g.xlarge (4.0 vCPUs, 16.0 GiB)"}},{"workload_id":"default/6-1","kind":"job","resources":{"cpu":"4000m","memory":"30720Mi"},"pods_total":10,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/5-1","kind":"job","resources":{"cpu":"4000m","memory":"30720Mi"},"pods_total":10,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}}],"cluster_info":[{"cluster_label":"private","cluster_load":{"cpu":0.35,"memory":0.19},"cluster_cpu_capacity":"20000m","cluster_memory_capacity":"64550Mi","pricing":{"interval_duration":"30s","interval_cost":0.0055}},{"cluster_label":"public","cluster_load":{"cpu":0,"memory":0},"cluster_cpu_capacity":"44000m","cluster_memory_capacity":"162854Mi","pricing":{"interval_duration":"30s","interval_cost":0.0055}}]},"1756491254":{"workloads":[{"workload_id":"default/1","kind":"deployment","resources":{"cpu":"7000m","memory":"12288Mi"},"pods_total":1,"pods_pending":0,"percent_pending":0,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/2","kind":"deployment","resources":{"cpu":"4000m","memory":"2048Mi"},"pods_total":1,"pods_pending":1,"percent_pending":100,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0011,"instance_type":"t4g.xlarge (4.0 vCPUs, 16.0 GiB)"}},{"workload_id":"default/3","kind":"deployment","resources":{"cpu":"7000m","memory":"6144Mi"},"pods_total":1,"pods_pending":1,"percent_pending":100,"cluster_label":"private","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/4-1","kind":"job","resources":{"cpu":"1000m","memory":"12288Mi"},"pods_total":4,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0011,"instance_type":"t4g.xlarge (4.0 vCPUs, 16.0 GiB)"}},{"workload_id":"default/6-1","kind":"job","resources":{"cpu":"4000m","memory":"30720Mi"},"pods_total":10,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}},{"workload_id":"default/5-1","kind":"job","resources":{"cpu":"4000m","memory":"30720Mi"},"pods_total":10,"pods_pending":0,"percent_pending":0,"cluster_label":"public","pricing":{"interval_duration":"30s","interval_cost":0.0022,"instance_type":"t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"}}],"cluster_info":[{"cluster_label":"private","cluster_load":{"cpu":0.35,"memory":0.19},"cluster_cpu_capacity":"20000m","cluster_memory_capacity":"64550Mi","pricing":{"interval_duration":"30s","interval_cost":0.0055}},{"cluster_label":"public","cluster_load":{"cpu":0,"memory":0},"cluster_cpu_capacity":"44000m","cluster_memory_capacity":"162854Mi","pricing":{"interval_duration":"30s","interval_cost":0.0055}}]}}
+{
+    "1756491164": {
+        "workloads": [
+            {
+                "workload_id": "default/1",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "7000m",
+                    "memory": "12288Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/2",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "2048Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 1,
+                "percent_pending": 100,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0011,
+                    "instance_type": "t4g.xlarge (4.0 vCPUs, 16.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/3",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "7000m",
+                    "memory": "6144Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 1,
+                "percent_pending": 100,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/4-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "1000m",
+                    "memory": "12288Mi"
+                },
+                "pods_total": 4,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0011,
+                    "instance_type": "t4g.xlarge (4.0 vCPUs, 16.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/6-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "30720Mi"
+                },
+                "pods_total": 10,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/5-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "30720Mi"
+                },
+                "pods_total": 10,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            }
+        ],
+        "cluster_info": [
+            {
+                "cluster_label": "private",
+                "cluster_load": {
+                    "cpu": 0.35,
+                    "memory": 0.19
+                },
+                "cluster_cpu_capacity": "20000m",
+                "cluster_memory_capacity": "64550Mi",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0055
+                }
+            },
+            {
+                "cluster_label": "public",
+                "cluster_load": {
+                    "cpu": 0,
+                    "memory": 0
+                },
+                "cluster_cpu_capacity": "44000m",
+                "cluster_memory_capacity": "162854Mi",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0055
+                }
+            }
+        ]
+    },
+    "1756491194": {
+        "workloads": [
+            {
+                "workload_id": "default/1",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "7000m",
+                    "memory": "12288Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/2",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "2048Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 1,
+                "percent_pending": 100,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0011,
+                    "instance_type": "t4g.xlarge (4.0 vCPUs, 16.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/3",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "7000m",
+                    "memory": "6144Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 1,
+                "percent_pending": 100,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/4-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "1000m",
+                    "memory": "12288Mi"
+                },
+                "pods_total": 4,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0011,
+                    "instance_type": "t4g.xlarge (4.0 vCPUs, 16.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/6-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "30720Mi"
+                },
+                "pods_total": 10,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/5-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "30720Mi"
+                },
+                "pods_total": 10,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            }
+        ],
+        "cluster_info": [
+            {
+                "cluster_label": "private",
+                "cluster_load": {
+                    "cpu": 0.35,
+                    "memory": 0.19
+                },
+                "cluster_cpu_capacity": "20000m",
+                "cluster_memory_capacity": "64550Mi",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0055
+                }
+            },
+            {
+                "cluster_label": "public",
+                "cluster_load": {
+                    "cpu": 0,
+                    "memory": 0
+                },
+                "cluster_cpu_capacity": "44000m",
+                "cluster_memory_capacity": "162854Mi",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0055
+                }
+            }
+        ]
+    },
+    "1756491224": {
+        "workloads": [
+            {
+                "workload_id": "default/1",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "7000m",
+                    "memory": "12288Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/2",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "2048Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 1,
+                "percent_pending": 100,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0011,
+                    "instance_type": "t4g.xlarge (4.0 vCPUs, 16.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/3",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "7000m",
+                    "memory": "6144Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 1,
+                "percent_pending": 100,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/4-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "1000m",
+                    "memory": "12288Mi"
+                },
+                "pods_total": 4,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0011,
+                    "instance_type": "t4g.xlarge (4.0 vCPUs, 16.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/6-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "30720Mi"
+                },
+                "pods_total": 10,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/5-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "30720Mi"
+                },
+                "pods_total": 10,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            }
+        ],
+        "cluster_info": [
+            {
+                "cluster_label": "private",
+                "cluster_load": {
+                    "cpu": 0.35,
+                    "memory": 0.19
+                },
+                "cluster_cpu_capacity": "20000m",
+                "cluster_memory_capacity": "64550Mi",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0055
+                }
+            },
+            {
+                "cluster_label": "public",
+                "cluster_load": {
+                    "cpu": 0,
+                    "memory": 0
+                },
+                "cluster_cpu_capacity": "44000m",
+                "cluster_memory_capacity": "162854Mi",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0055
+                }
+            }
+        ]
+    },
+    "1756491254": {
+        "workloads": [
+            {
+                "workload_id": "default/1",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "7000m",
+                    "memory": "12288Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/2",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "2048Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 1,
+                "percent_pending": 100,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0011,
+                    "instance_type": "t4g.xlarge (4.0 vCPUs, 16.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/3",
+                "kind": "deployment",
+                "resources": {
+                    "cpu": "7000m",
+                    "memory": "6144Mi"
+                },
+                "pods_total": 1,
+                "pods_pending": 1,
+                "percent_pending": 100,
+                "cluster_label": "private",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/4-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "1000m",
+                    "memory": "12288Mi"
+                },
+                "pods_total": 4,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0011,
+                    "instance_type": "t4g.xlarge (4.0 vCPUs, 16.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/6-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "30720Mi"
+                },
+                "pods_total": 10,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            },
+            {
+                "workload_id": "default/5-1",
+                "kind": "job",
+                "resources": {
+                    "cpu": "4000m",
+                    "memory": "30720Mi"
+                },
+                "pods_total": 10,
+                "pods_pending": 0,
+                "percent_pending": 0,
+                "cluster_label": "public",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0022,
+                    "instance_type": "t4g.2xlarge (8.0 vCPUs, 32.0 GiB)"
+                }
+            }
+        ],
+        "cluster_info": [
+            {
+                "cluster_label": "private",
+                "cluster_load": {
+                    "cpu": 0.35,
+                    "memory": 0.19
+                },
+                "cluster_cpu_capacity": "20000m",
+                "cluster_memory_capacity": "64550Mi",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0055
+                }
+            },
+            {
+                "cluster_label": "public",
+                "cluster_load": {
+                    "cpu": 0,
+                    "memory": 0
+                },
+                "cluster_cpu_capacity": "44000m",
+                "cluster_memory_capacity": "162854Mi",
+                "pricing": {
+                    "interval_duration": "30s",
+                    "interval_cost": 0.0055
+                }
+            }
+        ]
+    }
+}
