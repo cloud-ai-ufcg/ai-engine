@@ -1,8 +1,8 @@
 from typing import List, Dict, Any, Union, Optional
 from langchain_core.tools import tool
 
-# Importing at runtime avoids circular-import issues when the engine starts up
-from engine.main import process_monitoring_data  # type: ignore
+
+process_monitoring_data = None  # will be set on first call
 
 
 @tool("input_filter", return_direct=False)
@@ -45,6 +45,12 @@ def input_filter(
         return [w for w in data if w.get("workload_id") is not None]
 
     # Otherwise delegate to the canonical implementation in engine.main
+    global process_monitoring_data
+    if process_monitoring_data is None:
+        # Local import to break the circular dependency
+        from engine.main import process_monitoring_data as _process_monitoring_data  # type: ignore
+        process_monitoring_data = _process_monitoring_data
+
     try:
         return process_monitoring_data(
             data, timestamp_lookback_seconds=timestamp_lookback_seconds
