@@ -441,7 +441,9 @@ def shard_and_analyze_workloads(workloads, config):
     return combined_df, combined_explanations
 
 
-def save_and_log_explanations(result_df, explanations, workloads=None, batch_id: int | None = None):
+def save_and_log_explanations(
+    result_df, explanations, workloads=None, batch_id: int | None = None
+):
     """
     Save recommendations log using the WorkloadRecommendation schema and log them.
 
@@ -457,7 +459,7 @@ def save_and_log_explanations(result_df, explanations, workloads=None, batch_id:
     if batch_id is None:
         CURRENT_BATCH_ID += 1
         batch_id = CURRENT_BATCH_ID
-        
+
     if not os.path.exists(ENGINE_LOG_DIR):
         os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
     explanations_file = os.path.join(
@@ -503,7 +505,11 @@ def save_and_log_explanations(result_df, explanations, workloads=None, batch_id:
 
     # Serialize Pydantic models to plain dicts for JSON output
     recs_payload_serialized = [
-        r.model_dump() if hasattr(r, "model_dump") else (r.dict() if hasattr(r, "dict") else r)
+        (
+            r.model_dump()
+            if hasattr(r, "model_dump")
+            else (r.dict() if hasattr(r, "dict") else r)
+        )
         for r in recs_payload
     ]
 
