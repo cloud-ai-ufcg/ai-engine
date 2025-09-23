@@ -13,14 +13,13 @@
             ]
         },
         {
-            "name": "Python Debugger: CLI",
-            "type": "debugpy",
+            "name": "Debug ai-engine CLI",
+            "type": "python",
             "request": "launch",
-            "module": "python",
-            "args": [
-                "${input.api_or_cli}",
-                "--reload"
-            ]
+            "program": "${workspaceFolder}/cli.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": []
         }
     ],
     "inputs": [
