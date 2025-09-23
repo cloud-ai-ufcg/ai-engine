@@ -1,8 +1,11 @@
-from typing import List, Dict, Any
+from typing import Dict, Any
 from langchain.tools import tool
 
-@tool("calculate_cluster_capacity", return_direct=False)
-def calculate_cluster_capacity(data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Dict[str, Any]]]:
+
+@tool("cluster_capacity", return_direct=False)
+def cluster_capacity(
+    data: Dict[str, Dict[str, Any]],
+) -> Dict[str, Dict[str, Dict[str, Any]]]:
     """
     Calculates the total CPU and memory allocation per cluster (public/private) for each timestamp.
 
@@ -32,7 +35,9 @@ def calculate_cluster_capacity(data: Dict[str, Dict[str, Any]]) -> Dict[str, Dic
     if not data:
         return {"error": "No data provided"}
 
-    if not isinstance(data, dict) or not all(isinstance(k, str) and isinstance(v, dict) for k, v in data.items()):
+    if not isinstance(data, dict) or not all(
+        isinstance(k, str) and isinstance(v, dict) for k, v in data.items()
+    ):
         return {"error": "Expected dict of timestamps -> {'workloads': [...]}."}
 
     results_by_ts: Dict[str, Dict[str, Dict[str, str]]] = {}
@@ -56,8 +61,16 @@ def calculate_cluster_capacity(data: Dict[str, Dict[str, Any]]) -> Dict[str, Dic
             cpu_str = resources.get("cpu", "0m")
             memory_str = resources.get("memory", "0Mi")
 
-            cpu_allocated = int(cpu_str.replace("m", "")) if isinstance(cpu_str, str) and cpu_str.endswith("m") else 0
-            memory_allocated = int(memory_str.replace("Mi", "")) if isinstance(memory_str, str) and memory_str.endswith("Mi") else 0
+            cpu_allocated = (
+                int(cpu_str.replace("m", ""))
+                if isinstance(cpu_str, str) and cpu_str.endswith("m")
+                else 0
+            )
+            memory_allocated = (
+                int(memory_str.replace("Mi", ""))
+                if isinstance(memory_str, str) and memory_str.endswith("Mi")
+                else 0
+            )
 
             total_cpu = cpu_allocated
             total_memory = memory_allocated

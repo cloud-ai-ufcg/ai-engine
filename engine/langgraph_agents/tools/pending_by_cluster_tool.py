@@ -3,7 +3,7 @@ from typing import Dict, Any
 
 
 @tool("pending_by_cluster", return_direct=False)
-def pending_by_cluster(input_dict: Dict[str, Any]) -> Dict[str, Any]:
+def pending_by_cluster(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Calculate the percentage of pending workloads per cluster and list workloads with pods pending in each cluster for ALL timestamps.
     Input:
@@ -19,8 +19,6 @@ def pending_by_cluster(input_dict: Dict[str, Any]) -> Dict[str, Any]:
             }
         }
     """
-    data = input_dict.get("data", {})
-
     if not data:
         return {"error": "no data provided"}
 

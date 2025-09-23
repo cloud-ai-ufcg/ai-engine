@@ -1,14 +1,12 @@
-from typing import List, Union, Dict, Any, Tuple, Optional
-import os
+from typing import List, Union, Dict, Any, Tuple
 import pandas as pd
 import re
 import json
 import uuid
-from dotenv import load_dotenv
 from .ai_config import get_model_config, get_prompt, PROMPTS
 from .util import get_logger, load_config, log_token_usage
-#from .langgraph_agents.graph.migration_graph import create_migration_graph
-from .langgraph_agents.graph.graph_tools import create_migration_graph
+
+from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
 from .client import OpenRouterClient
 
 logger = get_logger("agents")
@@ -318,45 +316,57 @@ def label_workloads_with_llm(
 
         return labels, explanation_output
 
+
 # ---------------------------------------------------------------------------
 # MultiAgent implementation
 # ---------------------------------------------------------------------------
-
-def label_workloads_multiagent(workloads: List[dict], cluster_info: List[dict]) -> Tuple[List[int], Dict[str, Any]]:
+def label_workloads_multiagent(
+    workloads: List[dict], cluster_info: List[dict]
+) -> Tuple[List[int], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
     state = {
         "workloads": df.to_dict(orient="records"),
         "cluster_info": cluster_info,
-        "explanations": {}
+        "decisions": [],
+        "explanations": {},
     }
 
-    graph = create_migration_graph()
+    graph = create_tool_system_migration_graph()
+    logger.info("Using LangGraph for workload recommendations")
 
     thread_id = str(uuid.uuid4())
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
+    logger.info("Final state: ", final_state)
 
-    explanations_dict = final_state.get("explanations", {})
+    recommendations_dict = final_state.get("explanations", {})
 
-    final_decisions = final_state.get("final_decisions", [])
-    workload_explanations = explanations_dict.get("workload_explanations", [])
-    overall_explanation = explanations_dict.get("overall_explanation", "No overall explanation provided.")
+    final_decisions = final_state.get("decisions", [])
+    workload_explanations = recommendations_dict.get("workload_explanations", [])
+    overall_explanation = recommendations_dict.get(
+        "overall_explanation", "No overall explanation provided."
+    )
 
     if not final_decisions or len(final_decisions) != len(workloads):
         labels = [0] * len(workloads)
-        workload_explanations = ["Agent did not return a valid label format."] * len(workloads)
+        workload_explanations = ["Agent did not return a valid label format."] * len(
+            workloads
+        )
     else:
         labels = final_decisions
-        
+
     final_explanations = {
         "overall_explanation": overall_explanation,
-        "workload_explanations": workload_explanations
+        "workload_explanations": workload_explanations,
     }
 
     return labels, final_explanations
 
 
 def label_workloads_multiagent_votes(workloads, provider="langgraph"):
+    """
+    Label workloads using a multi-agent with voting system.
+    """
     df = _normalize_workloads_to_dataframe(workloads)
     state = {
         "workloads": df.to_dict(orient="records"),
@@ -383,8 +393,6 @@ def label_workloads_multiagent_votes(workloads, provider="langgraph"):
 # ---------------------------------------------------------------------------
 # Generic wrapper
 # ---------------------------------------------------------------------------
-
-
 def label_workloads(
     workloads: Union[list, "pd.DataFrame"],
     provider: str | None = None,
@@ -410,8 +418,6 @@ def label_workloads(
         labels, explanations = label_workloads_multiagent(workloads, cluster_info)
     elif provider in {"gemini", "google"}:
         labels, explanations = label_workloads_with_llm(workloads)
-    elif provider in {"llama", "groq", "llama_groq"}:
-        labels, explanations = label_workloads_with_llm(workloads)
     else:
         logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
         labels = _label_workloads_with_heuristics(workloads)
@@ -424,7 +430,7 @@ def label_workloads(
         workload_explanations = explanations
         explanations = {
             "overall_explanation": "Recommendations for each workload:",
-            "workload_explanations": workload_explanations
+            "workload_explanations": workload_explanations,
         }
 
     return labels, explanations
