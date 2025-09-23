@@ -3,7 +3,7 @@ data:
 
 ai:
   selected_model: gemini           # Selected model to be used 
-  multi_agent: false               # Whether to use multi-agent or not
+  multi_agent: true               # Whether to use multi-agent or not
   scheduler_interval: 300          # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600  # Number of seconds to look back for metrics
   workloads_shard_size: 20         # Number of workloads to be processed in parallel

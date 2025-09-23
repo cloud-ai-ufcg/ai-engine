@@ -10,9 +10,9 @@ from ..tools import (
     workload_capacity,
     cluster_capacity,
     workload_pricing,
+    calculate_cluster_pricing
 )
 from ..nodes import recommendationsNode
-
 
 class MigrationStateToolsGraph(TypedDict):
     workloads: List[Dict]
@@ -111,11 +111,12 @@ def create_tool_system_migration_graph():
     graph.add_node("pending_by_workload", pending_by_workload_node)
     graph.add_node("workload_pricing", workload_pricing_node)
     graph.add_node("workload_capacity", workload_capacity_node)
-
+    graph.add_node("calculate_cluster_pricing", calculate_cluster_pricing)
     graph.add_node("recommendations", recommendationsNode)
 
     graph.add_edge(START, "input_filter")
-    graph.add_edge("input_filter", "cluster_capacity")
+    graph.add_edge("input_filter", "calculate_cluster_pricing")
+    graph.add_edge("calculate_cluster_pricing", "cluster_capacity")
     graph.add_edge("cluster_capacity", "pending_by_workload")
     graph.add_edge("pending_by_workload", "pending_by_cluster")
     graph.add_edge("pending_by_cluster", "workload_capacity")
