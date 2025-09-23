@@ -1,18 +1,13 @@
 import json
-import logging
 
 from typing import Any, Dict
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt, WorkloadLabelOutput
 from engine.util import load_config, get_logger, log_token_usage
 from langsmith import traceable
-from ..tools import pending_by_workload
-from ..tools.tool_output import final_recommendations
-from langchain_google_genai import ChatGoogleGenerativeAI
+
 from engine.client import OpenRouterClient
 
-logger = get_logger("agents")
-logger = logging.getLogger(__name__)
 logger = get_logger("langgraph_agents")
 
 load_dotenv()
