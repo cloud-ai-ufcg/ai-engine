@@ -1,10 +1,4 @@
-"""
-Configuration management for AI models and prompts.
-This module centralizes all AI-related configurations to make versioning and updates easier.
-"""
-
 import logging
-import os
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -41,6 +35,7 @@ class WorkloadLabelOutput(BaseModel):
 
 class WorkloadRecommendation(BaseModel):
     """Structured output for workload recommendations"""
+
     batch_id: int | None = None
     workload_id: str
     kind: str
@@ -124,9 +119,9 @@ Respond with a JSON list of 0s and 1s only.
 Example: [0, 1, 1, 0]
 
 Workloads: {workloads_json}
-"""
+""",
     },
-    "decision":{
+    "decision": {
         "version": "1.0",
         "output_schema": WorkloadLabelOutput,
         "template": """You are a pending pod specialist in kubernetes.
