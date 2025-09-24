@@ -94,6 +94,14 @@ def workload_capacity_node(state: dict) -> dict:
     return {"workload_capacity": result}
 
 
+def calculate_cluster_pricing_node(state: dict) -> dict:
+    workloads = state.get("workloads", [])
+    if not workloads:
+        return {"calculate_cluster_pricing": {"error": "no workloads provided"}}
+
+    result = workload_capacity.invoke({"data": {"latest": {"workloads": workloads}}})
+    return {"calculate_cluster_pricing": result}
+
 # -----------------------
 # Graph Creation
 # -----------------------
@@ -114,14 +122,22 @@ def create_tool_system_migration_graph():
     graph.add_node("calculate_cluster_pricing", calculate_cluster_pricing)
     graph.add_node("recommendations", recommendationsNode)
 
+    #Parallel nodes entry points
     graph.add_edge(START, "input_filter")
+
+    graph.add_edge("input_filter", "pending_by_workload")
+    graph.add_edge("input_filter", "cluster_capacity")
+    graph.add_edge("input_filter", "pending_by_cluster")
+    graph.add_edge("input_filter", "workload_capacity")
+    graph.add_edge("input_filter", "workload_pricing")
     graph.add_edge("input_filter", "calculate_cluster_pricing")
-    graph.add_edge("calculate_cluster_pricing", "cluster_capacity")
-    graph.add_edge("cluster_capacity", "pending_by_workload")
-    graph.add_edge("pending_by_workload", "pending_by_cluster")
-    graph.add_edge("pending_by_cluster", "workload_capacity")
-    graph.add_edge("workload_capacity", "workload_pricing")
+
+    graph.add_edge("pending_by_workload", "recommendations")
+    graph.add_edge("cluster_capacity", "recommendations")
+    graph.add_edge("pending_by_cluster", "recommendations")
+    graph.add_edge("workload_capacity", "recommendations")
     graph.add_edge("workload_pricing", "recommendations")
+    graph.add_edge("calculate_cluster_pricing", "recommendations")
 
     graph.add_edge("recommendations", END)
 
