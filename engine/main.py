@@ -372,6 +372,11 @@ def analyze_workloads(workloads, config):
     result = df[["workload_id", "kind"]].copy()
     result["label"] = labels
 
+    if isinstance(explanations, dict) and "workload_explanations" in explanations:
+        result["reason"] = explanations["workload_explanations"]
+    else:
+        result["reason"] = "No explanation provided"
+        
     return result, explanations
 
 
