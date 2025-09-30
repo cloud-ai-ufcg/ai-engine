@@ -3,7 +3,7 @@ from langchain_core.tools import tool
 
 
 @tool("workload_pricing", return_direct=False)
-def workload_pricing(data: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
+def workload_pricing(data: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
     """
     LangGraph tool to calculate total pricing information for workloads.
 
@@ -11,7 +11,8 @@ def workload_pricing(data: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     and sums the interval_cost_total and interval_cost_running for each workload across all timestamps where it appears.
 
     Args:
-        workloads: List of workload dictionaries from process_monitoring_data
+        data: Dict with timestamp as key and another dict with "workloads" list.
+        Example: {"<timestamp>": {"workloads": [...]}} or {"latest": {"workloads": [...]}}
 
     Returns:
         Dict mapping workload_id to the two types of pricing (float)
@@ -22,15 +23,26 @@ def workload_pricing(data: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
         return {"error": "No workload data provided"}
 
     pricing_data = {}
+    all_workloads = []
 
-    for workload in data:
+    for timestamp_data in data.values():
+        all_workloads.extend(timestamp_data.get("workloads", []))
+
+    if not all_workloads:
+        return {"error": "No workloads found in the provided data"}
+
+    for workload in all_workloads:
         workload_id = workload.get("workload_id")
         if not workload_id:
             continue
 
         # Extract cost from pricing information
-        interval_cost_total = workload.get("interval_cost_total", 0.0)
-        interval_cost_running = workload.get("interval_cost_running", 0.0)
+        pricing = workload.get("pricing", {})
+        if not pricing:
+            return {"error": "No pricing information found in workload data"}
+
+        interval_cost_total = pricing["interval_cost_total"] if "interval_cost_total" in pricing else 0.0
+        interval_cost_running = pricing["interval_cost_running"] if "interval_cost_running" in pricing else 0.0
 
         # Sum both costs for this workload across all timestamps
         if workload_id in pricing_data:
