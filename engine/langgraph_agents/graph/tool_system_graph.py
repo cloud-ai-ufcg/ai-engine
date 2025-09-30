@@ -81,7 +81,7 @@ def workload_pricing_node(state: dict) -> dict:
     if not workloads:
         return {"workload_pricing": {"error": "no workloads provided"}}
 
-    result = workload_pricing.invoke({"data": workloads})
+    result = workload_pricing.invoke({"data": {"latest": {"workloads": workloads}}})
     return {"workload_pricing": result}
 
 
@@ -99,7 +99,7 @@ def cluster_pricing_node(state: dict) -> dict:
     if not workloads:
         return {"cluster_pricing": {"error": "no workloads provided"}}
 
-    result = workload_capacity.invoke({"data": {"latest": {"workloads": workloads}}})
+    result = cluster_pricing.invoke({"data": {"latest": {"workloads": workloads}}})
     return {"cluster_pricing": result}
 
 # -----------------------
@@ -119,7 +119,7 @@ def create_tool_system_migration_graph():
     graph.add_node("pending_by_workload", pending_by_workload_node)
     graph.add_node("workload_pricing", workload_pricing_node)
     graph.add_node("workload_capacity", workload_capacity_node)
-    graph.add_node("cluster_pricing", cluster_pricing)
+    graph.add_node("cluster_pricing", cluster_pricing_node)
     graph.add_node("recommendations", recommendationsNode)
 
     #Parallel nodes entry points
