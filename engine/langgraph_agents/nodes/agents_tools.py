@@ -22,11 +22,11 @@ class OpenRouterInvokeModel:
     def __init__(
         self, client: OpenRouterClient, model_name: str, system_prompt: str, **gen_cfg
     ):
-        self._client = client
-        self._model_name = model_name
-        self._system_prompt = system_prompt
+        self._client: OpenRouterClient = client
+        self._model_name: str = model_name
+        self._system_prompt: str = system_prompt
         # Normalize generation config keys to OpenAI chat params
-        self._gen_cfg = {
+        self._gen_cfg: Dict[str, Any] = {
             "temperature": gen_cfg.get("temperature", 0.1),
             # In config we may store as max_output_tokens; OpenAI param is max_tokens
             "max_tokens": gen_cfg.get("max_output_tokens", 2048),
@@ -48,22 +48,21 @@ def get_llm():
         client = OpenRouterClient()
         config = load_config()
         selected_model = config["ai"].get("selected_model", "gemini")
-        model_cfg = config["ai"]["models"].get(selected_model, {})
+        model_cfg = config["ai"]["default_config"]
+
         if model_cfg is None:
             raise ValueError(f"Model '{selected_model}' not found in configuration.")
 
-        # Map internal model names to OpenRouter model names
-        model_mapping = {
-            "gemini": "google/gemini-2.0-flash-001",
-            "gpt-4": "openai/gpt-4",
-            "gpt-3.5-turbo": "openai/gpt-3.5-turbo",
-            "llama": "meta-llama/llama-3.1-8b-instruct",
-        }
+        model_name = selected_model
+        # Work on a mutable copy to avoid mutating global config inadvertently
+        generation_config = dict(model_cfg.get("generation_config", {}))
 
-        model_name = model_mapping.get(selected_model, "google/gemini-2.0-flash-001")
-        generation_config = model_cfg.get("generation_config", {})
-
-        system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
+        # Extract system prompt then remove it so it is not forwarded twice via **kwargs
+        system_prompt = generation_config.pop("system_prompt", "")
+        rules = generation_config.get("rules", [])
+        system_prompt += "\n\nRules:\n"
+        for rule in rules:
+            system_prompt += f"- {rule}\n"
 
         model = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config
@@ -76,11 +75,10 @@ def get_llm():
 
 model = get_llm()
 
+
 # -----------------------
 # Langraph agents
 # -----------------------
-
-
 @traceable(name="recommendations_node")
 def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
     """
