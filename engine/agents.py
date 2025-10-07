@@ -3,8 +3,8 @@ import pandas as pd
 import re
 import json
 import uuid
-from .ai_config import get_prompt, PROMPTS
-from .util import get_logger, load_config
+from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config
+from .util import get_logger, load_config, log_token_usage
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
 from .client import OpenRouterClient
@@ -136,13 +136,16 @@ def label_workloads_with_llm(
     user_prompt = get_prompt(
         "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
     )
-    system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
 
     logger.info(f"Sending request to OpenRouter with model: {model}")
 
+    # Initialize to avoid UnboundLocalError if exception raised before assignment
+    text_response = ""
+
     try:
         config = load_config()
-        model_config = config.get("ai", {}).get("models", {}).get("gemini", {})
+        model_config = config.get("ai", {}).get("default_config", {})
+        system_prompt = build_system_prompt_from_config()
         generation_config = model_config.get("generation_config", {})
 
         logger.info(f"CONFIG: Using OpenRouter model: {model}")
@@ -403,7 +406,7 @@ def label_workloads(
     cfg = load_config()
 
     if provider is None:
-        provider = cfg.get("ai", {}).get("selected_model", "gemini")
+        provider = cfg.get("ai", {}).get("default_config", {}).get("provider", "google")
 
     if multiagent is None:
         multiagent = cfg.get("ai", {}).get("multiagent", False)
@@ -416,7 +419,7 @@ def label_workloads(
     if multiagent:
         cluster_info = cfg.get("cluster_info", [])
         labels, explanations = label_workloads_multiagent(workloads, cluster_info)
-    elif provider in {"gemini", "google"}:
+    elif provider in {"gemini", "google", "openrouter"}:
         labels, explanations = label_workloads_with_llm(workloads)
     else:
         logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")

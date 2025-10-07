@@ -169,3 +169,16 @@ def get_prompt(prompt_key, **kwargs):
     prompt_data = PROMPTS.get(prompt_key, {})
     template = prompt_data.get("template", "")
     return template.format(**kwargs)
+
+
+def build_system_prompt_from_config():
+    cfg = load_config()
+    model_config = cfg.get("ai", {}).get("default_config", {})
+    system_prompt = model_config.get(
+        "system_prompt",
+        "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.",
+    )
+    rules = model_config.get("rules", [])
+    for rule in rules:
+        system_prompt += f"\n- {rule}"
+    return system_prompt

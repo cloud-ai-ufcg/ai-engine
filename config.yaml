@@ -2,12 +2,24 @@ data:
   input_json: monitor_outputs.json
 
 ai:
-  selected_model: gemini           # Selected model to be used 
+  selected_model: nvidia/nemotron-nano-9b-v2           # Selected model to be used 
   multi_agent: false               # Whether to use multi-agent or not
   scheduler_interval: 300          # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600  # Number of seconds to look back for metrics
   workloads_shard_size: 20         # Number of workloads to be processed in parallel
-  fetch_metrics_immediately: false # Whether to fetch metrics immediately or wait for the scheduler
+  fetch_metrics_immediately: true # Whether to fetch metrics immediately or wait for the scheduler
+
+  default_config:
+    provider: openrouter
+    generation_config:
+      temperature: 0.1
+      max_output_tokens: 12000
+      system_prompt: "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads through temporal metrics and make migration decisions."
+      rules:
+        - "Cluster load must not exceed 80% of the cluster capacity."
+        - "Pending workloads must not exceed 40% of total workloads."
+        - "Provide specific recommendations for each workload."
+        - "Provide a summary of the recommendations."
 
   models:
     gemini:
@@ -58,4 +70,3 @@ server:
   host: 0.0.0.0
   port: 8083
   reload: false
-  
