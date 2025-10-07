@@ -3,7 +3,7 @@ import json
 from typing import Any, Dict
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt, WorkloadLabelOutput
-from engine.util import load_config, get_logger, log_token_usage
+from engine.util import load_config, get_logger
 from langsmith import traceable
 
 from engine.client import OpenRouterClient
