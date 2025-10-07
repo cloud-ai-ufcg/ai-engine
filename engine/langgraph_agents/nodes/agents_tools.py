@@ -2,7 +2,11 @@ import json
 
 from typing import Any, Dict
 from dotenv import load_dotenv
-from engine.ai_config import get_prompt, WorkloadLabelOutput
+from engine.ai_config import (
+    build_system_prompt_from_config,
+    get_prompt,
+    WorkloadLabelOutput,
+)
 from engine.util import load_config, get_logger
 from langsmith import traceable
 
@@ -64,6 +68,9 @@ def get_llm():
         for rule in rules:
             system_prompt += f"- {rule}\n"
 
+        logger.info(f"System prompt: {system_prompt}")
+        logger.info(f"Generation config: {generation_config}")
+        logger.info(f"Model name: {model_name}")
         model = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config
         )
@@ -110,7 +117,8 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
     }
 
-    prompt = get_prompt("label_workloads", **prompt_data)
+    prompt = build_system_prompt_from_config()
+    prompt += "\n\n" + json.dumps(prompt_data)
     resp = model.invoke(prompt)
 
     try:
