@@ -353,7 +353,9 @@ def analyze_workloads(workloads, config):
     Returns:
         Tuple containing (DataFrame with results, explanations dictionary)
     """
-    provider = config.get("ai", {}).get("selected_model", "gemini").lower()
+    provider = (
+        config.get("ai", {}).get("default_config", {}).get("provider", "openrouter")
+    )
     multiagent = config.get("ai", {}).get("multi_agent", False)
 
     logger.info(
@@ -372,11 +374,22 @@ def analyze_workloads(workloads, config):
     result = df[["workload_id", "kind"]].copy()
     result["label"] = labels
 
-    if isinstance(explanations, dict) and "workload_explanations" in explanations:
-        result["reason"] = explanations["workload_explanations"]
+    # Safely attach reasons column
+    if (
+        isinstance(explanations, dict)
+        and "workload_explanations" in explanations
+        and explanations["workload_explanations"]
+    ):
+        expl_list = explanations["workload_explanations"]
+        if len(expl_list) == len(result):
+            result["reason"] = expl_list
+        else:
+            # Pad / truncate to match length
+            padded = (expl_list + ["No explanation."] * len(result))[: len(result)]
+            result["reason"] = padded
     else:
         result["reason"] = "No explanation provided"
-        
+
     return result, explanations
 
 
