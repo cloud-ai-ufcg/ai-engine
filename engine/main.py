@@ -360,7 +360,7 @@ def analyze_workloads(workloads, config):
 
     logger.info(
         format_message(
-            f"Using {provider} model for workload analysis",
+            f"Using {provider} platform for workload analysis",
             icon="🧠",
             color="MAGENTA",
             bold=True,
