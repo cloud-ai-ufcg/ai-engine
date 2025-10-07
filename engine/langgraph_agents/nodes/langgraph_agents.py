@@ -68,9 +68,11 @@ def get_llm():
         }
 
         model_name = model_mapping.get(selected_model, "google/gemini-2.0-flash-001")
-        generation_config = model_cfg.get("generation_config", {})
+        # Work on a mutable copy to avoid accidental global mutation
+        generation_config = dict(model_cfg.get("generation_config", {}))
 
-        system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
+        # Prefer config-provided system prompt if available, else fall back to default
+        system_prompt = generation_config.get("system_prompt", "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.")
 
         model = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config
