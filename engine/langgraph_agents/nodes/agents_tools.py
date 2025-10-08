@@ -62,15 +62,11 @@ def get_llm():
         generation_config = dict(model_cfg.get("generation_config", {}))
 
         # Extract system prompt then remove it so it is not forwarded twice via **kwargs
-        system_prompt = generation_config.pop("system_prompt", "")
-        rules = generation_config.get("rules", [])
-        system_prompt += "\n\nRules:\n"
-        for rule in rules:
-            system_prompt += f"- {rule}\n"
+        system_prompt = build_system_prompt_from_config()
 
-        logger.info(f"System prompt: {system_prompt}")
-        logger.info(f"Generation config: {generation_config}")
-        logger.info(f"Model name: {model_name}")
+        generation_config.pop("system_prompt", None)
+        generation_config.pop("rules", None)
+
         model = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config
         )
@@ -117,8 +113,7 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
     }
 
-    prompt = build_system_prompt_from_config()
-    prompt += "\n\n" + json.dumps(prompt_data)
+    prompt = get_prompt("label_workloads", **prompt_data)
     resp = model.invoke(prompt)
 
     try:
