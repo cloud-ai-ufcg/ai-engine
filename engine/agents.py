@@ -413,7 +413,16 @@ def label_workloads(
         multiagent = cfg.get("ai", {}).get("multiagent", False)
 
     provider = provider.lower()
+    try:
+        model = cfg.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
+        model_config = cfg.get("ai", {}).get("default_config", {})
+        generation_config = model_config.get("generation_config", {})
 
+        logger.info(f"CONFIG: Using OpenRouter model: {model}")
+        logger.info(f"CONFIG: Using generation config: {generation_config}")
+    except Exception as e:
+        logger.warning(f"Could not log model configuration: {e}")
+        
     labels = []
     explanations = {}
     if multiagent:
