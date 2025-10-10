@@ -2,7 +2,11 @@ import json
 
 from typing import Any, Dict
 from dotenv import load_dotenv
-from engine.ai_config import get_prompt, WorkloadLabelOutput
+from engine.ai_config import (
+    build_system_prompt_from_config,
+    get_prompt,
+    WorkloadLabelOutput,
+)
 from engine.util import load_config, get_logger
 from langsmith import traceable
 
@@ -58,11 +62,10 @@ def get_llm():
         generation_config = dict(model_cfg.get("generation_config", {}))
 
         # Extract system prompt then remove it so it is not forwarded twice via **kwargs
-        system_prompt = generation_config.pop("system_prompt", "")
-        rules = generation_config.get("rules", [])
-        system_prompt += "\n\nRules:\n"
-        for rule in rules:
-            system_prompt += f"- {rule}\n"
+        system_prompt = build_system_prompt_from_config()
+
+        generation_config.pop("system_prompt", None)
+        generation_config.pop("rules", None)
 
         model = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config

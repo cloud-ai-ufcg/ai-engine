@@ -1,3 +1,4 @@
+from asyncio.log import logger
 import os
 from abc import ABC
 from threading import Lock
@@ -65,7 +66,7 @@ class Client(ABC):
         """
         if not system_prompt or not user_prompt:
             raise ValueError("system_prompt and user_prompt are required")
-
+        
         # Prepare the request parameters
         request_params = {
             "model": model,
