@@ -137,13 +137,14 @@ def label_workloads_with_llm(
         "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
     )
 
-    logger.info(f"Sending request to OpenRouter with model: {model}")
 
     # Initialize to avoid UnboundLocalError if exception raised before assignment
     text_response = ""
 
     try:
         config = load_config()
+        model = config.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
+
         model_config = config.get("ai", {}).get("default_config", {})
         system_prompt = build_system_prompt_from_config()
         generation_config = model_config.get("generation_config", {})
@@ -412,10 +413,18 @@ def label_workloads(
         multiagent = cfg.get("ai", {}).get("multiagent", False)
 
     provider = provider.lower()
+    try:
+        model = cfg.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
+        model_config = cfg.get("ai", {}).get("default_config", {})
+        generation_config = model_config.get("generation_config", {})
 
+        logger.info(f"CONFIG: Using OpenRouter model: {model}")
+        logger.info(f"CONFIG: Using generation config: {generation_config}")
+    except Exception as e:
+        logger.warning(f"Could not log model configuration: {e}")
+        
     labels = []
     explanations = {}
-
     if multiagent:
         cluster_info = cfg.get("cluster_info", [])
         labels, explanations = label_workloads_multiagent(workloads, cluster_info)
