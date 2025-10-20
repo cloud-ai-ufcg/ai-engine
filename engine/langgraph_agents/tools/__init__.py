@@ -4,4 +4,4 @@ from .cluster_capacity_tool import cluster_capacity
 from .pending_by_cluster_tool import pending_by_cluster
 from .pending_by_workload_tool import pending_by_workload
 from .workload_capacity_tool import workload_capacity
-from .cluster_pricing_tool import cluster_pricing
+from .infra_pricing_tool import infra_pricing
