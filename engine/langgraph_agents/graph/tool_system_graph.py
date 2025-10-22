@@ -10,6 +10,7 @@ from ..tools import (
     workload_capacity,
     cluster_capacity,
     workload_pricing,
+    infra_pricing
 )
 from ..nodes import recommendationsNode
 
@@ -96,10 +97,10 @@ def workload_capacity_node(state: dict) -> dict:
 def cluster_pricing_node(state: dict) -> dict:
     workloads = state.get("workloads", [])
     if not workloads:
-        return {"cluster_pricing": {"error": "no workloads provided"}}
+        return {"infra_princing": {"error": "no workloads provided"}}
 
-    result = cluster_pricing.invoke({"data": {"latest": {"workloads": workloads}}})
-    return {"cluster_pricing": result}
+    result = infra_pricing.invoke({"data": {"latest": {"workloads": workloads}}})
+    return {"infra_princing": result}
 
 # -----------------------
 # Graph Creation
@@ -118,7 +119,7 @@ def create_tool_system_migration_graph():
     graph.add_node("pending_by_workload", pending_by_workload_node)
     graph.add_node("workload_pricing", workload_pricing_node)
     graph.add_node("workload_capacity", workload_capacity_node)
-    graph.add_node("cluster_pricing", cluster_pricing_node)
+    graph.add_node("infra_pricing", cluster_pricing_node)
     graph.add_node("recommendations", recommendationsNode)
 
     #Parallel nodes entry points
@@ -129,14 +130,14 @@ def create_tool_system_migration_graph():
     graph.add_edge("input_filter", "pending_by_cluster")
     graph.add_edge("input_filter", "workload_capacity")
     graph.add_edge("input_filter", "workload_pricing")
-    graph.add_edge("input_filter", "cluster_pricing")
+    graph.add_edge("input_filter", "infra_pricing")
 
     graph.add_edge("pending_by_workload", "recommendations")
     graph.add_edge("cluster_capacity", "recommendations")
     graph.add_edge("pending_by_cluster", "recommendations")
     graph.add_edge("workload_capacity", "recommendations")
     graph.add_edge("workload_pricing", "recommendations")
-    graph.add_edge("cluster_pricing", "recommendations")
+    graph.add_edge("infra_pricing", "recommendations")
 
     graph.add_edge("recommendations", END)
 
