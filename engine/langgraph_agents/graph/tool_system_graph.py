@@ -10,7 +10,6 @@ from ..tools import (
     workload_capacity,
     cluster_capacity,
     workload_pricing,
-    cluster_pricing
 )
 from ..nodes import recommendationsNode
 
