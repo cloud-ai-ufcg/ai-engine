@@ -1,10 +1,10 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from langchain_core.tools import tool
 from .pricing_data import aws_instance_types
 
 
 @tool("infra_pricing", return_direct=False)
-def infra_pricing(data: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
+def infra_pricing(data: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
     """
     LangGraph tool to calculate infrastructure costs for clusters across all timestamps.
     
@@ -33,10 +33,22 @@ def infra_pricing(data: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
         }
         
     Returns:
-        Dict mapping timestamp to dict of cluster_label to infrastructure cost (float).
+        Dict mapping timestamp to list of dicts with cluster pricing details.
         Example: {
-            "1760540497": {"private": 1.234, "public": 0.987},
-            "1760540467": {"private": 1.234, "public": 0.987}
+            "1760540497": [
+                {
+                    "cluster_label": "private",
+                    "price_usd": 1.234567,
+                    "instance_type": "m5.large",
+                    "provider": "AWS"
+                },
+                {
+                    "cluster_label": "public",
+                    "price_usd": 0.987654,
+                    "instance_type": "m5.xlarge",
+                    "provider": "AWS"
+                }
+            ]
         }
     """
     if not data:
@@ -66,7 +78,7 @@ def infra_pricing(data: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
             continue
         
         # Calculate infrastructure cost for each cluster at this timestamp
-        timestamp_costs = {}
+        timestamp_costs = []
         
         for cluster in cluster_info_list:
             cluster_label = cluster.get("cluster_label")
@@ -79,23 +91,40 @@ def infra_pricing(data: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
             node_quantity = node_info.get("quantity", 0)
             
             if node_cpu == 0 or node_memory == 0 or node_quantity == 0:
-                timestamp_costs[cluster_label] = 0.0
+                timestamp_costs.append({
+                    "cluster_label": cluster_label,
+                    "price_usd": 0.0,
+                    "instance_type": None,
+                    "provider": None
+                })
                 continue
             
             # Find minimum viable instance type
             min_instance = find_minimum_viable_instance(node_cpu, node_memory)
             
             if not min_instance:
-                timestamp_costs[cluster_label] = 0.0
+                timestamp_costs.append({
+                    "cluster_label": cluster_label,
+                    "price_usd": 0.0,
+                    "instance_type": None,
+                    "provider": None
+                })
                 continue
             
             # Calculate cost per interval
             hourly_price = min_instance["price_usd_per_hour"]
+            instance_name = min_instance["name"]
+            provider = min_instance["provider"]
             interval_price = (hourly_price * interval_seconds) / 3600  # Convert hourly to interval
             total_cost = interval_price * node_quantity
             
-            timestamp_costs[cluster_label] = round(total_cost, 6)
-        
+            timestamp_costs.append({
+                "cluster_label": cluster_label,
+                "price_usd": round(total_cost, 6),
+                "instance_type": instance_name,
+                "provider": provider
+            })
+
         result[timestamp] = timestamp_costs
     
     return result
