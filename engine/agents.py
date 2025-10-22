@@ -351,6 +351,8 @@ def label_workloads_multiagent(
         "overall_explanation", "No overall explanation provided."
     )
 
+    labels = final_decisions
+
     final_explanations = {
         "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
