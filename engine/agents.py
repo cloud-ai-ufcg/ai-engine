@@ -351,14 +351,6 @@ def label_workloads_multiagent(
         "overall_explanation", "No overall explanation provided."
     )
 
-    if not final_decisions or len(final_decisions) != len(workloads):
-        labels = [0] * len(workloads)
-        workload_explanations = ["Agent did not return a valid label format."] * len(
-            workloads
-        )
-    else:
-        labels = final_decisions
-
     final_explanations = {
         "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
