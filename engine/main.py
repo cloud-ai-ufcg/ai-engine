@@ -372,7 +372,8 @@ def analyze_workloads(workloads, config):
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
-    result["label"] = labels
+    result["label"] = pd.Series(labels)
+    result["label"] = result["label"].fillna(0).astype(int)
 
     # Safely attach reasons column
     if (
