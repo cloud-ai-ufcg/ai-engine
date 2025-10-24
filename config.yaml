@@ -2,7 +2,7 @@ data:
   input_json: monitor_outputs.json
 
 ai:
-  selected_model: nvidia/nemotron-nano-9b-v2           # Selected model to be used 
+  selected_model: anthropic/claude-3.5-sonnet          # Selected model to be used 
   multi_agent: false               # Whether to use multi-agent or not
   scheduler_interval: 300          # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600  # Number of seconds to look back for metrics
@@ -29,13 +29,13 @@ ai:
         temperature: 0.1
         max_output_tokens: 6000
     llama:
-      model_name: llama-3.1-8b-instant
-      provider: groq
+      model_name: nvidia/nemotron-nano-9b-v2
+      provider: nvidia
       generation_config:
         temperature: 0.1
         max_output_tokens: 6000
     claude:
-      model_name: claude-3.5-sonnet-20240620
+      model_name: anthropic/claude-3.5-sonnet
       provider: anthropic
       generation_config:
         temperature: 0.1
