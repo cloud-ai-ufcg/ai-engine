@@ -203,6 +203,30 @@ def label_workloads_with_llm(
                     f"Padded {missing_count} missing decisions with original cluster assignments (no migration)"
                 )
 
+        # Adicionar logs detalhados para depuração
+        logger.debug(f"Número de workloads no DataFrame: {len(df)}")
+        logger.debug(f"Número de rótulos gerados: {len(labels)}")
+
+        # Garantir que o número de rótulos corresponda ao número de workloads
+        if len(labels) != len(df):
+            logger.warning(
+                f"Mismatch entre número de rótulos ({len(labels)}) e workloads ({len(df)}). Ajustando..."
+            )
+
+            if len(labels) > len(df):
+                # Truncar rótulos extras
+                labels = labels[: len(df)]
+                explanations = explanations[: len(df)]
+            else:
+                # Preencher rótulos ausentes com valores padrão (0)
+                missing_count = len(df) - len(labels)
+                labels.extend([0] * missing_count)
+                explanations.extend([
+                    "Rótulo padrão aplicado devido à ausência de decisão do modelo"
+                ] * missing_count)
+
+            logger.info(f"Rótulos ajustados para corresponder ao número de workloads: {len(labels)}")
+
         # Convert to integers and create output
         labels = [int(decision) for decision in decisions]
         logger.info("Migration decisions extracted from JSON response")
@@ -352,10 +376,8 @@ def label_workloads_multiagent(
     )
 
     if not final_decisions or len(final_decisions) != len(workloads):
-        labels = [0] * len(workloads)
-        workload_explanations = ["Agent did not return a valid label format."] * len(
-            workloads
-        )
+        logger.warning("Final decisions missing or length mismatch. Using default labels (0) for all workloads.")
+        labels = final_decisions
     else:
         labels = final_decisions
 
