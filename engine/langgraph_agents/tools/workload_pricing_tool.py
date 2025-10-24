@@ -1,6 +1,6 @@
 from typing import Dict, Any
-from .pricing_data import aws_instance_types
 from langchain_core.tools import tool
+from .utils import *
 
 @tool("workload_pricing", return_direct=False)
 def workload_pricing(data: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
@@ -41,39 +41,6 @@ def workload_pricing(data: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
     """
     if not data:
         return {}
-
-    def parse_millicores_to_cores(value) -> float:
-        if isinstance(value, (int, float)):
-            return float(value)
-        s = str(value)
-        if s.endswith("m"):
-            try:
-                return float(s[:-1]) / 1000.0
-            except Exception:
-                return 0.0
-        try:
-            return float(s)
-        except Exception:
-            return 0.0
-
-    def parse_mebibytes_to_gb(value) -> float:
-        if isinstance(value, (int, float)):
-            return float(value)
-        s = str(value).lower()
-        try:
-            if s.endswith("mi"):
-                return float(s[:-2]) / 1024.0
-            if s.endswith("gi"):
-                return float(s[:-2])
-            return float(s)
-        except Exception:
-            return 0.0
-
-    def find_minimum_viable_instance(required_vcpus: float, required_mem_gb: float):
-        for inst in aws_instance_types:
-            if inst["vcpus"] >= required_vcpus and inst["memory_gb"] >= required_mem_gb:
-                return inst
-        return None
 
     totals: Dict[str, Dict[str, float]] = {}
 
