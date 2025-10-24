@@ -1,7 +1,5 @@
 from typing import Dict, Any, List
 from langchain_core.tools import tool
-from .pricing_data import aws_instance_types
-
 
 @tool("infra_pricing", return_direct=False)
 def infra_pricing(data: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
@@ -128,27 +126,3 @@ def infra_pricing(data: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
         result[timestamp] = timestamp_costs
     
     return result
-
-
-def find_minimum_viable_instance(required_cpu: int, required_memory: int) -> Dict[str, Any]:
-    """
-    Find the minimum viable AWS instance type that meets or exceeds the required CPU and memory.
-    
-    Iterates through aws_instance_types in order (which is already sorted by size and price)
-    and returns the first instance that meets the requirements.
-    
-    Args:
-        required_cpu: Required number of vCPUs
-        required_memory: Required memory in GB
-        
-    Returns:
-        Dict containing instance information, or None if no suitable instance found
-    """
-    # Iterate through instances in order and return the first viable one
-    # The pricing_data.py list is already ordered by size/price (ascending)
-    for instance in aws_instance_types:
-        if instance["vcpus"] >= required_cpu and instance["memory_gb"] >= required_memory:
-            return instance
-    
-    # No viable instance found
-    return None
