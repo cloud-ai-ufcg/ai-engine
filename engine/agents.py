@@ -352,11 +352,10 @@ def label_workloads_multiagent(
     workloads: List[dict], cluster_info: List[dict]
 ) -> Tuple[List[int], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
+    # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
+    # so they only appear in the graph output (not in the input trace).
     state = {
-        "workloads": df.to_dict(orient="records"),
-        "cluster_info": cluster_info,
-        "decisions": [],
-        "explanations": {},
+        "workloads": df.to_dict(orient="records")
     }
 
     graph = create_tool_system_migration_graph()
@@ -394,6 +393,8 @@ def label_workloads_multiagent_votes(workloads, provider="langgraph"):
     Label workloads using a multi-agent with voting system.
     """
     df = _normalize_workloads_to_dataframe(workloads)
+    # Do not pre-populate 'final_decisions' or 'explanations' here either;
+    # let the graph/nodes produce them as output so they don't show up in input traces.
     state = {
         "workloads": df.to_dict(orient="records"),
         "cpu_votes": [],
