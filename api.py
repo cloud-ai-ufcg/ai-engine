@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 
 from engine.main import (
     process_monitoring_data,
-    shard_and_analyze_workloads,
     save_and_log_explanations,
 )
 
