@@ -230,8 +230,91 @@ def load_config(config_path=None) -> Dict[str, Any]:
             os.path.join(os.path.dirname(__file__), os.pardir, "config.yaml")
         )
 
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    # Try local engine config first; if missing, fall back to simulator config
+    try:
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+            if config is None:
+                config = {}
+    except Exception:
+        config = {}
+
+    # Merge simulator-level config with higher precedence (simulator > local)
+    # Try SIMULATOR_CONFIG env, then common relative/absolute fallbacks
+    simulator_candidates = []
+    env_sim_cfg = os.environ.get("SIMULATOR_CONFIG", "")
+    if env_sim_cfg:
+        simulator_candidates.append(env_sim_cfg)
+    simulator_candidates.extend([
+        # Path inside the container if we mount the simulator config
+        os.path.abspath("/app/simulator_config.yaml"),
+        os.path.abspath("/home/anandavidal/Documentos/simulator/simulator/data/config.yaml"),
+        os.path.abspath(os.path.join(BASE_DIR, "..", "simulator", "data", "config.yaml")),
+        os.path.abspath(os.path.join(BASE_DIR, "..", "..", "simulator", "data", "config.yaml")),
+    ])
+
+    def deep_set(target: Dict[str, Any], path: list[str], value: Any):
+        curr = target
+        for key in path[:-1]:
+            if key not in curr or not isinstance(curr[key], dict):
+                curr[key] = {}
+            curr = curr[key]
+        curr[path[-1]] = value
+
+    for cand in simulator_candidates:
+        try:
+            with open(cand, "r") as sf:
+                sim_cfg = yaml.safe_load(sf) or {}
+        except Exception:
+            continue
+
+        # 1) ai-engine section maps into local ai section
+        ai_engine = (sim_cfg or {}).get("ai-engine", {})
+        if isinstance(ai_engine, dict):
+            local_ai = config.setdefault("ai", {})
+            # direct key mappings when present
+            for k in [
+                "scheduler_interval",
+                "timestamp_lookback_seconds",
+                "workloads_shard_size",
+            ]:
+                if k in ai_engine and ai_engine[k] is not None:
+                    local_ai[k] = ai_engine[k]
+            # if simulator defines enabled flag, expose under ai as well for consumers
+            if "enabled" in ai_engine and ai_engine["enabled"] is not None:
+                local_ai["enabled"] = ai_engine["enabled"]
+            # If the 'ai' block is present in ai-engine, expose it also in config['ai']
+            if "ai" in ai_engine and isinstance(ai_engine["ai"], dict):
+                config["ai"] = ai_engine["ai"]
+            # If the 'server' block is present in ai-engine, expose it also in config['server']
+            if "server" in ai_engine and isinstance(ai_engine["server"], dict):
+                config["server"] = ai_engine["server"]
+
+        # Prefer ai-engine scoped network configs for client usage
+        if "monitor" in ai_engine and isinstance(ai_engine["monitor"], dict):
+            monitor_cfg = dict(ai_engine["monitor"])
+            h = monitor_cfg.get("host")
+            if h in ("0.0.0.0", "::") or not h:
+                monitor_cfg["host"] = "127.0.0.1"
+            config["monitor"] = monitor_cfg
+
+        if "actuator" in ai_engine and isinstance(ai_engine["actuator"], dict):
+            actuator_cfg = dict(ai_engine["actuator"])
+            h = actuator_cfg.get("host")
+            if h in ("0.0.0.0", "::") or not h:
+                actuator_cfg["host"] = "127.0.0.1"
+            config["actuator"] = actuator_cfg
+
+        # 2) Top-level simulator sections: only fill missing keys, don't override ai-engine specifics
+        for section in ["monitor", "actuator", "server"]:
+            if section in sim_cfg and isinstance(sim_cfg[section], dict):
+                local_section = config.setdefault(section, {})
+                for key, val in sim_cfg[section].items():
+                    # only set if not already provided by ai-engine scoped config
+                    if key not in local_section and val is not None:
+                        local_section[key] = val
+
+        break  # stop after first successful simulator config read
 
     # ------------------------------------------------------------------
     # Inject API keys from environment variables, overriding YAML values
