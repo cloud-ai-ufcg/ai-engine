@@ -204,10 +204,16 @@ async def start():
         if not running:
             return
 
+        data = None
         try:
             async with aiohttp.ClientSession() as session:
-                url = f"http://{app_state.config['monitor']['host']}:{app_state.config['monitor']['port']}/{app_state.config['monitor']['route']}"
-                json = {"interval": app_state.config['monitor']['interval']}
+                monitor_cfg = app_state.config.get("monitor", {})
+                host = monitor_cfg.get("host", "127.0.0.1")
+                port = int(monitor_cfg.get("port", 8082))
+                route = monitor_cfg.get("route", "metrics")
+                interval = monitor_cfg.get("interval", 600)
+                url = f"http://{host}:{port}/{route}"
+                json = {"interval": interval}
 
                 logger.debug(f"Fetching metrics from MONITOR: {url}")
                 logger.debug(f"Interval: {app_state.config['monitor']['interval']}")
@@ -228,6 +234,9 @@ async def start():
                         )
         except Exception as e:
             logger.error(f"Error fetching metrics from MONITOR: {e}")
+
+        if not data:
+            return
 
         workloads = process_monitoring_data(data)
         if workloads:
