@@ -25,7 +25,6 @@ aws_instance_types = [
     {"name": "t3a.large", "vcpus": 2, "memory_gb": 8, "price_usd_per_hour": 0.0752, "provider": "AWS"},
     {"name": "t3a.xlarge", "vcpus": 4, "memory_gb": 16, "price_usd_per_hour": 0.1504, "provider": "AWS"},
     {"name": "t3a.2xlarge", "vcpus": 8, "memory_gb": 32, "price_usd_per_hour": 0.3008, "provider": "AWS"},
-
     # T2 family (Intel burstable - previous generation)
     {"name": "t2.nano", "vcpus": 1, "memory_gb": 0.5, "price_usd_per_hour": 0.0058, "provider": "AWS"},
     {"name": "t2.micro", "vcpus": 1, "memory_gb": 1, "price_usd_per_hour": 0.0116, "provider": "AWS"},
