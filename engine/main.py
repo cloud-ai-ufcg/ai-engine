@@ -394,7 +394,7 @@ def analyze_workloads(workloads, config):
     return result, explanations
 
 
-#def shard_and_analyze_workloads(workloads, config): #deactivate
+def shard_and_analyze_workloads(workloads, config):
     """Analyze workloads in shards using threads.
 
     Args:
