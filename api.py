@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 
 from engine.main import (
     process_monitoring_data,
-    shard_and_analyze_workloads,
     save_and_log_explanations,
+    analyze_workloads
 )
 
 from engine.data_types import *
@@ -231,9 +231,7 @@ async def start():
 
         workloads = process_monitoring_data(data)
         if workloads:
-            result_df, explanations = shard_and_analyze_workloads(
-                workloads, app_state.config
-            )
+            result_df, explanations = analyze_workloads(workloads, app_state.config)
             save_and_log_explanations(result_df, explanations, workloads)
 
             # Transform into WorkloadRecommendation-shaped list[dict]
