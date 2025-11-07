@@ -31,7 +31,9 @@ import threading
 config = load_config()
 
 SCHEDULER_INTERVAL_DEFAULT = 60 * 5  # 5 minutes
-SCHEDULER_INTERVAL: int = int(config["ai"]["scheduler_interval"]) or int(
+# Safely get scheduler_interval from config, with fallback to default
+scheduler_interval = config.get("ai", {}).get("scheduler_interval")
+SCHEDULER_INTERVAL: int = int(scheduler_interval) if scheduler_interval is not None else int(
     SCHEDULER_INTERVAL_DEFAULT
 )  # seconds between recommendation cycles
 
@@ -211,12 +213,14 @@ async def start():
                 host = monitor_cfg.get("host", "127.0.0.1")
                 port = int(monitor_cfg.get("port", 8082))
                 route = monitor_cfg.get("route", "metrics")
-                interval = monitor_cfg.get("interval", 600)
+                # Use timestamp_lookback_seconds as the single source of truth for interval
+                # This ensures consistency between data fetch and processing
+                interval = app_state.config.get("ai", {}).get("timestamp_lookback_seconds", 600)
                 url = f"http://{host}:{port}/{route}"
                 json = {"interval": interval}
 
                 logger.debug(f"Fetching metrics from MONITOR: {url}")
-                logger.debug(f"Interval: {app_state.config['monitor']['interval']}")
+                logger.debug(f"Interval: {interval} seconds")
 
                 async with session.get(url, json=json) as response:
                     if response.status == 200:
