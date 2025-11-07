@@ -162,7 +162,6 @@ def label_workloads_with_llm(
 
         REQUEST_COUNTER += 1
         logger.info(f"OpenRouter API request count: {REQUEST_COUNTER}")
-        logger.debug(f"Complete OpenRouter response: {text_response}")
 
         # Parse and validate response
         response_data = _extract_json_from_response(text_response)
@@ -202,30 +201,6 @@ def label_workloads_with_llm(
                 logger.info(
                     f"Padded {missing_count} missing decisions with original cluster assignments (no migration)"
                 )
-
-        # Adicionar logs detalhados para depuração
-        logger.debug(f"Número de workloads no DataFrame: {len(df)}")
-        logger.debug(f"Número de rótulos gerados: {len(labels)}")
-
-        # Garantir que o número de rótulos corresponda ao número de workloads
-        if len(labels) != len(df):
-            logger.warning(
-                f"Mismatch entre número de rótulos ({len(labels)}) e workloads ({len(df)}). Ajustando..."
-            )
-
-            if len(labels) > len(df):
-                # Truncar rótulos extras
-                labels = labels[: len(df)]
-                explanations = explanations[: len(df)]
-            else:
-                # Preencher rótulos ausentes com valores padrão (0)
-                missing_count = len(df) - len(labels)
-                labels.extend([0] * missing_count)
-                explanations.extend([
-                    "Rótulo padrão aplicado devido à ausência de decisão do modelo"
-                ] * missing_count)
-
-            logger.info(f"Rótulos ajustados para corresponder ao número de workloads: {len(labels)}")
 
         # Convert to integers and create output
         labels = [int(decision) for decision in decisions]
