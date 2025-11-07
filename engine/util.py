@@ -224,11 +224,42 @@ def load_config(config_path=None) -> Dict[str, Any]:
     if _config_loaded and config is not None:
         return config
 
+    env_sim_cfg = os.environ.get("SIMULATOR_CONFIG", "")
+
+    if env_sim_cfg:
+        env_sim_cfg = os.path.abspath(env_sim_cfg)
+
     if config_path is None:
-        # Default to the config.yaml located one directory above the current module
-        config_path = os.path.abspath(
+        default_engine_cfg = os.path.abspath(
             os.path.join(os.path.dirname(__file__), os.pardir, "config.yaml")
         )
+        simulator_cfg_candidates: list[str] = []
+
+        if env_sim_cfg and os.path.isfile(env_sim_cfg):
+            simulator_cfg_candidates.append(env_sim_cfg)
+
+        simulator_cfg_candidates.extend(
+            [
+                os.path.abspath(
+                    os.path.join(BASE_DIR, "simulator", "data", "config.yaml")
+                ),
+                os.path.abspath(
+                    os.path.join(BASE_DIR, "../simulator", "data", "config.yaml")
+                ),
+                os.path.abspath(
+                    os.path.join(BASE_DIR, "../../simulator", "data", "config.yaml")
+                ),
+            ]
+        )
+
+        config_path = None
+        for candidate in simulator_cfg_candidates:
+            if os.path.isfile(candidate):
+                config_path = candidate
+                break
+
+        if not config_path:
+            config_path = default_engine_cfg
 
     # Try local engine config first; if missing, fall back to simulator config
     try:
@@ -242,8 +273,9 @@ def load_config(config_path=None) -> Dict[str, Any]:
     # Merge simulator-level config with higher precedence (simulator > local)
     # Try SIMULATOR_CONFIG env, then common relative/absolute fallbacks
     simulator_candidates = []
-    env_sim_cfg = os.environ.get("SIMULATOR_CONFIG", "")
     if env_sim_cfg:
+        # If SIMULATOR_CONFIG was already the primary, we still add it here to allow
+        # merging in case additional simulator-level keys should override
         simulator_candidates.append(env_sim_cfg)
     simulator_candidates.extend([
         # Path inside the container if we mount the simulator config
@@ -272,7 +304,11 @@ def load_config(config_path=None) -> Dict[str, Any]:
         ai_engine = (sim_cfg or {}).get("ai-engine", {})
         if isinstance(ai_engine, dict):
             local_ai = config.setdefault("ai", {})
-            # direct key mappings when present
+            # If the 'ai' block is present in ai-engine, merge it first (but don't override direct keys)
+            if "ai" in ai_engine and isinstance(ai_engine["ai"], dict):
+                # Merge ai block, but direct keys from ai-engine take precedence
+                local_ai.update(ai_engine["ai"])
+            # direct key mappings when present (these override anything from ai block)
             for k in [
                 "scheduler_interval",
                 "timestamp_lookback_seconds",
@@ -283,9 +319,6 @@ def load_config(config_path=None) -> Dict[str, Any]:
             # if simulator defines enabled flag, expose under ai as well for consumers
             if "enabled" in ai_engine and ai_engine["enabled"] is not None:
                 local_ai["enabled"] = ai_engine["enabled"]
-            # If the 'ai' block is present in ai-engine, expose it also in config['ai']
-            if "ai" in ai_engine and isinstance(ai_engine["ai"], dict):
-                config["ai"] = ai_engine["ai"]
             # If the 'server' block is present in ai-engine, expose it also in config['server']
             if "server" in ai_engine and isinstance(ai_engine["server"], dict):
                 config["server"] = ai_engine["server"]
