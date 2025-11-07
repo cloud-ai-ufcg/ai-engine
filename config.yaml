@@ -2,11 +2,10 @@ data:
   input_json: monitor_outputs.json
 
 ai:
-  selected_model: anthropic/claude-3.5-sonnet          # Selected model to be used 
+  selected_model: anthropic/claude-3.5-sonnet         # Selected model to be used
   multi_agent: false               # Whether to use multi-agent or not
   scheduler_interval: 300          # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600  # Number of seconds to look back for metrics
-  workloads_shard_size: 20         # Number of workloads to be processed in parallel
   fetch_metrics_immediately: true # Whether to fetch metrics immediately or wait for the scheduler
 
   default_config:
@@ -19,7 +18,6 @@ ai:
         - "Cluster load must not exceed 80% of the cluster capacity."
         - "Pending workloads must not exceed 40% of total workloads."
         - "Provide specific recommendations for each workload."
-        - "Provide a summary of the recommendations."
 
   models:
     gemini:
