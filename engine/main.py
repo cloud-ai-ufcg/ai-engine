@@ -218,8 +218,20 @@ def analyze_workloads(workloads, config):
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
-    result["label"] = pd.Series(labels)
-    result["label"] = result["label"].fillna(0).astype(int)
+    
+    if not result.empty:
+        label_series = pd.Series(labels)
+        
+        numeric_labels = pd.to_numeric(label_series, errors='coerce')
+        
+        result["label"] = numeric_labels.fillna(-1).astype(int)
+        
+    else:
+        
+        result["label"] = pd.Series(dtype=int) 
+        logger.warning("No workloads processed; 'label' column initialized empty.")
+
+
 
     # Safely attach reasons column
     if (

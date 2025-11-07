@@ -323,13 +323,16 @@ def label_workloads_with_llm(
 # MultiAgent implementation
 # ---------------------------------------------------------------------------
 def label_workloads_multiagent(
-    workloads: List[dict], cluster_info: List[dict]
+    workloads: List[dict], cluster_info: List[dict], interval_duration: str = None
 ) -> Tuple[List[int], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
+    
     # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
     # so they only appear in the graph output (not in the input trace).
     state = {
-        "workloads": df.to_dict(orient="records")
+        "workloads": df.to_dict(orient="records"),
+        "cluster_info": cluster_info,
+        "interval_duration": interval_duration
     }
 
     graph = create_tool_system_migration_graph()
@@ -338,16 +341,36 @@ def label_workloads_multiagent(
     thread_id = str(uuid.uuid4())
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    logger.info("Final state: ", final_state)
+    
 
     recommendations_dict = final_state.get("explanations", {})
-
     final_decisions = final_state.get("decisions", [])
     workload_explanations = recommendations_dict.get("workload_explanations", [])
 
+    
     if not final_decisions or len(final_decisions) != len(workloads):
-        logger.warning("Final decisions missing or length mismatch. Applying existing recommendations ")
-        labels = final_decisions
+        logger.warning(
+            f"Number of decisions ({len(final_decisions)}) does not match number of workloads ({len(workloads)}). "
+            "Filling missing recommendations with -1."
+        )
+
+        
+        corrected_decisions = []
+        missing_workloads = []
+
+        for i, wl in enumerate(workloads):
+            if i < len(final_decisions):
+                corrected_decisions.append(final_decisions[i])
+            else:
+                corrected_decisions.append(-1)
+                missing_workloads.append(wl.get("workload_id", f"workload_{i}"))
+
+        if missing_workloads:
+            logger.warning(
+                f"No response from LLM for workloads: {', '.join(missing_workloads)}"
+            )
+
+        labels = corrected_decisions
     else:
         labels = final_decisions
 
