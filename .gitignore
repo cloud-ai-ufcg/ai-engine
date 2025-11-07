@@ -33,3 +33,13 @@ go.work.sum
 
 # logs
 logs
+
+# Test files
+test_*.py
+*_test.py
+test_*.sh
+run_tests.sh
+.pytest_cache/
+__pycache__/
+
+#

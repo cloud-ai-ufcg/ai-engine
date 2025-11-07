@@ -127,10 +127,8 @@ def label_workloads_with_llm(
 
     # Dependency validation - early return if not available
     if not HAS_OPENROUTER or not openrouter_client:
-        logger.warning(
-            "OpenRouter client not available. Using traditional model as fallback."
-        )
-        return _label_workloads_with_heuristics(workloads)
+        logger.error("OpenRouter client not available, skipping this cycle")
+        return [], {}
 
     # Data preparation
     df = _normalize_workloads_to_dataframe(workloads)
@@ -208,114 +206,14 @@ def label_workloads_with_llm(
         return labels, explanation_output
 
     except Exception as e:
-        logger.warning(f"Error parsing JSON response: {e}")
-
-        # Fallback: try to extract just the decisions if JSON parsing failed
-        pattern = r"[01]+"
-        matches = re.findall(pattern, text_response)
-
-        if matches:
-            longest_match = max(matches, key=len)
-            if len(longest_match) == len(df):
-                logger.info(f"Migration pattern identified: {longest_match}")
-                labels = [int(digit) for digit in longest_match]
-
-                # Create a basic explanation output
-                explanation_output = {
-                    "explanation": "Migration decisions based on resource usage patterns",
-                    "workload_explanations": [],
-                }
-
-                # Log the decision for each workload
-                for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                    workload_id = workload[1].get("workload_id", f"workload-{idx}")
-                    kind = workload[1].get("kind", "unknown")
-                    destination = "public" if label == 1 else "private"
-                    logger.info(
-                        f"Decision for {workload_id} ({kind}): Cluster {destination}"
-                    )
-
-                    # Add a generic explanation
-                    if label == 1:
-                        explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-                    else:
-                        explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-                    explanation_output["workload_explanations"].append(explanation)
-
-                return labels, explanation_output
-
-        all_digits = re.findall(r"[01]", text_response)
-        if len(all_digits) >= len(df):
-            logger.info(f"Extracting labels from {model} response: {text_response}")
-            labels = [int(digit) for digit in all_digits[: len(df)]]
-
-            # Create a basic explanation output
-            explanation_output = {
-                "explanation": "Migration decisions based on resource usage patterns",
-                "workload_explanations": [],
-            }
-
-            # Log the decision for each workload
-            for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                workload_id = workload[1].get("workload_id", f"workload-{idx}")
-                kind = workload[1].get("kind", "unknown")
-                destination = "public" if label == 1 else "private"
-                logger.info(
-                    f"Decision for {workload_id} ({kind}): Cluster {destination}"
-                )
-
-                # Add a generic explanation
-                if label == 1:
-                    explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-                else:
-                    explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-                explanation_output["workload_explanations"].append(explanation)
-
-            return labels, explanation_output
-
-        logger.warning(f"Could not extract labels from LLM, response: {text_response}")
-        labels = _label_workloads_with_heuristics(workloads)
-
-        # Create a fallback explanation output
-        explanation_output = {
-            "explanation": "Migration decisions based on heuristic rules (fallback)",
-            "workload_explanations": [],
-        }
-
-        # Add generic explanations
-        for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get("workload_id", f"workload-{idx}")
-            kind = workload[1].get("kind", "unknown")
-
-            if label == 1:
-                explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-            else:
-                explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-            explanation_output["workload_explanations"].append(explanation)
-
-        return labels, explanation_output
+        logger.error(f"Error parsing JSON response: {e}")
+        logger.error(f"Raw LLM response (first 500 chars): {text_response[:500]}")
+        logger.error("LLM failed to generate recommendations, skipping this cycle")
+        return [], {}
     except Exception as e:
-        logger.warning(f"Error using {client} API: {e}")
-        labels = _label_workloads_with_heuristics(workloads)
-
-        # Create a fallback explanation output
-        explanation_output = {
-            "explanation": f"Migration decisions based on heuristic rules due to API error: {str(e)}",
-            "workload_explanations": [],
-        }
-
-        # Add generic explanations
-        for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get("workload_id", f"workload-{idx}")
-            kind = workload[1].get("kind", "unknown")
-
-            if label == 1:
-                explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-            else:
-                explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-            explanation_output["workload_explanations"].append(explanation)
-
-        return labels, explanation_output
+        logger.error(f"Error using {client} API: {e}")
+        logger.error("LLM failed to generate recommendations, skipping this cycle")
+        return [], {}
 
 
 def label_workloads_multiagent(workloads, provider="langgraph"):
@@ -374,12 +272,8 @@ def label_workloads(
     if provider in {"openrouter"}:
         return label_workloads_with_llm(workloads)
 
-    logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
-    labels = _label_workloads_with_heuristics(workloads)
-    return labels, {
-        "explanation": "Used heuristic rules due to unknown provider.",
-        "workload_explanations": [],
-    }
+    logger.error(f"Unknown provider '{provider}', skipping this cycle")
+    return [], {}
 
 
 def _label_workloads_with_heuristics(

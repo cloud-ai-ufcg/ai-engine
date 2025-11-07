@@ -24,3 +24,5 @@ langchain-groq>=0.3.6
 graphviz
 langsmith>=0.1.106
 openai==1.50.0
+pytest>=7.4.0
+pytest-mock>=3.11.1
