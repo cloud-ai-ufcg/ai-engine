@@ -1,21 +1,16 @@
 import json
-import pandas as pd
 import re
-import logging
+from typing import Dict, List, Union
 
-from typing import List, Dict, Union
+import pandas as pd
 from dotenv import load_dotenv
-from engine.ai_config import get_prompt
-from engine.util import load_config, get_logger
-from openai import OpenAI
-from engine.ai_config import get_prompt
-from engine.util import load_config, log_token_usage
-from engine.client import OpenRouterClient
 from langsmith import traceable
-from langchain_google_genai import ChatGoogleGenerativeAI
 
-logger = get_logger("agents")
-logger = logging.getLogger(__name__)
+from engine.ai_config import get_prompt
+from engine.client import OpenRouterClient
+from engine.util import get_logger, load_config, log_token_usage
+
+
 logger = get_logger("langgraph_agents")
 
 load_dotenv()
@@ -53,29 +48,64 @@ def get_llm():
     """Initialize and return a model wrapper with `.invoke` and its config."""
     try:
         client = OpenRouterClient()
-        config = load_config()
-        selected_model = config["ai"].get("selected_model", "gemini")
-        model_cfg = config["ai"]["models"].get(selected_model, {})
-        if model_cfg is None:
-            raise ValueError(f"Model '{selected_model}' not found in configuration.")
+        cfg = load_config()
+        ai_cfg = cfg.get("ai", {})
 
-        # Map internal model names to OpenRouter model names
-        model_mapping = {
-            "gemini": "google/gemini-2.0-flash-001",
-            "gpt-4": "openai/gpt-4",
-            "gpt-3.5-turbo": "openai/gpt-3.5-turbo",
-            "llama": "meta-llama/llama-3.1-8b-instruct",
-        }
+        selected_model = ai_cfg.get("selected_model", "gemini")
+        models_cfg: Dict[str, Dict] = ai_cfg.get("models", {})
 
-        model_name = model_mapping.get(selected_model, "google/gemini-2.0-flash-001")
-        # Work on a mutable copy to avoid accidental global mutation
+        model_cfg = models_cfg.get(selected_model)
+
+        if not model_cfg:
+            for key, candidate in models_cfg.items():
+                if candidate.get("model_name") == selected_model:
+                    model_cfg = candidate
+                    selected_model = key
+                    break
+
+        if not model_cfg:
+            fallback_key = "gemini"
+            logger.warning(
+                "Model '%s' not found in configuration. Falling back to '%s'.",
+                selected_model,
+                fallback_key,
+            )
+            model_cfg = models_cfg.get(fallback_key)
+            selected_model = fallback_key
+
+        if not model_cfg:
+            raise ValueError(
+                f"Model configuration for '{selected_model}' not found in configuration."
+            )
+
+        model_name = model_cfg.get("model_name", selected_model)
+
         generation_config = dict(model_cfg.get("generation_config", {}))
 
-        # Prefer config-provided system prompt if available, else fall back to default
-        system_prompt = generation_config.get("system_prompt", "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.")
+        if "max_tokens" not in generation_config and "max_output_tokens" not in generation_config:
+            default_cfg = (
+                ai_cfg.get("default_config", {})
+                .get("generation_config", {})
+            )
+            if "max_output_tokens" in default_cfg:
+                generation_config["max_output_tokens"] = default_cfg["max_output_tokens"]
+
+        system_prompt = generation_config.get("system_prompt")
+        if not system_prompt:
+            default_cfg = (
+                ai_cfg.get("default_config", {})
+                .get("generation_config", {})
+            )
+            system_prompt = default_cfg.get(
+                "system_prompt",
+                "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.",
+            )
 
         model = OpenRouterInvokeModel(
-            client, model_name, system_prompt, **generation_config
+            client,
+            model_name,
+            system_prompt,
+            **generation_config,
         )
         return model
     except Exception as e:
