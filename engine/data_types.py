@@ -11,6 +11,7 @@ class WorkflowState(TypedDict):
     pending_votes: List[int]
     final_decisions: List[int]
     explanations: Dict
+    historical_context: str  # Historical recommendations context for LLM
     
 class WorkloadBase(BaseModel):
     workload_id: str
