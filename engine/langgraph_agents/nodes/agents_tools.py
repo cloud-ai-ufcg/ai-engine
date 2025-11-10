@@ -86,9 +86,11 @@ model = get_llm()
 def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Invokes the LLM to generate migration recommendations and explanations.
+    Now includes historical context if available.
     """
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
+    historical_context = state.get("historical_context", "")  # Get from state
 
     pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
@@ -111,6 +113,7 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         "workloads_json": json.dumps(workloads, indent=2),
         "clusters_json": json.dumps(clusters, indent=2),
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
+        "historical_context": historical_context,  # Pass to prompt
     }
 
     prompt = get_prompt("label_workloads", **prompt_data)

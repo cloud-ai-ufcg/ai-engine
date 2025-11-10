@@ -51,10 +51,15 @@ PROMPTS = {
         "version": "1.0",
         "output_schema": WorkloadLabelOutput,
         "template": """You are a Kubernetes orchestrator. For each workload, decide if it should run in the 'private' cluster (0) or 'public' cluster (1).
+
+{historical_context}
+
 Rules:
 - If private is overloaded or workload needs high resources, prefer public (1).
 - If workload is in public and private has capacity, allow migrating back to private (0).
 - Use percent_pending and cluster_load to guide decisions.
+- Consider the historical migration patterns to maintain consistency and avoid unnecessary migrations.
+- If a workload was recently migrated, prefer stability unless there's a compelling reason to migrate again.
 
 Respond with JSON:
 {{
