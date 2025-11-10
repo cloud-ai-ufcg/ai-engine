@@ -143,9 +143,27 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
     workload_explanations: list[str] = []
 
     for label, expl in zip(decisions_list, explanations_list):
-        label_int = (
-            int(label) if isinstance(label, (int, str)) and str(label).isdigit() else 0
-        )
+        label_int = -1 
+
+        try:
+            
+            val = int(label)
+            
+            
+            if val in [0, 1]:
+                label_int = val
+            elif val == -1:
+                label_int = -1 
+            else:
+                
+                logger.warning(f"Label value {val} outside of expected range [0, 1, -1]. Setting to -1.")
+                label_int = -1
+                
+        except (ValueError, TypeError):
+            
+            logger.warning(f"Non-numeric label received: {label}. Setting to -1.")
+            label_int = -1
+            
         final_decisions.append(label_int)
         workload_explanations.append(expl)
 
