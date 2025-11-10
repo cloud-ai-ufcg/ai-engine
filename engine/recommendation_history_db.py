@@ -1,110 +1,82 @@
 """
 Recommendation History Database Module
 
-Handles SQLite database operations for storing and retrieving
+Handles MongoDB operations for storing and retrieving
 historical recommendation summaries.
 """
 
-import sqlite3
 import logging
-import os
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
+from pymongo import MongoClient, ASCENDING
 from .ai_config import WorkloadRecommendation
 
 logger = logging.getLogger(__name__)
 
 
-def init_history_database(db_path: str) -> None:
+def _get_mongo_client(mongodb_config: Dict[str, Any]) -> MongoClient:
     """
-    Initialize SQLite database and create tables if they don't exist.
+    Create and return a MongoDB client.
 
     Args:
-        db_path: Path to the SQLite database file
+        mongodb_config: Dictionary with host, port, database, collection
+
+    Returns:
+        MongoClient instance
+    """
+    host = mongodb_config.get("host", "localhost")
+    port = mongodb_config.get("port", 27017)
+    
+    return MongoClient(host, port)
+
+
+def init_history_database(mongodb_config: Dict[str, Any]) -> None:
+    """
+    Initialize MongoDB collection and create indexes if they don't exist.
+
+    Args:
+        mongodb_config: Dictionary with host, port, database, collection
     """
     try:
-        # Ensure directory exists
-        db_dir = os.path.dirname(db_path)
-        if db_dir and not os.path.exists(db_dir):
-            os.makedirs(db_dir, exist_ok=True)
-            logger.info(f"Created directory for history database: {db_dir}")
+        client = _get_mongo_client(mongodb_config)
+        db = client[mongodb_config["database"]]
+        collection = db[mongodb_config["collection"]]
 
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        # Create history_batches table
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS history_batches (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                history_batch_id INTEGER NOT NULL UNIQUE,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        """
-        )
-
-        # Create history_summaries table
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS history_summaries (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                history_batch_id INTEGER NOT NULL,
-                migration_direction TEXT NOT NULL,
-                summary_text TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (history_batch_id) REFERENCES history_batches(history_batch_id)
-            )
-        """
-        )
-
-        # Create index for efficient queries
-        cursor.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_history_batch_id 
-            ON history_summaries(history_batch_id)
-        """
-        )
-
-        conn.commit()
-        conn.close()
-
-        logger.info(f"History database initialized successfully: {db_path}")
+        # Create index on history_batch_id for efficient queries
+        collection.create_index([("history_batch_id", ASCENDING)])
+        
+        client.close()
+        logger.info(f"MongoDB collection initialized successfully: {mongodb_config['database']}.{mongodb_config['collection']}")
 
     except Exception as e:
-        logger.error(f"Failed to initialize history database: {e}")
+        logger.error(f"Failed to initialize MongoDB collection: {e}")
         raise
 
 
-def get_latest_history_batch_id(db_path: str) -> int:
+def get_latest_history_batch_id(mongodb_config: Dict[str, Any]) -> int:
     """
-    Get the latest history_batch_id from the database.
+    Get the latest history_batch_id from MongoDB.
 
     Args:
-        db_path: Path to the SQLite database file
+        mongodb_config: Dictionary with host, port, database, collection
 
     Returns:
         Latest history_batch_id, or 0 if no records exist
     """
     try:
-        # Initialize database if it doesn't exist
-        if not os.path.exists(db_path):
-            init_history_database(db_path)
-            return 0
+        client = _get_mongo_client(mongodb_config)
+        db = client[mongodb_config["database"]]
+        collection = db[mongodb_config["collection"]]
 
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            SELECT MAX(history_batch_id) FROM history_batches
-        """
+        # Find document with highest history_batch_id
+        result = collection.find_one(
+            sort=[("history_batch_id", -1)]
         )
 
-        result = cursor.fetchone()
-        conn.close()
+        client.close()
 
-        if result and result[0] is not None:
-            return int(result[0])
+        if result and "history_batch_id" in result:
+            return int(result["history_batch_id"])
         return 0
 
     except Exception as e:
@@ -112,39 +84,37 @@ def get_latest_history_batch_id(db_path: str) -> int:
         return 0
 
 
-def insert_history_batch(db_path: str, history_batch_id: int) -> None:
+def insert_history_batch(mongodb_config: Dict[str, Any], history_batch_id: int) -> None:
     """
     Insert a new history batch record.
 
     Args:
-        db_path: Path to the SQLite database file
+        mongodb_config: Dictionary with host, port, database, collection
         history_batch_id: The history batch ID to insert
     """
     try:
-        # Initialize database if it doesn't exist
-        if not os.path.exists(db_path):
-            init_history_database(db_path)
+        client = _get_mongo_client(mongodb_config)
+        db = client[mongodb_config["database"]]
+        collection = db[mongodb_config["collection"]]
 
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        # Check if batch already exists
+        existing = collection.find_one({"history_batch_id": history_batch_id, "type": "batch"})
+        if existing:
+            logger.warning(f"History batch {history_batch_id} already exists (duplicate insert)")
+            client.close()
+            return
 
-        cursor.execute(
-            """
-            INSERT INTO history_batches (history_batch_id, timestamp)
-            VALUES (?, ?)
-        """,
-            (history_batch_id, datetime.now()),
-        )
-
-        conn.commit()
-        conn.close()
+        # Insert batch document
+        batch_doc = {
+            "history_batch_id": history_batch_id,
+            "type": "batch",
+            "timestamp": datetime.now()
+        }
+        collection.insert_one(batch_doc)
+        client.close()
 
         logger.debug(f"Inserted history batch {history_batch_id}")
 
-    except sqlite3.IntegrityError:
-        logger.warning(
-            f"History batch {history_batch_id} already exists (duplicate insert)"
-        )
     except Exception as e:
         logger.error(f"Failed to insert history batch {history_batch_id}: {e}")
         raise
@@ -182,26 +152,22 @@ def _generate_summary_string(
 
 
 def save_history_batch_recommendations(
-    db_path: str,
+    mongodb_config: Dict[str, Any],
     history_batch_id: int,
     recommendations: List[WorkloadRecommendation],
 ) -> None:
     """
-    Save recommendations to the history database.
+    Save recommendations to MongoDB.
 
     Only migrated workloads (where origin_cluster != destination_cluster) are saved.
     Workloads are grouped by migration direction and summarized.
 
     Args:
-        db_path: Path to the SQLite database file
+        mongodb_config: Dictionary with host, port, database, collection
         history_batch_id: The history batch ID
         recommendations: List of WorkloadRecommendation objects
     """
     try:
-        # Initialize database if it doesn't exist
-        if not os.path.exists(db_path):
-            init_history_database(db_path)
-
         # Group workloads by migration direction
         private_to_public = []
         public_to_private = []
@@ -223,9 +189,10 @@ def save_history_batch_recommendations(
             )
             return
 
-        # Save summaries to database
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        # Save summaries to MongoDB
+        client = _get_mongo_client(mongodb_config)
+        db = client[mongodb_config["database"]]
+        collection = db[mongodb_config["collection"]]
 
         summaries_saved = 0
 
@@ -233,13 +200,14 @@ def save_history_batch_recommendations(
             summary = _generate_summary_string(
                 private_to_public, "private_to_public", history_batch_id
             )
-            cursor.execute(
-                """
-                INSERT INTO history_summaries (history_batch_id, migration_direction, summary_text, timestamp)
-                VALUES (?, ?, ?, ?)
-            """,
-                (history_batch_id, "private_to_public", summary, datetime.now()),
-            )
+            summary_doc = {
+                "history_batch_id": history_batch_id,
+                "type": "summary",
+                "migration_direction": "private_to_public",
+                "summary_text": summary,
+                "timestamp": datetime.now()
+            }
+            collection.insert_one(summary_doc)
             summaries_saved += 1
             logger.debug(
                 f"Saved private_to_public summary for batch {history_batch_id}"
@@ -249,20 +217,20 @@ def save_history_batch_recommendations(
             summary = _generate_summary_string(
                 public_to_private, "public_to_private", history_batch_id
             )
-            cursor.execute(
-                """
-                INSERT INTO history_summaries (history_batch_id, migration_direction, summary_text, timestamp)
-                VALUES (?, ?, ?, ?)
-            """,
-                (history_batch_id, "public_to_private", summary, datetime.now()),
-            )
+            summary_doc = {
+                "history_batch_id": history_batch_id,
+                "type": "summary",
+                "migration_direction": "public_to_private",
+                "summary_text": summary,
+                "timestamp": datetime.now()
+            }
+            collection.insert_one(summary_doc)
             summaries_saved += 1
             logger.debug(
                 f"Saved public_to_private summary for batch {history_batch_id}"
             )
 
-        conn.commit()
-        conn.close()
+        client.close()
 
         logger.info(
             f"Saved {summaries_saved} migration summaries to history batch {history_batch_id}"
@@ -276,13 +244,13 @@ def save_history_batch_recommendations(
 
 
 def get_historical_context_string(
-    db_path: str, current_history_batch_id: int, lookback_count: int
+    mongodb_config: Dict[str, Any], current_history_batch_id: int, lookback_count: int
 ) -> str:
     """
     Retrieve and format historical summaries as a string for LLM consumption.
 
     Args:
-        db_path: Path to the SQLite database file
+        mongodb_config: Dictionary with host, port, database, collection
         current_history_batch_id: The current history batch ID
         lookback_count: Number of past batches to retrieve
 
@@ -300,11 +268,6 @@ def get_historical_context_string(
             logger.debug("No historical context available (first batch or batch 0)")
             return ""
 
-        # Initialize database if it doesn't exist
-        if not os.path.exists(db_path):
-            logger.debug("History database does not exist, no context available")
-            return ""
-
         # Calculate batch range: [max(1, current - lookback), current - 1]
         min_batch = max(1, current_history_batch_id - lookback_count)
         max_batch = current_history_batch_id - 1
@@ -313,24 +276,23 @@ def get_historical_context_string(
             logger.debug("Invalid batch range for historical context")
             return ""
 
-        # Query database
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        # Query MongoDB
+        client = _get_mongo_client(mongodb_config)
+        db = client[mongodb_config["database"]]
+        collection = db[mongodb_config["collection"]]
 
-        cursor.execute(
-            """
-            SELECT history_batch_id, summary_text
-            FROM history_summaries
-            WHERE history_batch_id >= ? AND history_batch_id <= ?
-            ORDER BY history_batch_id ASC, id ASC
-        """,
-            (min_batch, max_batch),
-        )
+        # Find summary documents in batch range, sorted by batch ID
+        cursor = collection.find(
+            {
+                "type": "summary",
+                "history_batch_id": {"$gte": min_batch, "$lte": max_batch}
+            }
+        ).sort("history_batch_id", ASCENDING)
 
-        rows = cursor.fetchall()
-        conn.close()
+        documents = list(cursor)
+        client.close()
 
-        if not rows:
+        if not documents:
             logger.debug(
                 f"No historical summaries found for batches {min_batch}-{max_batch}"
             )
@@ -338,13 +300,15 @@ def get_historical_context_string(
 
         # Format as multi-line string
         lines = [f"Previous Migration History (last {lookback_count} batches):"]
-        for batch_id, summary_text in rows:
+        for doc in documents:
+            batch_id = doc["history_batch_id"]
+            summary_text = doc["summary_text"]
             lines.append(f"- History Batch {batch_id}: {summary_text}")
 
         formatted_context = "\n".join(lines)
 
         logger.debug(
-            f"Retrieved {len(rows)} historical summaries for batches {min_batch}-{max_batch}"
+            f"Retrieved {len(documents)} historical summaries for batches {min_batch}-{max_batch}"
         )
 
         return formatted_context
