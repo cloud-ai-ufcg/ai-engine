@@ -127,16 +127,16 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         )
     except (Exception,):
         # Fallback path when response is not valid or schema fails
-        logger.warning(
-            "LLM failed to generate a valid WorkloadLabelOutput. Using fallback."
+        logger.error(
+            "LLM failed to generate a valid WorkloadLabelOutput."
         )
-        decisions_list = [0] * len(workloads)
+        decisions_list = [-1] * len(workloads)
         explanations_list = [
-            "Workload recommended to stay in private cluster (fallback)"
+            "LLM failed to generate a tool call."
             for _ in workloads
         ]
         overall_explanation = (
-            "LLM failed to generate a tool call. Using a fallback decision."
+            "LLM failed to generate a tool call."
         )
 
     final_decisions: list[int] = []
