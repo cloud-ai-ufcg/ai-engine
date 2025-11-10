@@ -48,10 +48,12 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
 
     migrated_workloads = df[df["label"] == 1]
     non_migrated_workloads = df[df["label"] == 0]
+    invalid_workloads = df[df["label"] == -1]
 
     total_workloads = len(df)
     migrated_count = len(migrated_workloads)
     non_migrated_count = len(non_migrated_workloads)
+    invalid_count = len(invalid_workloads)
 
     logger.info(
         format_message(
@@ -61,6 +63,15 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             bold=True,
         )
     )
+    if invalid_count > 0:
+        logger.warning(
+            format_message(
+                f"Workloads ignored due to invalid LLM response: {invalid_count} ({invalid_count/total_workloads*100:.1f}%)",
+                icon="❌",
+                color="RED",
+                bold=True,
+            )
+        )
     logger.info(
         format_message(
             f" Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)",
@@ -114,6 +125,8 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
+
+        df_to_save = pd.concat([migrated_workloads, non_migrated_workloads])
         # Persist legacy CSV columns
         columns_to_save = [
             c
@@ -127,10 +140,12 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             if c in df.columns
         ]
         if columns_to_save:
-            df[columns_to_save].to_csv(output_csv, index=False)
+            # df[columns_to_save].to_csv(output_csv, index=False)
+            df_to_save[columns_to_save].to_csv(output_csv, index=False)
         else:
             # Fallback: write everything
-            df.to_csv(output_csv, index=False)
+            # df.to_csv(output_csv, index=False)
+            df_to_save.to_csv(output_csv, index=False)
         logger.info(
             format_message(
                 f"Recommendations written to {output_csv}", icon="📝", color="MAGENTA"
