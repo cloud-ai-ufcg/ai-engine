@@ -45,6 +45,11 @@ ai:
         temperature: 0.1
         max_output_tokens: 6000
 
+recommendation_history:
+  enabled: false                    # Toggle feature on/off
+  lookback_count: 3                 # Number of past history batches to consider
+  storage_path: "data/recommendations_history.db"  # SQLite database path (separate from logs)
+
 paths:
   output_dir: ai-engine/data/output
   log_dir: ai-engine/logs

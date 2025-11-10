@@ -16,6 +16,16 @@ def cli():
         logger.error("❌ No workloads found")
         return
 
+    # Start new history batch if feature enabled
+    history_config = config.get('recommendation_history', {})
+    if history_config.get('enabled', False):
+        from engine.history_batch_manager import get_history_batch_manager
+        from engine.recommendation_history_db import save_history_batch_recommendations
+        
+        history_batch_mgr = get_history_batch_manager(config)
+        current_history_batch_id = history_batch_mgr.start_new_batch()
+        logger.info(f"Started history batch {current_history_batch_id}")
+
     result, explanations = analyze_workloads(workloads, config)
 
     metrics = get_usage_metrics()
@@ -37,6 +47,18 @@ def cli():
 
     # Log a concise preview of recommendations
     logger.info(format_message(f"Prepared {len(recommendations)} recommendations (CLI)", icon="🧾", color="CYAN"))
+    
+    # Save to history database if feature enabled
+    if history_config.get('enabled', False):
+        try:
+            save_history_batch_recommendations(
+                history_config.get('storage_path'),
+                current_history_batch_id,
+                recommendations
+            )
+            logger.info(f"Saved recommendations to history batch {current_history_batch_id}")
+        except Exception as e:
+            logger.error(f"Failed to save history batch recommendations: {e}")
 
     # Keep existing CSV output for backward compatibility
     write_recommendations(result)
