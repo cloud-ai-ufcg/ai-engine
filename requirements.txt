@@ -24,3 +24,4 @@ langchain-groq>=0.3.6
 graphviz
 langsmith>=0.1.106
 openai==1.50.0
+pymongo>=4.5.0
