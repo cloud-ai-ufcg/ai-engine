@@ -48,7 +48,11 @@ ai:
 recommendation_history:
   enabled: false                    # Toggle feature on/off
   lookback_count: 3                 # Number of past history batches to consider
-  storage_path: "data/recommendations_history.db"  # SQLite database path (separate from logs)
+  mongodb:
+    host: "localhost"               # MongoDB host address
+    port: 27017                     # MongoDB port
+    database: "ai_engine"           # MongoDB database name
+    collection: "recommendation_history"  # MongoDB collection name
 
 paths:
   output_dir: ai-engine/data/output
