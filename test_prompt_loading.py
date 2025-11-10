@@ -69,9 +69,7 @@ def test_prompt_loading():
     print("  - Change mode: Set 'ai.mode' to 'single_agent' or 'multi_agent'")
     print("  - Change single_agent prompt: Set 'ai.single_agent.selected_prompt'")
     print("  - Change multi_agent prompt: Set 'ai.multi_agent.selected_prompt'")
-    print("\nAvailable prompts:")
-    print("  - Single agent: single_agent_v1, single_agent_v2")
-    print("  - Multi-agent: multi_agent")
+    
 
 if __name__ == "__main__":
     test_prompt_loading()
