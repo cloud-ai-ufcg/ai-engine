@@ -182,3 +182,25 @@ def build_system_prompt_from_config():
     for rule in rules:
         system_prompt += f"\n- {rule}"
     return system_prompt
+
+def build_cluster_selection_from_config():
+    """
+    Considers the configuration and builds the list of clusters to be used. Ensure that the clusters
+    are strings and strips any leading/trailing whitespace.
+    
+    Returns:
+        List of cluster labels as strings
+    """
+    cfg = load_config()
+    cluster_selection = cfg.get("ai", {}).get("cluster_selection", {})
+    listed_clusters = cluster_selection.get("listed_clusters", [])
+
+    # Ensure clusters are strings and strip whitespace
+    normalized_clusters = []
+    for cluster in listed_clusters:
+        new_cluster = str(cluster).strip()
+        
+        if new_cluster:
+            normalized_clusters.append(new_cluster)
+            
+    return normalized_clusters

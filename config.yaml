@@ -45,6 +45,9 @@ ai:
         temperature: 0.1
         max_output_tokens: 6000
 
+  cluster_selection: # Configuration for selecting clusters to analyze
+    listed_clusters: [] # List of specific cluster labels to include. Empty means all clusters.
+
 paths:
   output_dir: ai-engine/data/output
   log_dir: ai-engine/logs
