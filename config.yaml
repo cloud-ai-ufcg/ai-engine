@@ -2,8 +2,8 @@ data:
   input_json: monitor_outputs.json
 
 ai:
-  mode: multi_agent               # Agent mode: 'single_agent' or 'multi_agent'
-  selected_model: openai/gpt-4.1 # Selected model to be used 
+  mode: multi_agent                # Agent mode: 'single_agent' or 'multi_agent'
+  selected_model: x-ai/grok-4-fast # Selected model to be used 
   scheduler_interval: 300          # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600  # Number of seconds to look back for metrics
   workloads_shard_size: 200         # Number of workloads to be processed in parallel
@@ -15,7 +15,7 @@ ai:
     provider: openrouter
     generation_config:
       temperature: 0.1
-      max_output_tokens: 12000
+      max_output_tokens: 18000
 
   # Multi-Agent Configuration
   multi_agent:
@@ -24,6 +24,7 @@ ai:
     generation_config:
       temperature: 0.1
       max_output_tokens: 18000
+    # Vote system:
     agents:
       cpu_checker:
         enabled: true
@@ -40,7 +41,7 @@ ai:
     provider: openrouter
     generation_config:
       temperature: 0.1
-      max_output_tokens: 12000
+      max_output_tokens: 18000
 
   models:
     gemini:
@@ -49,7 +50,7 @@ ai:
       generation_config:
         temperature: 0.1
         max_output_tokens: 6000
-    llama:
+    nemotron:
       model_name: nvidia/nemotron-nano-9b-v2
       provider: nvidia
       generation_config:
