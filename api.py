@@ -253,7 +253,7 @@ async def start():
             if history_config.get('enabled', False):
                 try:
                     save_history_batch_recommendations(
-                        history_config.get('storage_path'),
+                        history_config.get('mongodb'),
                         current_history_batch_id,
                         recommendations
                     )
@@ -362,7 +362,7 @@ async def analyze_workloads_direct(request: AnalyzeRequest):
                     result_df, explanations, workloads
                 )
                 save_history_batch_recommendations(
-                    history_config.get('storage_path'),
+                    history_config.get('mongodb'),
                     current_history_batch_id,
                     recommendations
                 )
