@@ -350,7 +350,7 @@ def label_workloads_multiagent(
     )
 
     if not final_decisions or len(final_decisions) != len(workloads):
-        logger.warning("Final decisions missing or length mismatch. Using default labels (0) for all workloads.")
+        logger.warning("Final decisions missing or length mismatch. Applying existing recommendations ")
         labels = final_decisions
     else:
         labels = final_decisions
