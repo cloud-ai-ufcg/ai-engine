@@ -26,8 +26,9 @@ def _get_mongo_client(mongodb_config: Dict[str, Any]) -> MongoClient:
     """
     host = mongodb_config.get("host", "localhost")
     port = mongodb_config.get("port", 27017)
+    uri = f"mongodb://{host}:{port}"
     
-    return MongoClient(host, port)
+    return MongoClient(uri, serverSelectionTimeoutMS=5000)
 
 
 def init_history_database(mongodb_config: Dict[str, Any]) -> None:
