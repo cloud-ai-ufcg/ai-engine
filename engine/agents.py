@@ -3,7 +3,7 @@ import pandas as pd
 import re
 import json
 import uuid
-from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config
+from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
 from .util import get_logger, load_config, log_token_usage
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
@@ -162,7 +162,6 @@ def label_workloads_with_llm(
 
         REQUEST_COUNTER += 1
         logger.info(f"OpenRouter API request count: {REQUEST_COUNTER}")
-        logger.debug(f"Complete OpenRouter response: {text_response}")
 
         # Parse and validate response
         response_data = _extract_json_from_response(text_response)
@@ -202,30 +201,6 @@ def label_workloads_with_llm(
                 logger.info(
                     f"Padded {missing_count} missing decisions with original cluster assignments (no migration)"
                 )
-
-        # Adicionar logs detalhados para depuração
-        logger.debug(f"Número de workloads no DataFrame: {len(df)}")
-        logger.debug(f"Número de rótulos gerados: {len(labels)}")
-
-        # Garantir que o número de rótulos corresponda ao número de workloads
-        if len(labels) != len(df):
-            logger.warning(
-                f"Mismatch entre número de rótulos ({len(labels)}) e workloads ({len(df)}). Ajustando..."
-            )
-
-            if len(labels) > len(df):
-                # Truncar rótulos extras
-                labels = labels[: len(df)]
-                explanations = explanations[: len(df)]
-            else:
-                # Preencher rótulos ausentes com valores padrão (0)
-                missing_count = len(df) - len(labels)
-                labels.extend([0] * missing_count)
-                explanations.extend([
-                    "Rótulo padrão aplicado devido à ausência de decisão do modelo"
-                ] * missing_count)
-
-            logger.info(f"Rótulos ajustados para corresponder ao número de workloads: {len(labels)}")
 
         # Convert to integers and create output
         labels = [int(decision) for decision in decisions]
@@ -425,30 +400,52 @@ def label_workloads(
     provider: str | None = None,
     multiagent: bool | None = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
-    """Public API to label workloads with the configured AI provider."""
-
+    """
+    Public API to label workloads with the configured AI provider.
+    
+    Args:
+        workloads: List of workloads or DataFrame
+        provider: Override the configured provider (optional)
+        multiagent: Override the configured mode (optional, legacy parameter)
+    
+    Returns:
+        Tuple of (labels, explanations)
+    """
     cfg = load_config()
 
+    # Determine the agent mode
+    if multiagent is not None:
+        # Legacy parameter support
+        mode = "multi_agent" if multiagent else "single_agent"
+        logger.info(f"Using legacy multiagent parameter: mode={mode}")
+    else:
+        mode = get_agent_mode()
+    
+    # Get mode-specific configuration
+    agent_config = get_agent_config(mode)
+    
+    # Determine provider
     if provider is None:
-        provider = cfg.get("ai", {}).get("default_config", {}).get("provider", "google")
-
-    if multiagent is None:
-        multiagent = cfg.get("ai", {}).get("multiagent", False)
-
+        provider = agent_config.get("provider", "openrouter")
+    
     provider = provider.lower()
+    
     try:
         model = cfg.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
-        model_config = cfg.get("ai", {}).get("default_config", {})
-        generation_config = model_config.get("generation_config", {})
+        generation_config = agent_config.get("generation_config", {})
 
-        logger.info(f"CONFIG: Using OpenRouter model: {model}")
+        logger.info(f"CONFIG: Using agent mode: {mode}")
+        logger.info(f"CONFIG: Using provider: {provider}")
+        logger.info(f"CONFIG: Using model: {model}")
         logger.info(f"CONFIG: Using generation config: {generation_config}")
     except Exception as e:
         logger.warning(f"Could not log model configuration: {e}")
         
     labels = []
     explanations = {}
-    if multiagent:
+    
+    # Route to appropriate labeling function based on mode
+    if mode == "multi_agent":
         cluster_info = cfg.get("cluster_info", [])
         labels, explanations = label_workloads_multiagent(workloads, cluster_info)
     elif provider in {"gemini", "google", "openrouter"}:
@@ -461,6 +458,7 @@ def label_workloads(
             "workload_explanations": [],
         }
 
+    # Normalize explanations format
     if isinstance(explanations, list):
         workload_explanations = explanations
         explanations = {
