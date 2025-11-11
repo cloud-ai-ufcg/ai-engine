@@ -52,7 +52,7 @@ def cli():
     if history_config.get('enabled', False):
         try:
             save_history_batch_recommendations(
-                history_config.get('storage_path'),
+                history_config.get('mongodb'),
                 current_history_batch_id,
                 recommendations
             )
