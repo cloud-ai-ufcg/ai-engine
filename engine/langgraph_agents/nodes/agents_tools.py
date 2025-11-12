@@ -116,6 +116,7 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = get_prompt("label_workloads", **prompt_data)
     resp = model.invoke(prompt)
 
+
     try:
         # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
         parsed = resp if isinstance(resp, dict) else json.loads(resp)
