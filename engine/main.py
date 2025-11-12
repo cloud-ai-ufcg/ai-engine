@@ -81,57 +81,46 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
     if timestamp_lookback_seconds is None:
         config = load_config()
-        timestamp_lookback_seconds = config.get("ai", {}).get(
-            "timestamp_lookback_seconds", 30
+        timestamp_lookback_seconds = config.get('ai', {}).get(
+            'timestamp_lookback_seconds', 30
         )
-
-    # Helper: try parse a key (string) into a datetime, return None if not parseable
-    def _parse_key_to_dt(key: str) -> datetime | None:
-        # Try epoch (int seconds)
-        try:
-            ts_int = int(key)
-            return datetime.fromtimestamp(ts_int)
-        except Exception:
-            pass
-        # Try common formatted datetime
-        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%fZ"):
-            try:
-                return datetime.strptime(key, fmt)
-            except Exception:
-                continue
-        return None
 
     if isinstance(data, dict) and all(
         isinstance(value, dict) and "workloads" in value for value in data.values()
     ):
-        parsed = []
-        for k in data.keys():
-            dt = _parse_key_to_dt(k)
-            if dt is not None:
-                parsed.append((k, dt))
+        try:
+            timestamps = sorted(
+                data.keys(),
+                key=lambda x: datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S"),
+                reverse=True
+            )
+        except Exception as e:
+            logger.error(f"Error parsing timestamps: {e}")
+            return []
 
-        if not parsed:
+        if not timestamps:
             logger.error("No valid timestamps found in data")
             return []
 
-        parsed.sort(key=lambda x: x[1], reverse=True)
+        latest_timestamp = str(timestamps[0])
+        logger.info(
+            format_message(f"Latest timestamp: {latest_timestamp}", color="GREEN")
+        )
 
-        latest_key, latest_dt = parsed[0]
-        logger.info(format_message(f"Latest timestamp: {latest_key}", color="GREEN"))
-
-        cutoff_dt = latest_dt - timedelta(seconds=timestamp_lookback_seconds)
-
-        recent_keys = [k for k, dt in parsed if dt >= cutoff_dt]
+        latest_dt = datetime.datetime.strptime(timestamps[0], "%Y-%m-%d %H:%M:%S")
+        cutoff_dt = latest_dt - datetime.timedelta(seconds=timestamp_lookback_seconds)
+        cutoff_timestamp = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
+        recent_timestamps = [str(ts) for ts in timestamps if ts >= cutoff_timestamp]
 
         logger.info(
             format_message(
-                f" Processing data from {len(recent_keys)} timestamps in the last {timestamp_lookback_seconds} seconds",
+                f" Processing data from {len(recent_timestamps)} timestamps in the last {timestamp_lookback_seconds} seconds",
                 icon="⏱️",
                 color="MAGENTA",
             )
         )
 
-        latest_data = data[latest_key]
+        latest_data = data[latest_timestamp]
         cluster_info = latest_data.get("cluster_info", [])
 
         cluster_data = {}
@@ -141,7 +130,9 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                     "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
                     "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
                     "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
-                    "memory_capacity": cluster.get("cluster_memory_capacity", "16384Mi"),
+                    "memory_capacity": cluster.get(
+                        "cluster_memory_capacity", "16384Mi"
+                    ),
                 }
 
         logger.info(
@@ -153,37 +144,21 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         )
 
         all_workloads = []
-        key_to_dt = {k: dt for k, dt in parsed}
-        for k in recent_keys:
-            dt = key_to_dt.get(k)
-            if dt is None:
-                continue
-            timestamp_epoch = int(dt.timestamp())
-            timestamp_data = data.get(k, {})
+        for ts in recent_timestamps:
+            timestamp_data = data[ts]
             raw_workloads = timestamp_data.get("workloads", [])
+
             for w in raw_workloads:
-                # keep original dict but ensure timestamp numeric for comparisons
-                w["timestamp"] = timestamp_epoch
+                w["timestamp"] = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp()
                 all_workloads.append(w)
 
-        latest_workloads = {}
-        for w in all_workloads:
-            workload_id = w.get("workload_id")
-            if not workload_id:
-                continue
-            if (
-                workload_id not in latest_workloads
-                or w["timestamp"] > latest_workloads[workload_id].get("timestamp", 0)
-            ):
-                latest_workloads[workload_id] = w
-
         workloads = _filter_and_fill_workloads(
-            latest_workloads, cluster_data, timestamp_lookback_seconds
+            all_workloads, cluster_data, timestamp_lookback_seconds
         )
 
     else:
         logger.warning("Processing data in legacy format")
-        workloads = data if isinstance(data, list) else []
+        workloads = data
 
     return workloads
 
