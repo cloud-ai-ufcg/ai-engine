@@ -2,7 +2,7 @@ import os
 import json
 import pandas as pd
 from typing import Dict, List, Any
-import datetime
+from datetime import datetime, timedelta
 import concurrent.futures
 from .ai_config import WorkloadRecommendation
 
@@ -81,43 +81,59 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
     if timestamp_lookback_seconds is None:
         config = load_config()
-        timestamp_lookback_seconds = config.get('ai', {}).get(
-            'timestamp_lookback_seconds', 30
+        timestamp_lookback_seconds = config.get("ai", {}).get(
+            "timestamp_lookback_seconds", 30
         )
 
-    # Handle different data structures
-    if isinstance(data, dict) and all(
-        isinstance(key, str) and key.isdigit() for key in data.keys()
-    ):
-        # Get all timestamps and sort them
-        timestamps = sorted([int(ts) for ts in data.keys()], reverse=True)
+    # Helper: try parse a key (string) into a datetime, return None if not parseable
+    def _parse_key_to_dt(key: str) -> datetime | None:
+        # Try epoch (int seconds)
+        try:
+            ts_int = int(key)
+            return datetime.fromtimestamp(ts_int)
+        except Exception:
+            pass
+        # Try common formatted datetime
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%fZ"):
+            try:
+                return datetime.strptime(key, fmt)
+            except Exception:
+                continue
+        return None
 
-        if not timestamps:
+    if isinstance(data, dict) and all(
+        isinstance(value, dict) and "workloads" in value for value in data.values()
+    ):
+        parsed = []
+        for k in data.keys():
+            dt = _parse_key_to_dt(k)
+            if dt is not None:
+                parsed.append((k, dt))
+
+        if not parsed:
             logger.error("No valid timestamps found in data")
             return []
 
-        latest_timestamp = str(timestamps[0])
-        logger.info(
-            format_message(f"Latest timestamp: {latest_timestamp}", color="GREEN")
-        )
+        parsed.sort(key=lambda x: x[1], reverse=True)
 
-        # Select timestamps from the last timestamp_lookback_seconds seconds
-        cutoff_timestamp = timestamps[0] - timestamp_lookback_seconds
-        recent_timestamps = [str(ts) for ts in timestamps if ts >= cutoff_timestamp]
+        latest_key, latest_dt = parsed[0]
+        logger.info(format_message(f"Latest timestamp: {latest_key}", color="GREEN"))
+
+        cutoff_dt = latest_dt - timedelta(seconds=timestamp_lookback_seconds)
+
+        recent_keys = [k for k, dt in parsed if dt >= cutoff_dt]
 
         logger.info(
             format_message(
-                f" Processing data from {len(recent_timestamps)} timestamps in the last {timestamp_lookback_seconds} seconds",
+                f" Processing data from {len(recent_keys)} timestamps in the last {timestamp_lookback_seconds} seconds",
                 icon="⏱️",
                 color="MAGENTA",
             )
         )
 
-        # Get cluster info from the latest timestamp (assuming it doesn't change much)
-        latest_data = data[latest_timestamp]
+        latest_data = data[latest_key]
         cluster_info = latest_data.get("cluster_info", [])
 
-        # Create a dictionary of cluster information for easy lookup
         cluster_data = {}
         for cluster in cluster_info:
             if "cluster_label" in cluster:
@@ -125,9 +141,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                     "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
                     "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
                     "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
-                    "memory_capacity": cluster.get(
-                        "cluster_memory_capacity", "16384Mi"
-                    ),
+                    "memory_capacity": cluster.get("cluster_memory_capacity", "16384Mi"),
                 }
 
         logger.info(
@@ -138,40 +152,40 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             )
         )
 
-        # Collect workloads from all recent timestamps
         all_workloads = []
-        for ts in recent_timestamps:
-            timestamp_data = data[ts]
+        key_to_dt = {k: dt for k, dt in parsed}
+        for k in recent_keys:
+            dt = key_to_dt.get(k)
+            if dt is None:
+                continue
+            timestamp_epoch = int(dt.timestamp())
+            timestamp_data = data.get(k, {})
             raw_workloads = timestamp_data.get("workloads", [])
-
-            # Add timestamp to each workload
             for w in raw_workloads:
-                w["timestamp"] = int(ts)
+                # keep original dict but ensure timestamp numeric for comparisons
+                w["timestamp"] = timestamp_epoch
                 all_workloads.append(w)
 
-        # Create a dictionary to store the latest state of each workload
         latest_workloads = {}
         for w in all_workloads:
             workload_id = w.get("workload_id")
-            if workload_id:
-                # If this workload is already in the dictionary, only replace it if this one is newer
-                if (
-                    workload_id not in latest_workloads
-                    or w["timestamp"] > latest_workloads[workload_id]["timestamp"]
-                ):
-                    latest_workloads[workload_id] = w
+            if not workload_id:
+                continue
+            if (
+                workload_id not in latest_workloads
+                or w["timestamp"] > latest_workloads[workload_id].get("timestamp", 0)
+            ):
+                latest_workloads[workload_id] = w
 
-        # Filter out zero-resource workloads and fill with cluster info
         workloads = _filter_and_fill_workloads(
             latest_workloads, cluster_data, timestamp_lookback_seconds
         )
+
     else:
-        # Assume it's the old format (array of workloads)
         logger.warning("Processing data in legacy format")
-        workloads = data
+        workloads = data if isinstance(data, list) else []
 
     return workloads
-
 
 def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     """
@@ -471,7 +485,7 @@ def save_and_log_explanations(
         explanations: Dictionary with explanations
         workloads: Optional original workloads list to infer origin_cluster
     """
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Ensure we have a batch_id; if not provided, increment global counter
     global CURRENT_BATCH_ID
 
