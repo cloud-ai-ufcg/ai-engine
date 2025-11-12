@@ -229,39 +229,26 @@ def load_config(config_path=None) -> Dict[str, Any]:
     if env_sim_cfg:
         env_sim_cfg = os.path.abspath(env_sim_cfg)
 
+    # Build list of simulator config candidates (central config has priority)
+    simulator_candidates = []
+    if env_sim_cfg and os.path.isfile(env_sim_cfg):
+        simulator_candidates.append(env_sim_cfg)
+    simulator_candidates.extend([
+        os.path.abspath("/app/simulator_config.yaml"),
+        os.path.abspath(os.path.join(BASE_DIR, "simulator", "data", "config.yaml")),
+        os.path.abspath(os.path.join(BASE_DIR, "../simulator", "data", "config.yaml")),
+        os.path.abspath(os.path.join(BASE_DIR, "../../simulator", "data", "config.yaml")),
+    ])
+
+    # 1) Load local engine config as base (fallback values)
+    default_engine_cfg = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), os.pardir, "config.yaml")
+    )
+    config = {}
     if config_path is None:
-        default_engine_cfg = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), os.pardir, "config.yaml")
-        )
-        simulator_cfg_candidates: list[str] = []
-
-        if env_sim_cfg and os.path.isfile(env_sim_cfg):
-            simulator_cfg_candidates.append(env_sim_cfg)
-
-        simulator_cfg_candidates.extend(
-            [
-                os.path.abspath(
-                    os.path.join(BASE_DIR, "simulator", "data", "config.yaml")
-                ),
-                os.path.abspath(
-                    os.path.join(BASE_DIR, "../simulator", "data", "config.yaml")
-                ),
-                os.path.abspath(
-                    os.path.join(BASE_DIR, "../../simulator", "data", "config.yaml")
-                ),
-            ]
-        )
-
-        config_path = None
-        for candidate in simulator_cfg_candidates:
-            if os.path.isfile(candidate):
-                config_path = candidate
-                break
-
-        if not config_path:
-            config_path = default_engine_cfg
-
-    # Try local engine config first; if missing, fall back to simulator config
+        config_path = default_engine_cfg
+    
+    # Load local config as base
     try:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -270,20 +257,7 @@ def load_config(config_path=None) -> Dict[str, Any]:
     except Exception:
         config = {}
 
-    # Merge simulator-level config with higher precedence (simulator > local)
-    # Try SIMULATOR_CONFIG env, then common relative/absolute fallbacks
-    simulator_candidates = []
-    if env_sim_cfg:
-        # If SIMULATOR_CONFIG was already the primary, we still add it here to allow
-        # merging in case additional simulator-level keys should override
-        simulator_candidates.append(env_sim_cfg)
-    simulator_candidates.extend([
-        # Path inside the container if we mount the simulator config
-        os.path.abspath("/app/simulator_config.yaml"),
-        os.path.abspath("/home/anandavidal/Documentos/simulator/simulator/data/config.yaml"),
-        os.path.abspath(os.path.join(BASE_DIR, "..", "simulator", "data", "config.yaml")),
-        os.path.abspath(os.path.join(BASE_DIR, "..", "..", "simulator", "data", "config.yaml")),
-    ])
+    # 2) Load and merge simulator config with higher precedence (simulator > local)
 
     def deep_set(target: Dict[str, Any], path: list[str], value: Any):
         curr = target
@@ -323,20 +297,28 @@ def load_config(config_path=None) -> Dict[str, Any]:
             if "server" in ai_engine and isinstance(ai_engine["server"], dict):
                 config["server"] = ai_engine["server"]
 
-        # Prefer ai-engine scoped network configs for client usage
-        if "monitor" in ai_engine and isinstance(ai_engine["monitor"], dict):
-            monitor_cfg = dict(ai_engine["monitor"])
-            h = monitor_cfg.get("host")
-            if h in ("0.0.0.0", "::") or not h:
-                monitor_cfg["host"] = "127.0.0.1"
-            config["monitor"] = monitor_cfg
+            # Prefer ai-engine scoped network configs for client usage
+            if "monitor" in ai_engine and isinstance(ai_engine["monitor"], dict):
+                monitor_cfg = dict(ai_engine["monitor"])
+                h = monitor_cfg.get("host")
+                if h in ("0.0.0.0", "::") or not h:
+                    monitor_cfg["host"] = "127.0.0.1"
+                config["monitor"] = monitor_cfg
 
-        if "actuator" in ai_engine and isinstance(ai_engine["actuator"], dict):
-            actuator_cfg = dict(ai_engine["actuator"])
-            h = actuator_cfg.get("host")
-            if h in ("0.0.0.0", "::") or not h:
-                actuator_cfg["host"] = "127.0.0.1"
-            config["actuator"] = actuator_cfg
+            if "actuator" in ai_engine and isinstance(ai_engine["actuator"], dict):
+                actuator_cfg = dict(ai_engine["actuator"])
+                h = actuator_cfg.get("host")
+                if h in ("0.0.0.0", "::") or not h:
+                    actuator_cfg["host"] = "127.0.0.1"
+                config["actuator"] = actuator_cfg
+
+            # Also merge paths, logging, and data sections from ai-engine if present
+            if "paths" in ai_engine and isinstance(ai_engine["paths"], dict):
+                config.setdefault("paths", {}).update(ai_engine["paths"])
+            if "logging" in ai_engine and isinstance(ai_engine["logging"], dict):
+                config.setdefault("logging", {}).update(ai_engine["logging"])
+            if "data" in ai_engine and isinstance(ai_engine["data"], dict):
+                config.setdefault("data", {}).update(ai_engine["data"])
 
         # 2) Top-level simulator sections: only fill missing keys, don't override ai-engine specifics
         for section in ["monitor", "actuator", "server"]:
