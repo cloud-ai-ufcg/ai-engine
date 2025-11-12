@@ -337,7 +337,7 @@ def label_workloads_multiagent(
     thread_id = str(uuid.uuid4())
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    logger.info(f"Final state: {final_state}")
+    # logger.info(f"Final state: {final_state}")
 
     recommendations_dict = final_state.get("explanations", {})
     final_decisions = final_state.get("decisions", [])
@@ -345,6 +345,7 @@ def label_workloads_multiagent(
     overall_explanation = recommendations_dict.get(
         "overall_explanation", "No overall explanation provided."
     )
+    logger.error(f"Decisoes finais: {final_decisions}")
 
     
     if not final_decisions or len(final_decisions) != len(workloads):
@@ -362,7 +363,7 @@ def label_workloads_multiagent(
                 corrected_decisions.append(final_decisions[i])
             else:
                 corrected_decisions.append(-1)
-                missing_workloads.append(wl.get("name", f"workload_{i}"))
+                missing_workloads.append(wl.get("workload_id", f"workload_{i}"))
 
         if missing_workloads:
             logger.warning(
