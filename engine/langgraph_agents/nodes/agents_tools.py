@@ -51,16 +51,49 @@ def get_llm():
     try:
         client = OpenRouterClient()
         config = load_config()
-        selected_model = config["ai"].get("selected_model", "gemini")
-        model_cfg = config["ai"]["default_config"]
+        ai_cfg = config.get("ai", {})
+        
+        selected_model = ai_cfg.get("selected_model", "gemini")
+        models_cfg = ai_cfg.get("models", {})
+        default_cfg = ai_cfg.get("default_config", {})
 
-        if model_cfg is None:
-            raise ValueError(f"Model '{selected_model}' not found in configuration.")
+        # Try to find model config by key first
+        model_cfg = models_cfg.get(selected_model)
 
-        model_name = selected_model
-        # Work on a mutable copy to avoid mutating global config inadvertently
+        # If not found by key, try to find by model_name
+        if not model_cfg:
+            for key, candidate in models_cfg.items():
+                if candidate.get("model_name") == selected_model:
+                    model_cfg = candidate
+                    selected_model = key
+                    break
+
+        # If still not found, fallback to gemini
+        if not model_cfg:
+            fallback_key = "gemini"
+            logger.warning(
+                "Model '%s' not found in configuration. Falling back to '%s'.",
+                selected_model,
+                fallback_key,
+            )
+            model_cfg = models_cfg.get(fallback_key)
+            if not model_cfg:
+                raise ValueError(
+                    f"Model configuration for '{selected_model}' not found in configuration."
+                )
+
+        # Get the actual model_name from the model config, or use selected_model as fallback
+        model_name = model_cfg.get("model_name", selected_model)
+        
+        # Get generation config from model_cfg, with fallback to default_cfg
         generation_config = dict(model_cfg.get("generation_config", {}))
-
+        
+        # Fill in missing values from default config
+        if "max_tokens" not in generation_config and "max_output_tokens" not in generation_config:
+            default_gen_cfg = default_cfg.get("generation_config", {})
+            if "max_output_tokens" in default_gen_cfg:
+                generation_config["max_output_tokens"] = default_gen_cfg["max_output_tokens"]
+        
         # Extract system prompt then remove it so it is not forwarded twice via **kwargs
         system_prompt = build_system_prompt_from_config()
 
