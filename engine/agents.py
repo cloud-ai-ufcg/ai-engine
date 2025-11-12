@@ -5,6 +5,7 @@ import json
 import uuid
 from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config
 from .util import get_logger, load_config, log_token_usage
+from itertools import zip_longest
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
 from .client import OpenRouterClient
@@ -352,12 +353,8 @@ def label_workloads_multiagent(
     workloads: List[dict], cluster_info: List[dict]
 ) -> Tuple[List[int], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
-    state = {
-        "workloads": df.to_dict(orient="records"),
-        "cluster_info": cluster_info,
-        "decisions": [],
-        "explanations": {},
-    }
+
+    state = {"workloads": df.to_dict(orient="records")}
 
     graph = create_tool_system_migration_graph()
     logger.info("Using LangGraph for workload recommendations")
@@ -365,67 +362,47 @@ def label_workloads_multiagent(
     thread_id = str(uuid.uuid4())
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    logger.info("Final state: ", final_state)
+    logger.info(f"Final state: {final_state}")
 
     recommendations_dict = final_state.get("explanations", {})
-
     final_decisions = final_state.get("decisions", [])
     workload_explanations = recommendations_dict.get("workload_explanations", [])
     overall_explanation = recommendations_dict.get(
         "overall_explanation", "No overall explanation provided."
     )
 
-
-    num_workloads = len(workloads)
-    labels: List[int] = []
     
-    
-    invalid_workload_ids: List[str] = []
-    new_workload_explanations: List[str] = [] 
-
-    decisions_padded = (final_decisions + [None] * num_workloads)[:num_workloads]
-    
-    explanations_padded = (workload_explanations + ["Explanation missing."])[:num_workloads]
-
-    for i in range(num_workloads):
-        workload_data = workloads[i]
-        workload_id = workload_data.get("workload_id", f"N/A_index_{i}")
-        label = decisions_padded[i]
-        explanation = explanations_padded[i]
-        
-        final_label = -1
-        is_invalid = False
-
-        if label is not None:
-            try:
-                label_int = int(label) 
-                if label_int in [0, 1]:
-                    final_label = label_int
-                else:
-                    is_invalid = True
-            except (ValueError, TypeError):
-                 is_invalid = True
-        else:
-            is_invalid = True
-        
-        if is_invalid:
-            invalid_workload_ids.append(workload_id)
-            new_workload_explanations.append(f"[INVALID - LLM RESPONSE FAILED]: {explanation}")
-        else:
-            new_workload_explanations.append(explanation)
-
-        labels.append(final_label)
-
-    if invalid_workload_ids:
+    if not final_decisions or len(final_decisions) != len(workloads):
         logger.warning(
-        f"{len(invalid_workload_ids)} workloads did not receive a valid [0, 1] label from the LLM. "
-        f"Workloads affected (labels internally set to -1): {', '.join(invalid_workload_ids)}"
-    )
-    
+            f"Number of decisions ({len(final_decisions)}) does not match number of workloads ({len(workloads)}). "
+            "Filling missing recommendations with -1."
+        )
+
+        
+        corrected_decisions = []
+        missing_workloads = []
+
+        for i, wl in enumerate(workloads):
+            if i < len(final_decisions):
+                corrected_decisions.append(final_decisions[i])
+            else:
+                corrected_decisions.append(-1)
+                missing_workloads.append(wl.get("name", f"workload_{i}"))
+
+        if missing_workloads:
+            logger.warning(
+                f"No response from LLM for workloads: {', '.join(missing_workloads)}"
+            )
+
+        labels = corrected_decisions
+    else:
+        labels = final_decisions
+
     final_explanations = {
         "overall_explanation": overall_explanation,
-        "workload_explanations": new_workload_explanations,
+        "workload_explanations": workload_explanations,
     }
+
     return labels, final_explanations
 
 
