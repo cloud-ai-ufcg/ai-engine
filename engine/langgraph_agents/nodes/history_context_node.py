@@ -35,12 +35,6 @@ def fetch_history_context_node(state: Dict[str, Any]) -> Dict[str, Any]:
             logger.debug("Recommendation history feature disabled")
             return {"historical_context": ""}
 
-        # Get database path
-        db_path = history_config.get("storage_path")
-        if not db_path:
-            logger.warning("No storage_path configured for recommendation history")
-            return {"historical_context": ""}
-
         # Get current history batch ID
         history_batch_mgr = get_history_batch_manager(config)
         current_history_batch_id = history_batch_mgr.get_current()
@@ -53,7 +47,7 @@ def fetch_history_context_node(state: Dict[str, Any]) -> Dict[str, Any]:
         # Retrieve historical context
         lookback_count = history_config.get("lookback_count", 3)
         historical_context = get_historical_context_string(
-            db_path, current_history_batch_id, lookback_count
+            config.get("recommendation_history", {}).get("mongodb"), current_history_batch_id, lookback_count
         )
 
         if historical_context:
