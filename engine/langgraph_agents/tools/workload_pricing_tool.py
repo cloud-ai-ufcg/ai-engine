@@ -3,7 +3,7 @@ from langchain_core.tools import tool
 from .utils import *
 
 @tool("workload_pricing", return_direct=False)
-def workload_pricing(data: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
+def workload_pricing(data: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     LangGraph tool to estimate workload-level costs based on resource usage and AWS pricing.
 
