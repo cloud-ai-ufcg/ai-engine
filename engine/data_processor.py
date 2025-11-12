@@ -4,9 +4,11 @@ Data processing utilities for monitoring data and workload filtering.
 This module handles the transformation of raw monitoring data into normalized
 workload structures, independent of AI agent functionality.
 """
+
 import os
 import json
 from typing import Dict, List, Any
+from .ai_config import build_cluster_selection_from_config
 
 from .util import (
     get_logger,
@@ -78,8 +80,8 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
     if timestamp_lookback_seconds is None:
         config = load_config()
-        timestamp_lookback_seconds = config.get('ai', {}).get(
-            'timestamp_lookback_seconds', 30
+        timestamp_lookback_seconds = config.get("ai", {}).get(
+            "timestamp_lookback_seconds", 30
         )
 
     # Handle different data structures
@@ -110,6 +112,18 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             )
         )
 
+        # Get the cluster selection from config
+        listed_clusters = build_cluster_selection_from_config()
+
+        if listed_clusters:
+            logger.info(
+                format_message(
+                    f"Using listed clusters from config: {', '.join(listed_clusters)}",
+                    icon="🔍",
+                    color="CYAN",
+                )
+            )
+
         # Get cluster info from the latest timestamp (assuming it doesn't change much)
         latest_data = data[latest_timestamp]
         cluster_info = latest_data.get("cluster_info", [])
@@ -118,7 +132,13 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         cluster_data = {}
         for cluster in cluster_info:
             if "cluster_label" in cluster:
-                cluster_data[cluster["cluster_label"]] = {
+                cluster_label = cluster["cluster_label"]
+
+                if listed_clusters and (cluster_label not in listed_clusters):
+                    # Skip clusters that are not in the listed clusters
+                    continue
+
+                cluster_data[cluster_label] = {
                     "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
                     "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
                     "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
@@ -143,8 +163,9 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
             # Add timestamp to each workload
             for w in raw_workloads:
-                w["timestamp"] = int(ts)
-                all_workloads.append(w)
+                if not listed_clusters or (w.get("cluster_label") in listed_clusters):
+                    w["timestamp"] = int(ts)
+                    all_workloads.append(w)
 
         # Create a dictionary to store the latest state of each workload
         latest_workloads = {}
