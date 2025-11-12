@@ -91,39 +91,39 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
     )
 
-    if not migrated_workloads.empty:
-        logger.info(
-            format_message(
-                " Workloads to be migrated to public cluster:",
-                icon="☁️",
-                color="BLUE",
-                bold=True,
-            )
-        )
-        for _, row in migrated_workloads.iterrows():
-            logger.info(
-                format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
-                    color="BLUE",
-                )
-            )
+    # if not migrated_workloads.empty:
+    #     logger.info(
+    #         format_message(
+    #             " Workloads to be migrated to public cluster:",
+    #             icon="☁️",
+    #             color="BLUE",
+    #             bold=True,
+    #         )
+    #     )
+    #     for _, row in migrated_workloads.iterrows():
+    #         logger.info(
+    #             format_message(
+    #                 f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
+    #                 color="BLUE",
+    #             )
+    #         )
 
-    if not non_migrated_workloads.empty:
-        logger.info(
-            format_message(
-                "Workloads remaining in private cluster:",
-                icon="🔁",
-                color="GREEN",
-                bold=True,
-            )
-        )
-        for _, row in non_migrated_workloads.iterrows():
-            logger.info(
-                format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
-                    color="GREEN",
-                )
-            )
+    # if not non_migrated_workloads.empty:
+    #     logger.info(
+    #         format_message(
+    #             "Workloads remaining in private cluster:",
+    #             icon="🔁",
+    #             color="GREEN",
+    #             bold=True,
+    #         )
+    #     )
+    #     for _, row in non_migrated_workloads.iterrows():
+    #         logger.info(
+    #             format_message(
+    #                 f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
+    #                 color="GREEN",
+    #             )
+    #         )
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
@@ -347,7 +347,6 @@ def save_and_log_explanations(
         workloads: Optional original workloads list to infer origin_cluster
     """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # Ensure we have a batch_id; if not provided, increment global counter
     global CURRENT_BATCH_ID
 
     if batch_id is None:
@@ -371,10 +370,19 @@ def save_and_log_explanations(
     explanations_list = (explanations or {}).get("workload_explanations", [])
 
     recs_payload = []
+    ignored_workloads = []
+
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
-        destination_cluster = int(row.get("label", 0))
+        destination_cluster = row.get("label", 0)
+
+        # --- NOVO: Ignorar workloads com label -1 ---
+        if destination_cluster == -1:
+            ignored_workloads.append(wid or f"index_{idx}")
+            continue
+
+        destination_cluster = int(destination_cluster)
         origin_label = origin_by_id.get(wid, "private")
         origin_cluster = 0 if origin_label == "private" else 1
 
@@ -397,7 +405,14 @@ def save_and_log_explanations(
             )
         )
 
-    # Serialize Pydantic models to plain dicts for JSON output
+    # Loga workloads ignorados
+    if ignored_workloads:
+        logger.warning(
+            f"Skipping {len(ignored_workloads)} workloads without valid recommendations (label = -1): "
+            f"{', '.join(map(str, ignored_workloads))}"
+        )
+
+    # Serializa e salva JSON
     recs_payload_serialized = [
         (
             r.model_dump()
@@ -411,6 +426,7 @@ def save_and_log_explanations(
         json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
+    # Log geral
     logger.info(
         format_message(
             f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
@@ -420,11 +436,17 @@ def save_and_log_explanations(
         )
     )
     logger.info(format_message("Detailed explanations for each workload:", bold=True))
+
     for idx, explanation in enumerate(explanations.get("workload_explanations", [])):
         if idx < len(result_df):
             workload_id = result_df.iloc[idx]["workload_id"]
-            kind = result_df.iloc[idx]["kind"]
             label = result_df.iloc[idx]["label"]
+
+            # --- NOVO: pular logs de labels -1 ---
+            if label == -1:
+                continue
+
+            kind = result_df.iloc[idx]["kind"]
             cluster = "public" if label == 1 else "private"
             color = "BLUE" if label == 1 else "GREEN"
             logger.info(
