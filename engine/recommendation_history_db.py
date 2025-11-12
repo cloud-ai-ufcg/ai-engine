@@ -149,7 +149,7 @@ def _generate_summary_string(
     # Use singular or plural form
     workload_word = "Workload" if len(workload_ids) == 1 else "Workloads"
 
-    return f"{workload_word} {workload_list} {'was' if len(workload_ids) == 1 else 'were'} migrated {direction_text} in history batch {history_batch_id}"
+    return f"{workload_word} {workload_list} {'was' if len(workload_ids) == 1 else 'were'} migrated {direction_text}"
 
 
 def save_history_batch_recommendations(
