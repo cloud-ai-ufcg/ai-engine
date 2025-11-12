@@ -183,9 +183,24 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         workloads = _filter_and_fill_workloads(
             latest_workloads, cluster_data, timestamp_lookback_seconds
         )
+        
+        # Get interval_duration from the latest timestamp
+        interval_duration = latest_data.get("interval_duration", "30s")
+        
+        # Return structured data with all necessary information
+        return {
+            "workloads": workloads,
+            "cluster_info": cluster_info,
+            "interval_duration": interval_duration
+        }
     else:
         # Assume it's the old format (array of workloads)
         logger.warning("Processing data in legacy format")
         workloads = data
-
-    return workloads
+        
+        # Return structured data even for legacy format
+        return {
+            "workloads": workloads if isinstance(workloads, list) else [],
+            "cluster_info": [],
+            "interval_duration": "30s"
+        }
