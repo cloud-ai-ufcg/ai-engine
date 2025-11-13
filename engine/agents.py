@@ -345,7 +345,6 @@ def label_workloads_multiagent(
     overall_explanation = recommendations_dict.get(
         "overall_explanation", "No overall explanation provided."
     )
-    logger.error(f"Decisoes finais: {final_decisions}")
 
     
     if not final_decisions or len(final_decisions) != len(workloads):
