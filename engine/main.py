@@ -91,39 +91,6 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
     )
 
-    # if not migrated_workloads.empty:
-    #     logger.info(
-    #         format_message(
-    #             " Workloads to be migrated to public cluster:",
-    #             icon="☁️",
-    #             color="BLUE",
-    #             bold=True,
-    #         )
-    #     )
-    #     for _, row in migrated_workloads.iterrows():
-    #         logger.info(
-    #             format_message(
-    #                 f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
-    #                 color="BLUE",
-    #             )
-    #         )
-
-    # if not non_migrated_workloads.empty:
-    #     logger.info(
-    #         format_message(
-    #             "Workloads remaining in private cluster:",
-    #             icon="🔁",
-    #             color="GREEN",
-    #             bold=True,
-    #         )
-    #     )
-    #     for _, row in non_migrated_workloads.iterrows():
-    #         logger.info(
-    #             format_message(
-    #                 f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
-    #                 color="GREEN",
-    #             )
-    #         )
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
@@ -377,12 +344,10 @@ def save_and_log_explanations(
         kind = row.get("kind")
         destination_cluster = row.get("label", 0)
 
-        # --- NOVO: Ignorar workloads com label -1 ---
-        if destination_cluster == -1:
-            ignored_workloads.append(wid or f"index_{idx}")
-            continue
+        
 
         destination_cluster = int(destination_cluster)
+
         origin_label = origin_by_id.get(wid, "private")
         origin_cluster = 0 if origin_label == "private" else 1
 
@@ -405,12 +370,6 @@ def save_and_log_explanations(
             )
         )
 
-    # Loga workloads ignorados
-    if ignored_workloads:
-        logger.warning(
-            f"Skipping {len(ignored_workloads)} workloads without valid recommendations (label = -1): "
-            f"{', '.join(map(str, ignored_workloads))}"
-        )
 
     # Serializa e salva JSON
     recs_payload_serialized = [
@@ -441,10 +400,6 @@ def save_and_log_explanations(
         if idx < len(result_df):
             workload_id = result_df.iloc[idx]["workload_id"]
             label = result_df.iloc[idx]["label"]
-
-            # --- NOVO: pular logs de labels -1 ---
-            if label == -1:
-                continue
 
             kind = result_df.iloc[idx]["kind"]
             cluster = "public" if label == 1 else "private"
