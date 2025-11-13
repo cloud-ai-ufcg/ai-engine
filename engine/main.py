@@ -401,9 +401,14 @@ def save_and_log_explanations(
             workload_id = result_df.iloc[idx]["workload_id"]
             label = result_df.iloc[idx]["label"]
 
+            
+            if str(label) == "-1" or label == -1:
+                continue
+
             kind = result_df.iloc[idx]["kind"]
             cluster = "public" if label == 1 else "private"
             color = "BLUE" if label == 1 else "GREEN"
+
             logger.info(
                 format_message(
                     f"Workload {workload_id} ({kind}) → {cluster}: {explanation}",
