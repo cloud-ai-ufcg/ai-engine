@@ -37,6 +37,21 @@ def _filter_and_fill_workloads(
     """
     workloads: List[Dict[str, Any]] = []
 
+    # Backwards-compat: if a list of snapshots was passed, convert it into
+    # a mapping workload_id -> latest snapshot (by timestamp) so the body of
+    # this function can remain unchanged and operate on a dict as before.
+    if isinstance(latest_workloads, list):
+        tmp: Dict[str, Any] = {}
+        for w in latest_workloads:
+            wid = w.get("workload_id") or w.get("id")
+            if not wid:
+                logger.debug("Skipping workload without workload_id")
+                continue
+            existing = tmp.get(wid)
+            if existing is None or w.get("timestamp", 0) > existing.get("timestamp", 0):
+                tmp[wid] = w
+        latest_workloads = tmp
+
     for workload_id, w in latest_workloads.items():
         # Skip workloads with zero requested resources
         cpu = w.get("resources", {}).get("cpu", "0")
@@ -67,6 +82,50 @@ def _filter_and_fill_workloads(
     return workloads
 
 
+def _filter_and_fill_workloads_list(
+    all_workloads: List[Dict[str, Any]],
+    cluster_data: Dict[str, Any],
+    timestamp_lookback_seconds: int,
+) -> List[Dict[str, Any]]:
+    """Filter and fill workloads but preserve all snapshots.
+
+    This accepts a list of workload snapshots (possibly many per workload_id)
+    and returns a filtered list where each snapshot is kept (unless it's
+    filtered out due to zero resources). Cluster information is attached to
+    each snapshot when available.
+    """
+    workloads: List[Dict[str, Any]] = []
+    unique_ids = set()
+
+    for w in all_workloads:
+        cpu = w.get("resources", {}).get("cpu", "0")
+        memory = w.get("resources", {}).get("memory", "0")
+        if cpu == "0m" and memory == "0Mi":
+            logger.debug(f"Skipping workload {w.get('workload_id')} snapshot with zero resources")
+            continue
+
+        cluster_label = w.get("cluster_label")
+        if cluster_label and cluster_label in cluster_data:
+            w["cluster_load"] = cluster_data[cluster_label]["cpu_load"]
+            w["cluster_cpu_capacity"] = cluster_data[cluster_label]["cpu_capacity"]
+            w["cluster_memory_capacity"] = cluster_data[cluster_label]["memory_capacity"]
+
+        wid = w.get("workload_id") or w.get("id")
+        if wid:
+            unique_ids.add(wid)
+
+        workloads.append(w)
+
+    logger.info(
+        format_message(
+            f"Filtered to {len(workloads)} workload snapshots across {len(unique_ids)} unique workloads from the last {timestamp_lookback_seconds} seconds",
+            icon="🔄",
+            color="GREEN",
+        )
+    )
+    return workloads
+
+
 def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
     Process monitoring data from different formats and extract workloads.
@@ -79,19 +138,23 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
     Returns:
         List of workload objects with relevant cluster information
     """
+    # Load config early so we can respect preserve_history setting even when
+    # timestamp_lookback_seconds is passed explicitly.
+    config = load_config()
     if timestamp_lookback_seconds is None:
-        config = load_config()
         timestamp_lookback_seconds = config.get('ai', {}).get(
             'timestamp_lookback_seconds', 30
         )
+    preserve_history = bool(config.get('ai', {}).get('preserve_history', False))
 
     if isinstance(data, dict) and all(
         isinstance(value, dict) and "workloads" in value for value in data.values()
     ):
         try:
+            # Convert string timestamps (e.g. "2025-11-12 12:25:57") to datetime objects
             timestamps = sorted(
                 data.keys(),
-                key=lambda x: datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S"),
+                key=lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"),
                 reverse=True
             )
         except Exception as e:
@@ -102,20 +165,18 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             logger.error("No valid timestamps found in data")
             return []
 
-        latest_timestamp = str(timestamps[0])
-        logger.info(
-            format_message(f"Latest timestamp: {latest_timestamp}", color="GREEN")
-        )
+        latest_timestamp = timestamps[0]
+        logger.info(format_message(f"Latest timestamp: {latest_timestamp}", color="GREEN"))
 
-        latest_dt = datetime.datetime.strptime(timestamps[0], "%Y-%m-%d %H:%M:%S")
-        cutoff_dt = latest_dt - datetime.timedelta(seconds=timestamp_lookback_seconds)
+        latest_dt = datetime.strptime(latest_timestamp, "%Y-%m-%d %H:%M:%S")
+        cutoff_dt = latest_dt - timedelta(seconds=timestamp_lookback_seconds)
         cutoff_timestamp = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
-        recent_timestamps = [str(ts) for ts in timestamps if ts >= cutoff_timestamp]
+
+        recent_timestamps = [ts for ts in timestamps if ts >= cutoff_timestamp]
 
         logger.info(
             format_message(
-                f" Processing data from {len(recent_timestamps)} timestamps in the last {timestamp_lookback_seconds} seconds",
-                icon="⏱️",
+                f"⏱️  Processing data from {len(recent_timestamps)} timestamps in the last {timestamp_lookback_seconds} seconds",
                 color="MAGENTA",
             )
         )
@@ -130,15 +191,12 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                     "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
                     "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
                     "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
-                    "memory_capacity": cluster.get(
-                        "cluster_memory_capacity", "16384Mi"
-                    ),
+                    "memory_capacity": cluster.get("cluster_memory_capacity", "16384Mi"),
                 }
 
         logger.info(
             format_message(
-                f"Found {len(cluster_data)} clusters: {', '.join(cluster_data.keys())}",
-                icon="🔍",
+                f"🔍 Found {len(cluster_data)} clusters: {', '.join(cluster_data.keys())}",
                 color="CYAN",
             )
         )
@@ -149,12 +207,36 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             raw_workloads = timestamp_data.get("workloads", [])
 
             for w in raw_workloads:
-                w["timestamp"] = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp()
+                try:
+                    w_ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp()
+                    w["timestamp"] = w_ts
+                except Exception:
+                    logger.debug(f"Skipping workload with unparsable timestamp: {ts}")
+                    continue
                 all_workloads.append(w)
 
-        workloads = _filter_and_fill_workloads(
-            all_workloads, cluster_data, timestamp_lookback_seconds
-        )
+        if preserve_history:
+            # Keep every snapshot (filtered) and attach cluster info per snapshot.
+            workloads = _filter_and_fill_workloads_list(
+                all_workloads, cluster_data, timestamp_lookback_seconds
+            )
+        else:
+            # Convert the list of workload snapshots into a mapping from workload_id ->
+            # latest workload dict (by timestamp). _filter_and_fill_workloads expects a
+            # dict mapping workload_id to the latest workload entry.
+            latest_workloads: Dict[str, Any] = {}
+            for w in all_workloads:
+                wid = w.get("workload_id") or w.get("id")
+                if not wid:
+                    logger.debug("Skipping workload without workload_id")
+                    continue
+                existing = latest_workloads.get(wid)
+                if existing is None or w.get("timestamp", 0) > existing.get("timestamp", 0):
+                    latest_workloads[wid] = w
+
+            workloads = _filter_and_fill_workloads(
+                latest_workloads, cluster_data, timestamp_lookback_seconds
+            )
 
     else:
         logger.warning("Processing data in legacy format")
