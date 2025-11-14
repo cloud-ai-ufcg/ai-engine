@@ -81,7 +81,6 @@ def _create_explanation_output(
 ) -> Dict[str, Any]:
     """Create structured explanation output and log decisions."""
     explanation_output = {
-        "explanation": "Migration decisions based on AI analysis of workload characteristics",
         "workload_explanations": [],
     }
 
@@ -345,9 +344,6 @@ def label_workloads_multiagent(
 
     final_decisions = final_state.get("decisions", [])
     workload_explanations = recommendations_dict.get("workload_explanations", [])
-    overall_explanation = recommendations_dict.get(
-        "overall_explanation", "No overall explanation provided."
-    )
 
     if not final_decisions or len(final_decisions) != len(workloads):
         logger.warning("Final decisions missing or length mismatch. Applying existing recommendations ")
@@ -356,7 +352,6 @@ def label_workloads_multiagent(
         labels = final_decisions
 
     final_explanations = {
-        "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
     }
 
@@ -454,7 +449,6 @@ def label_workloads(
         logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
         labels = _label_workloads_with_heuristics(workloads)
         explanations = {
-            "overall_explanation": "Used heuristic rules due to unknown provider.",
             "workload_explanations": [],
         }
 
@@ -462,7 +456,6 @@ def label_workloads(
     if isinstance(explanations, list):
         workload_explanations = explanations
         explanations = {
-            "overall_explanation": "Recommendations for each workload:",
             "workload_explanations": workload_explanations,
         }
 
