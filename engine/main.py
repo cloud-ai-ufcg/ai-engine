@@ -1,6 +1,7 @@
 import os
 import json
 import pandas as pd
+import threading
 from typing import Dict, List, Any
 from datetime import datetime, timedelta
 import concurrent.futures
@@ -25,7 +26,8 @@ def _filter_and_fill_workloads(
     cluster_data: Dict[str, Any],
     timestamp_lookback_seconds: int,
 ) -> List[Dict[str, Any]]:
-    """Filter workloads with non-zero resources and fills them with cluster information.
+    """Filter workloads with non-zero resources and fills them with cluster
+    information.
 
     Args:
         latest_workloads: Mapping of workload_id to latest workload dict.
@@ -57,7 +59,7 @@ def _filter_and_fill_workloads(
         cpu = w.get("resources", {}).get("cpu", "0")
         memory = w.get("resources", {}).get("memory", "0")
         if cpu == "0m" and memory == "0Mi":
-            logger.debug(f"Skipping workload {workload_id} with zero resources")
+            logger.debug("Skipping workload %s with zero resources", workload_id)
             continue
 
         # Fill cluster details if available
@@ -74,7 +76,8 @@ def _filter_and_fill_workloads(
     # Summary log
     logger.info(
         format_message(
-            f"Filtered to {len(workloads)} unique workloads with non-zero resources from the last {timestamp_lookback_seconds} seconds",
+            f"Filtered to {len(workloads)} unique workloads with non-zero resources \n"
+            f"from the last {timestamp_lookback_seconds} seconds",
             icon="🔄",
             color="GREEN",
         )
@@ -101,7 +104,7 @@ def _filter_and_fill_workloads_list(
         cpu = w.get("resources", {}).get("cpu", "0")
         memory = w.get("resources", {}).get("memory", "0")
         if cpu == "0m" and memory == "0Mi":
-            logger.debug(f"Skipping workload {w.get('workload_id')} snapshot with zero resources")
+            logger.debug("Skipping workload % snapshot with zero resources", w.get("workload_id"))
             continue
 
         cluster_label = w.get("cluster_label")
@@ -118,7 +121,8 @@ def _filter_and_fill_workloads_list(
 
     logger.info(
         format_message(
-            f"Filtered to {len(workloads)} workload snapshots across {len(unique_ids)} unique workloads from the last {timestamp_lookback_seconds} seconds",
+            f"Filtered to {len(workloads)} workload snapshots across {len(unique_ids)} \n"
+            f"unique workloads from the last {timestamp_lookback_seconds} seconds",
             icon="🔄",
             color="GREEN",
         )
@@ -133,7 +137,8 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
     Args:
         data: The loaded JSON data which can be in different formats
-        timestamp_lookback_seconds: Number of seconds to look back in time (defaults to config value)
+        timestamp_lookback_seconds: Number of seconds to look back in time
+        (defaults to config value)
 
     Returns:
         List of workload objects with relevant cluster information
@@ -158,7 +163,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                 reverse=True
             )
         except Exception as e:
-            logger.error(f"Error parsing timestamps: {e}")
+            logger.error("Error parsing timestamps: %s", e)
             return []
 
         if not timestamps:
@@ -176,7 +181,8 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
         logger.info(
             format_message(
-                f"⏱️  Processing data from {len(recent_timestamps)} timestamps in the last {timestamp_lookback_seconds} seconds",
+                f"⏱️  Processing data from {len(recent_timestamps)} timestamps in \n"
+                f"the last {timestamp_lookback_seconds} seconds",
                 color="MAGENTA",
             )
         )
@@ -211,7 +217,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                     w_ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp()
                     w["timestamp"] = w_ts
                 except Exception:
-                    logger.debug(f"Skipping workload with unparsable timestamp: {ts}")
+                    logger.debug("Skipping workload with unparsable timestamp: %s", ts)
                     continue
                 all_workloads.append(w)
 
@@ -267,8 +273,8 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
                 df["label"] = df["destination_cluster"].astype(int)
         except Exception as e:
             logger.error(
-                f"Failed to convert structured recommendations to DataFrame: {e}"
-            )
+                "Failed to convert structured recommendations to DataFrame: %s",
+                e)
             return None
 
     migrated_workloads = df[df["label"] == 1]
@@ -288,15 +294,17 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     )
     logger.info(
         format_message(
-            f" Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)",
+            f" Workloads to be migrated to public cluster: {migrated_count}",
             icon="☁️",
             color="BLUE",
             bold=True,
         )
     )
+    pct = (non_migrated_count / total_workloads * 100) if total_workloads else 0.0
+
     logger.info(
         format_message(
-            f"Workloads remaining in private cluster: {non_migrated_count} ({non_migrated_count/total_workloads*100:.1f}%)",
+            f"Workloads remaining in private cluster: {non_migrated_count} ({pct:.1f}%)",
             icon="🔁",
             color="GREEN",
             bold=True,
@@ -314,10 +322,10 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
         for _, row in migrated_workloads.iterrows():
             logger.info(
-                format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
-                    color="BLUE",
-                )
+                format_message("Workload ID: %s, Kind: %s, Reason: %s", color="BLUE"),
+                row["workload_id"],
+                row["kind"],
+                row.get("reason", "N/A"),
             )
 
     if not non_migrated_workloads.empty:
@@ -332,7 +340,8 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         for _, row in non_migrated_workloads.iterrows():
             logger.info(
                 format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
+                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, "
+                    f"Reason: {row.get('reason', 'N/A')}",
                     color="GREEN",
                 )
             )
@@ -362,7 +371,7 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             )
         )
     except Exception as e:
-        logger.error(f"Error writing recommendations to CSV: {e}")
+        logger.error("Error writing recommendations to CSV: %s", e)
 
     # If we received structured recommendations, also write a JSON artifact
     if structured_input:
@@ -378,7 +387,7 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
                 )
             )
         except Exception as e:
-            logger.error(f"Error writing structured recommendations JSON: {e}")
+            logger.error("Error writing structured recommendations JSON: %s", e)
 
     return output_csv
 
@@ -409,7 +418,7 @@ def load_monitoring_data(config):
         workloads = process_monitoring_data(data)
         return workloads
     except Exception as e:
-        logger.error(f"❌ Error loading monitoring data: {str(e)}")
+        logger.error("❌ Error loading monitoring data: %s", str(e))
         return None
 
 
@@ -473,7 +482,8 @@ def shard_and_analyze_workloads(workloads, config):
         config: Configuration dictionary loaded from YAML.
 
     Returns:
-        Tuple[pd.DataFrame, dict]: Combined DataFrame with all shard results and aggregated explanations.
+        Tuple[pd.DataFrame, dict]: Combined DataFrame with all shard results
+        and aggregated explanations.
     """
     # Retrieve shard size from config; fallback to processing all at once
     shard_size = int(
@@ -492,7 +502,6 @@ def shard_and_analyze_workloads(workloads, config):
 
     def _analyze(shard_idx, shard):
         """Analyze a shard, logging its thread and position."""
-        import threading  # local import avoids adding a new top-level import
 
         logger.info(
             format_message(
@@ -525,7 +534,7 @@ def shard_and_analyze_workloads(workloads, config):
                         shard_expl.get("workload_explanations", [])
                     )
             except Exception as exc:
-                logger.error(f"Error analyzing shard: {exc}")
+                logger.error("Error analyzing shard: %s", exc)
 
     combined_df = pd.concat(results, ignore_index=True) if results else pd.DataFrame()
     return combined_df, combined_explanations
@@ -578,7 +587,8 @@ def save_and_log_explanations(
             explanations_list[idx]
             if idx < len(explanations_list)
             else (
-                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
+                f"Recommended to {'public' if destination_cluster == 1 else 'private'} "
+                f"cluster based on resource analysis"
             )
         )
 
@@ -605,7 +615,7 @@ def save_and_log_explanations(
 
     with open(explanations_file, "w") as f:
         json.dump(recs_payload_serialized, f, indent=2)
-    logger.info(f"Explanations written to {explanations_file}")
+    logger.info("Explanations written to %s", explanations_file)
 
     logger.info(
         format_message(
@@ -641,4 +651,4 @@ def save_and_log_explanations(
 
     for key, value in explanations.items():
         if key not in ["explanation", "workload_explanations"]:
-            logger.info(f"💡 {key}: {value}")
+            logger.info("💡 %s: %s", key, value)
