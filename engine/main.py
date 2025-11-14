@@ -384,14 +384,6 @@ def save_and_log_explanations(
         json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
-    logger.info(
-        format_message(
-            f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
-            icon="💡",
-            color="YELLOW",
-            bold=True,
-        )
-    )
     logger.info(format_message("Detailed explanations for each workload:", bold=True))
     for idx, explanation in enumerate(explanations.get("workload_explanations", [])):
         if idx < len(result_df):
