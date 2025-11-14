@@ -207,7 +207,10 @@ def label_workloads_with_llm(
 
     except Exception as e:
         logger.error(f"Error parsing JSON response: {e}")
-        logger.error(f"Raw LLM response (first 500 chars): {text_response[:500]}")
+        try:
+            logger.error(f"Raw LLM response (first 500 chars): {text_response[:500]}")
+        except Exception:
+            logger.error("No LLM response available (error occurred before API call)")
         logger.error("LLM failed to generate recommendations, skipping this cycle")
         return [], {}
     except Exception as e:
