@@ -44,8 +44,15 @@ class OpenRouterInvokeModel:
         )
 
 
+_model_instance = None
+
+
 def get_llm():
     """Initialize and return a model wrapper with `.invoke` and its config."""
+    global _model_instance
+    if _model_instance is not None:
+        return _model_instance
+    
     try:
         client = OpenRouterClient()
         cfg = load_config()
@@ -101,19 +108,31 @@ def get_llm():
                 "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.",
             )
 
-        model = OpenRouterInvokeModel(
+        _model_instance = OpenRouterInvokeModel(
             client,
             model_name,
             system_prompt,
             **generation_config,
         )
-        return model
+        return _model_instance
     except Exception as e:
         logger.error(f"Failed to initialize OpenRouter client/model: {e}")
         raise ValueError(f"Failed to initialize OpenRouter client/model: {e}")
 
 
-model = get_llm()
+def get_model():
+    """Lazy getter for the model instance."""
+    return get_llm()
+
+
+# For backward compatibility, provide a property-like access
+# but don't initialize until first use
+class _LazyModel:
+    def invoke(self, prompt: str):
+        return get_model().invoke(prompt)
+
+
+model = _LazyModel()
 
 
 # -----------------------
