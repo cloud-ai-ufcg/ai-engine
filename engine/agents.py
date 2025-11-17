@@ -82,7 +82,6 @@ def _create_explanation_output(
 ) -> Dict[str, Any]:
     """Create structured explanation output and log decisions."""
     explanation_output = {
-        "explanation": "Migration decisions based on AI analysis of workload characteristics",
         "workload_explanations": [],
     }
 
@@ -325,11 +324,17 @@ def label_workloads_with_llm(
 # MultiAgent implementation
 # ---------------------------------------------------------------------------
 def label_workloads_multiagent(
-    workloads: List[dict], cluster_info: List[dict]
+    workloads: List[dict], cluster_info: List[dict], interval_duration: str = None
 ) -> Tuple[List[int], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
-
-    state = {"workloads": df.to_dict(orient="records")}
+    
+    # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
+    # so they only appear in the graph output (not in the input trace).
+    state = {
+        "workloads": df.to_dict(orient="records"),
+        "cluster_info": cluster_info,
+        "interval_duration": interval_duration
+    }
 
     graph = create_tool_system_migration_graph()
     logger.info("Using LangGraph for workload recommendations")
@@ -342,9 +347,6 @@ def label_workloads_multiagent(
     recommendations_dict = final_state.get("explanations", {})
     final_decisions = final_state.get("decisions", [])
     workload_explanations = recommendations_dict.get("workload_explanations", [])
-    overall_explanation = recommendations_dict.get(
-        "overall_explanation", "No overall explanation provided."
-    )
 
     
     if not final_decisions or len(final_decisions) != len(workloads):
@@ -374,7 +376,6 @@ def label_workloads_multiagent(
         labels = final_decisions
 
     final_explanations = {
-        "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
     }
 
@@ -415,6 +416,8 @@ def label_workloads_multiagent_votes(workloads, provider="langgraph"):
 # ---------------------------------------------------------------------------
 def label_workloads(
     workloads: Union[list, "pd.DataFrame"],
+    cluster_info: List[dict] = None,
+    interval_duration: str = None,
     provider: str | None = None,
     multiagent: bool | None = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
@@ -423,6 +426,7 @@ def label_workloads(
     
     Args:
         workloads: List of workloads or DataFrame
+        cluster_info: List of cluster information dictionaries (optional)
         provider: Override the configured provider (optional)
         multiagent: Override the configured mode (optional, legacy parameter)
     
@@ -464,15 +468,17 @@ def label_workloads(
     
     # Route to appropriate labeling function based on mode
     if mode == "multi_agent":
-        cluster_info = cfg.get("cluster_info", [])
-        labels, explanations = label_workloads_multiagent(workloads, cluster_info)
+        # Use provided cluster_info or default to empty list
+        if cluster_info is None:
+            cluster_info = []
+            logger.warning("No cluster_info provided to label_workloads, using empty list")
+        labels, explanations = label_workloads_multiagent(workloads, cluster_info, interval_duration)
     elif provider in {"gemini", "google", "openrouter"}:
         labels, explanations = label_workloads_with_llm(workloads)
     else:
         logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
         labels = _label_workloads_with_heuristics(workloads)
         explanations = {
-            "overall_explanation": "Used heuristic rules due to unknown provider.",
             "workload_explanations": [],
         }
 
@@ -480,7 +486,6 @@ def label_workloads(
     if isinstance(explanations, list):
         workload_explanations = explanations
         explanations = {
-            "overall_explanation": "Recommendations for each workload:",
             "workload_explanations": workload_explanations,
         }
 
