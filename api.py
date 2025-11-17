@@ -230,6 +230,10 @@ async def start():
             logger.error(f"Error fetching metrics from MONITOR: {e}")
 
         processed_data = process_monitoring_data(data)
+
+        if not processed_data:
+            return
+        
         workloads = processed_data.get("workloads", [])
         cluster_info = processed_data.get("cluster_info", [])
         interval_duration = processed_data.get("interval_duration", "unknown")
