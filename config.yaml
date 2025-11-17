@@ -6,7 +6,6 @@ ai:
   selected_model: x-ai/grok-4-fast  # Selected model to be used 
   scheduler_interval: 300           # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600   # Number of seconds to look back for metrics
-  workloads_shard_size: 200         # DEPRECIATED
   fetch_metrics_immediately: false   # Whether to fetch metrics immediately or wait for the scheduler
 
   # Single Agent Configuration
