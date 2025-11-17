@@ -371,7 +371,7 @@ def save_and_log_explanations(
         )
 
 
-    # Serializa e salva JSON
+    # Serialize Pydantic models to plain dicts for JSON output
     recs_payload_serialized = [
         (
             r.model_dump()
@@ -385,7 +385,7 @@ def save_and_log_explanations(
         json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
-    # Log geral
+    
     logger.info(
         format_message(
             f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
