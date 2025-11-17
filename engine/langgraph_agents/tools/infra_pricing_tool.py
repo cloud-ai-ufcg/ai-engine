@@ -1,5 +1,6 @@
 from typing import Dict, Any, List
 from langchain_core.tools import tool
+from .utils import find_minimum_viable_instance
 
 @tool("infra_pricing", return_direct=False)
 def infra_pricing(data: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:

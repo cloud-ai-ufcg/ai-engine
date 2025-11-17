@@ -52,9 +52,15 @@ def input_filter(
         process_monitoring_data = _process_monitoring_data
 
     try:
-        return process_monitoring_data(
+        result = process_monitoring_data(
             data, timestamp_lookback_seconds=timestamp_lookback_seconds
         )
+        # process_monitoring_data now returns a dict with workloads, cluster_info, etc.
+        # For this tool, we only return the workloads list for backward compatibility
+        if isinstance(result, dict):
+            return result.get("workloads", [])
+        # Fallback for old behavior (shouldn't happen with new implementation)
+        return result if isinstance(result, list) else []
     except Exception as exc:  # pragma: no cover – defensive fallback
         # If anything goes wrong fallback to returning an empty list so that the
         # graph does not crash catastrophically.
