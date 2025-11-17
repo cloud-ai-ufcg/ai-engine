@@ -59,7 +59,7 @@ def _filter_and_fill_workloads(
         cpu = w.get("resources", {}).get("cpu", "0")
         memory = w.get("resources", {}).get("memory", "0")
         if cpu == "0m" and memory == "0Mi":
-            logger.debug("Skipping workload %s with zero resources", workload_id)
+            logger.debug(f"Skipping workload {workload_id} with zero resources")
             continue
 
         # Fill cluster details if available
@@ -163,7 +163,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                 reverse=True
             )
         except Exception as e:
-            logger.error("Error parsing timestamps: %s", e)
+            logger.error(f"Error parsing timestamps: {e}")
             return []
 
         if not timestamps:
@@ -217,7 +217,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                     w_ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp()
                     w["timestamp"] = w_ts
                 except Exception:
-                    logger.debug("Skipping workload with unparsable timestamp: %s", ts)
+                    logger.debug(f"Skipping workload with unparsable timestamp: {ts}")
                     continue
                 all_workloads.append(w)
 
@@ -272,9 +272,7 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             if "label" not in df.columns and "destination_cluster" in df.columns:
                 df["label"] = df["destination_cluster"].astype(int)
         except Exception as e:
-            logger.error(
-                "Failed to convert structured recommendations to DataFrame: %s",
-                e)
+            logger.error(f"Failed to convert structured recommendations to DataFrame: {e}")
             return None
 
     migrated_workloads = df[df["label"] == 1]
@@ -322,10 +320,8 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
         for _, row in migrated_workloads.iterrows():
             logger.info(
-                format_message("Workload ID: %s, Kind: %s, Reason: %s", color="BLUE"),
-                row["workload_id"],
-                row["kind"],
-                row.get("reason", "N/A"),
+                format_message(f"Workload ID: {row['workload_id']}, Kind: "
+                               f"{row['kind']}, Reason: {row.get('reason', 'N/A')}", color="BLUE")
             )
 
     if not non_migrated_workloads.empty:
@@ -371,7 +367,7 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             )
         )
     except Exception as e:
-        logger.error("Error writing recommendations to CSV: %s", e)
+        logger.error(f"Error writing recommendations to CSV: {e}")
 
     # If we received structured recommendations, also write a JSON artifact
     if structured_input:
@@ -387,7 +383,7 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
                 )
             )
         except Exception as e:
-            logger.error("Error writing structured recommendations JSON: %s", e)
+            logger.error(f"Error writing structured recommendations JSON: {e}")
 
     return output_csv
 
@@ -418,7 +414,7 @@ def load_monitoring_data(config):
         workloads = process_monitoring_data(data)
         return workloads
     except Exception as e:
-        logger.error("❌ Error loading monitoring data: %s", str(e))
+        logger.error(f"❌ Error loading monitoring data: {e}")
         return None
 
 
@@ -534,7 +530,7 @@ def shard_and_analyze_workloads(workloads, config):
                         shard_expl.get("workload_explanations", [])
                     )
             except Exception as exc:
-                logger.error("Error analyzing shard: %s", exc)
+                logger.error(f"Error analyzing shard: {exc}")
 
     combined_df = pd.concat(results, ignore_index=True) if results else pd.DataFrame()
     return combined_df, combined_explanations
@@ -615,7 +611,7 @@ def save_and_log_explanations(
 
     with open(explanations_file, "w") as f:
         json.dump(recs_payload_serialized, f, indent=2)
-    logger.info("Explanations written to %s", explanations_file)
+    logger.info(f"Explanations written to {explanations_file}")
 
     logger.info(
         format_message(
@@ -651,4 +647,4 @@ def save_and_log_explanations(
 
     for key, value in explanations.items():
         if key not in ["explanation", "workload_explanations"]:
-            logger.info("💡 %s: %s", key, value)
+            logger.info(f"💡 {key}: {value}")
