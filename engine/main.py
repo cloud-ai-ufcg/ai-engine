@@ -165,20 +165,21 @@ def load_monitoring_data(config):
         with open(json_input, "r") as f:
             data = json.load(f)
 
-        workloads = process_monitoring_data(data)
-        return workloads
+        processed_data = process_monitoring_data(data)
+        return processed_data
     except Exception as e:
         logger.error(f"❌ Error loading monitoring data: {str(e)}")
         return None
 
 
-def analyze_workloads(workloads, config):
+def analyze_workloads(workloads, config, cluster_info=None, interval_duration=None):
     """
     Analyze workloads using the configured AI model.
 
     Args:
         workloads: List of workload objects to analyze
         config: Configuration dictionary
+        cluster_info: List of cluster information dictionaries (optional)
 
     Returns:
         Tuple containing (DataFrame with results, explanations dictionary)
@@ -197,7 +198,7 @@ def analyze_workloads(workloads, config):
     )
     # Don't pass multiagent parameter - let label_workloads use config.mode instead
     labels, explanations = label_workloads(
-        workloads, provider=provider
+        workloads, cluster_info=cluster_info,interval_duration=interval_duration, provider=provider
     )
 
     df = pd.DataFrame(workloads)
