@@ -3,7 +3,7 @@ data:
 
 ai:
   mode: multi_agent                 # Agent mode: 'single_agent' or 'multi_agent'
-  selected_model: x-ai/grok-4-fast  # Selected model to be used 
+  selected_model: x-ai/grok-4-fast  # Selected model to be used
   scheduler_interval: 300           # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600   # Number of seconds to look back for metrics
   fetch_metrics_immediately: false   # Whether to fetch metrics immediately or wait for the scheduler
@@ -33,7 +33,7 @@ ai:
         weight: 1.0
       pending_checker:
         enabled: true
-        weight: 1.5 
+        weight: 1.5
 
   # Legacy default_config for backward compatibility
   default_config:
