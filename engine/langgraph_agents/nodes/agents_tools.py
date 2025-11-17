@@ -133,11 +133,11 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         )
         decisions_list = [-1] * len(workloads)
         explanations_list = [
-            "LLM failed to generate a tool call."
+            "RecommendationsNode failed to produce WorkloadLabelOutput"
             for _ in workloads
         ]
         overall_explanation = (
-            "LLM failed to generate a tool call."
+            "RecommendationsNode failed to produce WorkloadLabelOutput"
         )
 
     final_decisions: list[int] = []
