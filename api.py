@@ -166,6 +166,8 @@ def _build_workload_recommendations(result_df, explanations, workloads):
         origin_label = origin_by_id.get(wid, "private")
         origin_cluster = 0 if origin_label == "private" else 1
         destination_cluster = label
+        if destination_cluster == -1:
+            continue
 
         reason = (
             explanations_list[idx]
