@@ -32,6 +32,9 @@ all: install cli
 install:
 	pip install -r requirements.txt
 
+lint:
+	pylint .
+
 cli:
 	$(PYTHON) cli.py
 

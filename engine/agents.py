@@ -1,13 +1,13 @@
-from typing import List, Union, Dict, Any, Tuple, Optional
-import os
+from typing import List, Union, Dict, Any, Tuple
 import pandas as pd
 import re
 import json
 import uuid
-from dotenv import load_dotenv
-from .ai_config import get_model_config, get_prompt, PROMPTS
-from .util import get_logger, load_config, log_token_usage
-from .langgraph_agents.graph.migration_graph import create_migration_graph
+from .ai_config import get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
+from .util import get_logger, load_config
+
+
+from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
 from .client import OpenRouterClient
 
 logger = get_logger("agents")
@@ -82,7 +82,6 @@ def _create_explanation_output(
 ) -> Dict[str, Any]:
     """Create structured explanation output and log decisions."""
     explanation_output = {
-        "explanation": "Migration decisions based on AI analysis of workload characteristics",
         "workload_explanations": [],
     }
 
@@ -135,13 +134,17 @@ def label_workloads_with_llm(
     user_prompt = get_prompt(
         "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
     )
-    system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
 
-    logger.info(f"Sending request to OpenRouter with model: {model}")
+
+    # Initialize to avoid UnboundLocalError if exception raised before assignment
+    text_response = ""
 
     try:
         config = load_config()
-        model_config = config.get("ai", {}).get("models", {}).get("gemini", {})
+        model = config.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
+
+        model_config = config.get("ai", {}).get("default_config", {})
+        system_prompt = build_system_prompt_from_config()
         generation_config = model_config.get("generation_config", {})
 
         logger.info(f"CONFIG: Using OpenRouter model: {model}")
@@ -157,7 +160,6 @@ def label_workloads_with_llm(
 
         REQUEST_COUNTER += 1
         logger.info(f"OpenRouter API request count: {REQUEST_COUNTER}")
-        logger.debug(f"Complete OpenRouter response: {text_response}")
 
         # Parse and validate response
         response_data = _extract_json_from_response(text_response)
@@ -219,8 +221,75 @@ def label_workloads_with_llm(
         return [], {}
 
 
-def label_workloads_multiagent(workloads, provider="langgraph"):
+# ---------------------------------------------------------------------------
+# MultiAgent implementation
+# ---------------------------------------------------------------------------
+def label_workloads_multiagent(
+    workloads: List[dict], cluster_info: List[dict], interval_duration: str = None
+) -> Tuple[List[int], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
+    
+    # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
+    # so they only appear in the graph output (not in the input trace).
+    state = {
+        "workloads": df.to_dict(orient="records"),
+        "cluster_info": cluster_info,
+        "interval_duration": interval_duration
+    }
+
+    graph = create_tool_system_migration_graph()
+    logger.info("Using LangGraph for workload recommendations")
+
+    thread_id = str(uuid.uuid4())
+
+    final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
+    
+
+    recommendations_dict = final_state.get("explanations", {})
+    final_decisions = final_state.get("decisions", [])
+    workload_explanations = recommendations_dict.get("workload_explanations", [])
+
+    
+    if not final_decisions or len(final_decisions) != len(workloads):
+        logger.warning(
+            f"Number of decisions ({len(final_decisions)}) does not match number of workloads ({len(workloads)}). "
+            "Filling missing recommendations with -1."
+        )
+
+        
+        corrected_decisions = []
+        missing_workloads = []
+
+        for i, wl in enumerate(workloads):
+            if i < len(final_decisions):
+                corrected_decisions.append(final_decisions[i])
+            else:
+                corrected_decisions.append(-1)
+                missing_workloads.append(wl.get("workload_id", f"workload_{i}"))
+
+        if missing_workloads:
+            logger.warning(
+                f"No response from LLM for workloads: {', '.join(missing_workloads)}"
+            )
+
+        labels = corrected_decisions
+    else:
+        labels = final_decisions
+
+    final_explanations = {
+        "workload_explanations": workload_explanations,
+    }
+
+    return labels, final_explanations
+
+
+def label_workloads_multiagent_votes(workloads, provider="langgraph"):
+    """
+    Label workloads using a multi-agent with voting system.
+    """
+    df = _normalize_workloads_to_dataframe(workloads)
+    # Do not pre-populate 'final_decisions' or 'explanations' here either;
+    # let the graph/nodes produce them as output so they don't show up in input traces.
     state = {
         "workloads": df.to_dict(orient="records"),
         "cpu_votes": [],
@@ -246,27 +315,45 @@ def label_workloads_multiagent(workloads, provider="langgraph"):
 # ---------------------------------------------------------------------------
 # Generic wrapper
 # ---------------------------------------------------------------------------
-
-
 def label_workloads(
     workloads: Union[list, "pd.DataFrame"],
+    cluster_info: List[dict] = None,
+    interval_duration: str = None,
     provider: str | None = None,
     multiagent: bool | None = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
-    """Public API to label workloads with the configured AI provider."""
+    """
+    Public API to label workloads with the configured AI provider.
+    
+    Args:
+        workloads: List of workloads or DataFrame
+        cluster_info: List of cluster information dictionaries (optional)
+        provider: Override the configured provider (optional)
+        multiagent: Override the configured mode (optional, legacy parameter)
+    
+    Returns:
+        Tuple of (labels, explanations)
+    """
+    cfg = load_config()
 
-    if provider is None or multiagent is None:
-        cfg = load_config()
-
+    # Determine the agent mode
+    if multiagent is not None:
+        # Legacy parameter support
+        mode = "multi_agent" if multiagent else "single_agent"
+        logger.info(f"Using legacy multiagent parameter: mode={mode}")
+    else:
+        mode = get_agent_mode()
+    
+    # Get mode-specific configuration
+    agent_config = get_agent_config(mode)
+    
+    # Determine provider
     if provider is None:
-        provider = cfg.get("ai", {}).get("selected_model", "gemini")
-
-    if multiagent is None:
-        multiagent = cfg.get("ai", {}).get("multiagent", False)
-
-    if multiagent:
-        return label_workloads_multiagent(workloads)
-
+        provider = agent_config.get("provider", "openrouter")
+    
+    provider = provider.lower()
+    
+    
     provider = provider.lower()
     if provider in {"gemini", "google"}:
         return label_workloads_with_llm(
@@ -277,58 +364,6 @@ def label_workloads(
 
     logger.error(f"Unknown provider '{provider}', skipping this cycle")
     return [], {}
-
-
-def _label_workloads_with_heuristics(
-    workloads: Union[list, "pd.DataFrame"],
-) -> List[int]:
-    """
-    Fallback: uses simple heuristics to decide labels when AI is not available.
-    """
-    logger.info("Using heuristics as fallback for migration decision")
-    if isinstance(workloads, list):
-        df = pd.DataFrame(workloads)
-    else:
-        df = workloads.copy()
-
-    def cpu_to_float(cpu):
-        if isinstance(cpu, str) and cpu.endswith("m"):
-            return float(cpu[:-1]) / 1000.0
-        return float(cpu) if cpu else 0.0
-
-    def mem_to_float(mem):
-        if isinstance(mem, str) and mem.endswith("Mi"):
-            return float(mem[:-2])
-        return float(mem) if mem else 0.0
-
-    # Extract and convert resources
-    try:
-        cpu_values = df["resources"].apply(
-            lambda x: cpu_to_float(x.get("cpu", 0)) if isinstance(x, dict) else 0.0
-        )
-        mem_values = df["resources"].apply(
-            lambda x: mem_to_float(x.get("memory", 0)) if isinstance(x, dict) else 0.0
-        )
-    except:
-        # Alternative if the format is different
-        cpu_values = df.get("resources.cpu", df.get("cpu", 0)).apply(cpu_to_float)
-        mem_values = df.get("resources.memory", df.get("memory", 0)).apply(mem_to_float)
-
-    # Rules heuristics:
-    # 1. If CPU > 0.5 or memory > 1024Mi: move to public
-    # 2. If percent_pending > 20%: move to public
-    try:
-        percent_pending = df["percent_pending"].fillna(0)
-    except:
-        percent_pending = pd.Series([0] * len(df))
-
-    # Combine rules to decide: 0=private, 1=public
-    labels = ((cpu_values > 0.5) | (mem_values > 1024) | (percent_pending > 50)).astype(
-        int
-    )
-
-    return labels.tolist()
-
 
 # Get metrics of token usage and requests
 def get_usage_metrics() -> Dict[str, Any]:
