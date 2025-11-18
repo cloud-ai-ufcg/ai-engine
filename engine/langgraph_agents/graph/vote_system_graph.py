@@ -1,33 +1,34 @@
 import os
 import pandas as pd
 import yaml
-from typing import Dict, List
+
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-
 from ..nodes import (
     cpu_checker,
     mem_checker,
     pending_checker,
     decision_agent,
-    explainer_agent
+    explainer_agent,
 )
+
 
 # -----------------------
 # Functions for each node
 # -----------------------
 def cpu_node(state: dict) -> dict:
     """Process CPU information skipping workloads.
-    
+
     Args:
         state (dict): Current state containing workloads.
-    
+
     Returns:
         Dict: Updated state with CPU votes.
-    """ 
+    """
     df = pd.DataFrame(state["workloads"])
     state["cpu_votes"] = cpu_checker(df)
     return state
+
 
 def mem_node(state: dict) -> dict:
     """Process Memory information, skipping workloads.
@@ -42,6 +43,7 @@ def mem_node(state: dict) -> dict:
     state["mem_votes"] = mem_checker(df)
     return state
 
+
 def pending_node(state: dict) -> dict:
     """Process Pending information, skipping workloads.
 
@@ -55,28 +57,28 @@ def pending_node(state: dict) -> dict:
     state["pending_votes"] = pending_checker(df)
     return state
 
+
 def decision_node(state: dict) -> dict:
     """Make final decisions based on votes from previous nodes.
-    
+
     Args:
         state (dict): Current state containing votes.
-    
+
     Returns:
         Dict: Updated state with final decisions.
     """
     state["final_decisions"] = decision_agent(
-        state["cpu_votes"],
-        state["mem_votes"],
-        state["pending_votes"]
+        state["cpu_votes"], state["mem_votes"], state["pending_votes"]
     )
     return state
 
+
 def explainer_node(state: dict) -> dict:
     """Generate explanations for the final decisions made.
-    
+
     Args:
         state (dict): Current state containing workloads and final decisions.
-    
+
     Returns:
         Dict: Updated state with explanations.
     """
@@ -86,11 +88,12 @@ def explainer_node(state: dict) -> dict:
         {
             "cpu": state["cpu_votes"],
             "mem": state["mem_votes"],
-            "pending": state["pending_votes"]
+            "pending": state["pending_votes"],
         },
-        state["final_decisions"]
+        state["final_decisions"],
     )
     return state
+
 
 # -----------------------
 # Graph Creation
@@ -101,12 +104,13 @@ _node_function_map = {
     "mem": mem_node,
     "pending": pending_node,
     "decision": decision_node,
-    "explainer": explainer_node
+    "explainer": explainer_node,
 }
 
-def create_migration_graph():
+
+def create_vote_system_migration_graph():
     """Create a migration graph based on configuration.
-    
+
     Returns:
         StateGraph: Configured state graph for migration analysis.
     """
@@ -129,6 +133,7 @@ def create_migration_graph():
 
     return graph.compile(checkpointer=MemorySaver())
 
+
 def load_config_nodes() -> tuple[bool, bool, bool]:
     """Load node execution configuration from YAML file.
     Returns:
@@ -147,24 +152,3 @@ def load_config_nodes() -> tuple[bool, bool, bool]:
     pending = nodes.get("pending", {}).get("execute", False)
 
     return pending, cpu, mem
-
-# -----------------------
-# Execution Function
-# -----------------------
-def run_migration_pipeline(workloads_df):
-    if isinstance(workloads_df, list):
-        workloads_df = pd.DataFrame(workloads_df)
-    initial_state = {
-        "workloads": workloads_df.to_dict(orient="records"),
-        "cpu_votes": [],
-        "mem_votes": [],
-        "pending_votes": [],
-        "final_decisions": [],
-        "explanations": {}
-    }
-    graph = create_migration_graph()
-    final_state = graph.invoke(initial_state)
-    result_df = pd.DataFrame(final_state["workloads"]).copy()
-    result_df["label"] = final_state["final_decisions"]
-    explanations = final_state["explanations"]
-    return result_df, explanations

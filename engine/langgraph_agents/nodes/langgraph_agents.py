@@ -1,18 +1,21 @@
-import os
 import json
 import pandas as pd
+import re
+import logging
+
 from typing import List, Dict, Union
 from dotenv import load_dotenv
-from engine.ai_config import get_prompt, get_model_config
+from engine.ai_config import get_prompt
 from engine.util import load_config, get_logger
-import google.generativeai as genai
 from openai import OpenAI
 from engine.ai_config import get_prompt
 from engine.util import load_config, log_token_usage
 from engine.client import OpenRouterClient
 from langsmith import traceable
-import re
+from langchain_google_genai import ChatGoogleGenerativeAI
 
+logger = get_logger("agents")
+logger = logging.getLogger(__name__)
 logger = get_logger("langgraph_agents")
 
 load_dotenv()
@@ -65,9 +68,11 @@ def get_llm():
         }
 
         model_name = model_mapping.get(selected_model, "google/gemini-2.0-flash-001")
-        generation_config = model_cfg.get("generation_config", {})
+        # Work on a mutable copy to avoid accidental global mutation
+        generation_config = dict(model_cfg.get("generation_config", {}))
 
-        system_prompt = "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions."
+        # Prefer config-provided system prompt if available, else fall back to default
+        system_prompt = generation_config.get("system_prompt", "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.")
 
         model = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config
