@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "python",
+            "args": [
+                "${input.api_or_cli}",
+                "--reload"
+            ]
+        },
+        {
+            "name": "Debug ai-engine CLI",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/cli.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "api_or_cli",
+            "type": "pickString",
+            "description": "Choose api or cli",
+            "options": [
+                "api",
+                "cli"
+            ],
+            "default": "cli"
+        }
+    ]
+}
