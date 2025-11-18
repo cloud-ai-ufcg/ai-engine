@@ -50,10 +50,12 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
 
     migrated_workloads = df[df["label"] == 1]
     non_migrated_workloads = df[df["label"] == 0]
+    invalid_workloads = df[df["label"] == -1]
 
     total_workloads = len(df)
     migrated_count = len(migrated_workloads)
     non_migrated_count = len(non_migrated_workloads)
+    invalid_count = len(invalid_workloads)
 
     logger.info(
         format_message(
@@ -63,6 +65,15 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             bold=True,
         )
     )
+    if invalid_count > 0:
+        logger.warning(
+            format_message(
+                f"Workloads ignored due to invalid LLM response: {invalid_count} ({invalid_count/total_workloads*100:.1f}%)",
+                icon="❌",
+                color="RED",
+                bold=True,
+            )
+        )
     logger.info(
         format_message(
             f" Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)",
@@ -80,42 +91,11 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
     )
 
-    if not migrated_workloads.empty:
-        logger.info(
-            format_message(
-                " Workloads to be migrated to public cluster:",
-                icon="☁️",
-                color="BLUE",
-                bold=True,
-            )
-        )
-        for _, row in migrated_workloads.iterrows():
-            logger.info(
-                format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
-                    color="BLUE",
-                )
-            )
-
-    if not non_migrated_workloads.empty:
-        logger.info(
-            format_message(
-                "Workloads remaining in private cluster:",
-                icon="🔁",
-                color="GREEN",
-                bold=True,
-            )
-        )
-        for _, row in non_migrated_workloads.iterrows():
-            logger.info(
-                format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
-                    color="GREEN",
-                )
-            )
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
+
+        df_to_save = pd.concat([migrated_workloads, non_migrated_workloads])
         # Persist legacy CSV columns
         columns_to_save = [
             c
@@ -129,10 +109,12 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             if c in df.columns
         ]
         if columns_to_save:
-            df[columns_to_save].to_csv(output_csv, index=False)
+            # df[columns_to_save].to_csv(output_csv, index=False)
+            df_to_save[columns_to_save].to_csv(output_csv, index=False)
         else:
             # Fallback: write everything
-            df.to_csv(output_csv, index=False)
+            # df.to_csv(output_csv, index=False)
+            df_to_save.to_csv(output_csv, index=False)
         logger.info(
             format_message(
                 f"Recommendations written to {output_csv}", icon="📝", color="MAGENTA"
@@ -221,8 +203,20 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
-    result["label"] = pd.Series(labels)
-    result["label"] = result["label"].fillna(0).astype(int)
+    
+    if not result.empty:
+        label_series = pd.Series(labels)
+        
+        numeric_labels = pd.to_numeric(label_series, errors='coerce')
+        
+        result["label"] = numeric_labels.fillna(-1).astype(int)
+        
+    else:
+        
+        result["label"] = pd.Series(dtype=int) 
+        logger.warning("No workloads processed; 'label' column initialized empty.")
+
+
 
     # Safely attach reasons column
     if (
@@ -321,7 +315,6 @@ def save_and_log_explanations(
         workloads: Optional original workloads list to infer origin_cluster
     """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # Ensure we have a batch_id; if not provided, increment global counter
     global CURRENT_BATCH_ID
 
     if batch_id is None:
@@ -345,10 +338,17 @@ def save_and_log_explanations(
     explanations_list = (explanations or {}).get("workload_explanations", [])
 
     recs_payload = []
+    ignored_workloads = []
+
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
-        destination_cluster = int(row.get("label", 0))
+        destination_cluster = row.get("label", 0)
+
+        
+
+        destination_cluster = int(destination_cluster)
+
         origin_label = origin_by_id.get(wid, "private")
         origin_cluster = 0 if origin_label == "private" else 1
 
@@ -371,6 +371,7 @@ def save_and_log_explanations(
             )
         )
 
+
     # Serialize Pydantic models to plain dicts for JSON output
     recs_payload_serialized = [
         (
@@ -385,14 +386,30 @@ def save_and_log_explanations(
         json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
+    
+    logger.info(
+        format_message(
+            f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
+            icon="💡",
+            color="YELLOW",
+            bold=True,
+        )
+    )
     logger.info(format_message("Detailed explanations for each workload:", bold=True))
+
     for idx, explanation in enumerate(explanations.get("workload_explanations", [])):
         if idx < len(result_df):
             workload_id = result_df.iloc[idx]["workload_id"]
-            kind = result_df.iloc[idx]["kind"]
             label = result_df.iloc[idx]["label"]
+
+            
+            if str(label) == "-1" or label == -1:
+                continue
+
+            kind = result_df.iloc[idx]["kind"]
             cluster = "public" if label == 1 else "private"
             color = "BLUE" if label == 1 else "GREEN"
+
             logger.info(
                 format_message(
                     f"Workload {workload_id} ({kind}) → {cluster}: {explanation}",
