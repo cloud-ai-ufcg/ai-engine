@@ -3,9 +3,8 @@ import pandas as pd
 import re
 import json
 import uuid
-from .ai_config import get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
-from .util import get_logger, load_config
-
+from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
+from .util import get_logger, load_config, log_token_usage
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
 from .client import OpenRouterClient
@@ -352,18 +351,43 @@ def label_workloads(
         provider = agent_config.get("provider", "openrouter")
     
     provider = provider.lower()
-    
-    
-    provider = provider.lower()
-    if provider in {"gemini", "google"}:
-        return label_workloads_with_llm(
-            workloads, model="google/gemini-2.0-flash-001"
-        )
-    if provider in {"openrouter"}:
-        return label_workloads_with_llm(workloads)
 
-    logger.error(f"Unknown provider '{provider}', skipping this cycle")
-    return [], {}
+    try:
+        model = cfg.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
+        generation_config = agent_config.get("generation_config", {})
+
+        logger.info(f"CONFIG: Using agent mode: {mode}")
+        logger.info(f"CONFIG: Using provider: {provider}")
+        logger.info(f"CONFIG: Using model: {model}")
+        logger.info(f"CONFIG: Using generation config: {generation_config}")
+    except Exception as e:
+        logger.warning(f"Could not log model configuration: {e}")
+
+    labels = []
+    explanations = {}
+    # Route to appropriate labeling function based on mode
+    if mode == "multi_agent":
+        # Use provided cluster_info or default to empty list
+        if cluster_info is None:
+            cluster_info = []
+            logger.warning("No cluster_info provided to label_workloads, using empty list")
+        labels, explanations = label_workloads_multiagent(workloads, cluster_info, interval_duration)
+    elif provider in {"gemini", "google", "openrouter"}:
+        labels, explanations = label_workloads_with_llm(workloads)
+    else:
+        logger.warning(f"Unknown provider '{provider}'. skipping this cycle.")
+        explanations = {
+            "workload_explanations": [],
+        }
+
+    # Normalize explanations format
+    if isinstance(explanations, list):
+        workload_explanations = explanations
+        explanations = {
+            "workload_explanations": workload_explanations,
+        }
+
+    return labels, explanations
 
 # Get metrics of token usage and requests
 def get_usage_metrics() -> Dict[str, Any]:
