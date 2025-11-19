@@ -212,7 +212,10 @@ async def start():
                 json = {"interval": app_state.config['monitor']['interval']}
 
                 logger.debug(f"Fetching metrics from MONITOR: {url}")
+                # monitor interval: window of metrics we ask the Monitor API to return
                 logger.debug(f"Interval: {app_state.config['monitor']['interval']}")
+                # scheduler interval: cadence (seconds) between successive fetch/analysis cycles
+                logger.debug(f"Scheduler interval: {SCHEDULER_INTERVAL}")
 
                 async with session.get(url, json=json) as response:
                     if response.status == 200:
