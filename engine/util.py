@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import logging.handlers
+from copy import deepcopy
 from dotenv import load_dotenv
 import yaml
 from typing import Optional, Dict, Any, Union
@@ -208,6 +209,123 @@ def format_message(message, icon=None, color=None, bold=False):
     return formatted
 
 
+def _deep_merge_dicts(base: Optional[Dict[str, Any]], overrides: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Recursively merge two dictionaries without mutating the originals.
+
+    Args:
+        base: Base dictionary that provides default values
+        overrides: Dictionary whose values take precedence
+
+    Returns:
+        dict: Result of merging overrides onto base
+    """
+    if not base and not overrides:
+        return {}
+    if not base:
+        return deepcopy(overrides) if overrides else {}
+    if not overrides:
+        return deepcopy(base)
+
+    merged = deepcopy(base)
+    for key, value in overrides.items():
+        if (
+            key in merged
+            and isinstance(merged[key], dict)
+            and isinstance(value, dict)
+        ):
+            merged[key] = _deep_merge_dicts(merged[key], value)
+        else:
+            merged[key] = deepcopy(value)
+    return merged
+
+
+def _read_yaml(path: str) -> Optional[Dict[str, Any]]:
+    """
+    Safely read a YAML file returning a dictionary or None if not found/invalid.
+    """
+    if not path:
+        return None
+    try:
+        with open(path, "r") as fh:
+            data = yaml.safe_load(fh) or {}
+            if isinstance(data, dict):
+                return data
+            logger.warning(f"Config file {path} must contain a YAML object.")
+    except FileNotFoundError:
+        return None
+    except Exception as err:
+        logger.warning(f"Failed to read config file {path}: {err}")
+    return None
+
+
+def _resolve_simulator_config_candidates() -> list:
+    """
+    Build an ordered list of candidate paths for the central simulator config.
+    """
+    candidates = []
+    env_path = os.getenv("SIMULATOR_CONFIG")
+    if env_path:
+        candidates.append(os.path.abspath(env_path))
+
+    repo_path = os.path.abspath(
+        os.path.join(BASE_DIR, os.pardir, "simulator", "data", "config.yaml")
+    )
+    candidates.append(repo_path)
+    return candidates
+
+
+def _extract_ai_engine_config(raw_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Extract the AI Engine specific configuration from the global simulator config.
+    """
+    if not raw_config:
+        return None
+
+    ai_section_keys = {"data", "ai", "paths", "logging", "server", "monitor", "actuator"}
+
+    # Treat files that only contain AI Engine keys as full AI configs
+    raw_keys = set(raw_config.keys())
+    if raw_keys and raw_keys.issubset(ai_section_keys):
+        return raw_config
+
+    # Otherwise look for dedicated ai-engine sections
+    for key in ("ai-engine", "ai_engine"):
+        ai_engine_section = raw_config.get(key)
+        if isinstance(ai_engine_section, dict):
+            return ai_engine_section
+
+    return None
+
+
+def _apply_flat_overrides(config_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Map well-known flat keys (e.g., scheduler_interval) into the nested AI config structure.
+    """
+    if not config_dict:
+        return config_dict
+
+    mapping = {
+        "scheduler_interval": ("ai", "scheduler_interval"),
+        "timestamp_lookback_seconds": ("ai", "timestamp_lookback_seconds"),
+        "workloads_shard_size": ("ai", "workloads_shard_size"),
+        "fetch_metrics_immediately": ("ai", "fetch_metrics_immediately"),
+        "monitored_duration_sec": ("ai", "monitored_duration_sec"),
+        "mode": ("ai", "mode"),
+    }
+
+    for key, path in mapping.items():
+        if key not in config_dict:
+            continue
+        target = config_dict
+        *parents, leaf = path
+        for segment in parents:
+            target = target.setdefault(segment, {})
+        target[leaf] = config_dict[key]
+
+    return config_dict
+
+
 def load_config(config_path=None) -> Dict[str, Any]:
     """
     Loads configuration from a YAML file, injects API keys from environment variables (GOOGLE_API_KEY, GROQ_API_KEY), and sets up global paths and logging
@@ -218,20 +336,54 @@ def load_config(config_path=None) -> Dict[str, Any]:
     Returns:
         dict: Configuration dictionary with all settings
     """
-    global config, _config_loaded
+    global config, _config_loaded, logger
 
     # Return cached config if already loaded
     if _config_loaded and config is not None:
         return config
 
-    if config_path is None:
-        # Default to the config.yaml located one directory above the current module
-        config_path = os.path.abspath(
+    # Explicit config path has highest priority (primarily used for tests/tools)
+    if config_path is not None:
+        resolved_path = os.path.abspath(config_path)
+        config = _read_yaml(resolved_path)
+        if config is None:
+            raise FileNotFoundError(f"Unable to load configuration from {resolved_path}")
+        logger.info(f"Loaded AI Engine configuration from {resolved_path}")
+    else:
+        local_default_path = os.path.abspath(
             os.path.join(os.path.dirname(__file__), os.pardir, "config.yaml")
         )
+        local_config = _read_yaml(local_default_path) or {}
 
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+        central_config = None
+        central_source = None
+        central_monitor_interval = None
+        for candidate in _resolve_simulator_config_candidates():
+            central_data = _read_yaml(candidate)
+            ai_engine_config = _extract_ai_engine_config(central_data)
+            if ai_engine_config is not None:
+                central_config = _apply_flat_overrides(deepcopy(ai_engine_config))
+                central_source = candidate
+                monitor_block = central_data.get("monitor", {}) if central_data else {}
+                central_monitor_interval = monitor_block.get("collection_interval") or monitor_block.get("interval")
+                break
+
+        if central_config:
+            config = _deep_merge_dicts(local_config, central_config)
+            source_desc = f"central config: {central_source}"
+        else:
+            config = deepcopy(local_config)
+            source_desc = f"local fallback: {local_default_path}"
+
+        if not config:
+            raise FileNotFoundError(
+                "No AI Engine configuration found. Checked central simulator config and local ai-engine/config.yaml."
+            )
+        logger.info(f"Loaded AI Engine configuration from {source_desc}")
+
+        if central_monitor_interval is not None:
+            monitor_cfg = config.setdefault("monitor", {})
+            monitor_cfg["interval"] = central_monitor_interval
 
     # ------------------------------------------------------------------
     # Inject API keys from environment variables, overriding YAML values
@@ -279,7 +431,6 @@ def load_config(config_path=None) -> Dict[str, Any]:
     log_file = os.path.join(ENGINE_LOG_DIR, log_filename)
 
     # Use our setup_logger function which handles duplicate prevention
-    global logger
     logger = setup_logger(level=log_level, log_file=log_file)
 
     # Log the paths being used (only on first load)
