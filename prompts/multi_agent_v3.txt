@@ -18,5 +18,19 @@ Guidelines (when multiple options are valid):
 - Prefer stable placements; avoid oscillating workloads between clusters unless strongly justified.
 
 Output:
-- For each workload, clearly indicate the target cluster: 0 for "private" or 1 "public".
+- For each workload, output a binary decision in the same order as the input:
+  - 0 = "migrate/keep on private cluster"
+  - 1 = "migrate/keep on public cluster"
 - Briefly justify non-obvious or cost-increasing moves using temporal behavior, capacity, or pending risk.
+
+Meta (response format – strictly follow this):
+- Always respond with valid JSON only, no extra text.
+- The JSON must have exactly these fields:
+  {
+    "decisions": [0 or 1 or -1 per workload, in the exact same order as the input workloads],
+    "explanations": ["short explanation for workload 1", "short explanation for workload 2", ...],
+  }
+- Use 0 for "migrate/keep on private cluster".
+- Use 1 for "migrate/keep on public cluster".
+- Use -1 only if you cannot make a decision for that workload.
+- The lengths of "decisions" and "explanations" must both match the number of input workloads.
