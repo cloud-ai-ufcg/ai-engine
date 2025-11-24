@@ -9,7 +9,10 @@ from typing import Optional, Dict, Any, Union
 import json
 
 # Default directory paths
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+# Calculate BASE_DIR as the project root (two levels up from this file)
+# Using realpath to resolve any symbolic links
+_file_dir = os.path.dirname(os.path.realpath(__file__))
+BASE_DIR = os.path.realpath(os.path.join(_file_dir, "../../"))
 OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "data/output"))
 ENGINE_LOG_DIR = os.path.abspath(os.path.join(BASE_DIR, "logs"))
 
@@ -342,12 +345,16 @@ def load_config(config_path=None) -> Dict[str, Any]:
     if _config_loaded and config is not None:
         return config
 
+    # Track the actual config file used for logging
+    actual_config_file = None
+    
     # Explicit config path has highest priority (primarily used for tests/tools)
     if config_path is not None:
         resolved_path = os.path.abspath(config_path)
         config = _read_yaml(resolved_path)
         if config is None:
             raise FileNotFoundError(f"Unable to load configuration from {resolved_path}")
+        actual_config_file = resolved_path
         logger.info(f"Loaded AI Engine configuration from {resolved_path}")
     else:
         local_default_path = os.path.abspath(
@@ -371,9 +378,11 @@ def load_config(config_path=None) -> Dict[str, Any]:
         if central_config:
             config = _deep_merge_dicts(local_config, central_config)
             source_desc = f"central config: {central_source}"
+            actual_config_file = central_source
         else:
             config = deepcopy(local_config)
             source_desc = f"local fallback: {local_default_path}"
+            actual_config_file = local_default_path
 
         if not config:
             raise FileNotFoundError(
@@ -434,7 +443,7 @@ def load_config(config_path=None) -> Dict[str, Any]:
     logger = setup_logger(level=log_level, log_file=log_file)
 
     # Log the paths being used (only on first load)
-    logger.debug(f"Using config file: {config_path}")
+    logger.debug(f"Using config file: {actual_config_file}")
     logger.debug(f"Using base directory: {BASE_DIR}")
     logger.debug(f"Using output directory: {OUTPUT_DIR}")
     logger.debug(f"Using log directory: {ENGINE_LOG_DIR}")
