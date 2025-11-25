@@ -16,10 +16,10 @@ from .util import (
     ENGINE_LOG_DIR,
 )
 from .agents import label_workloads
+from .data_processor import process_monitoring_data
 
 logger = get_logger("main")
 CURRENT_BATCH_ID = 1
-
 
 def _filter_and_fill_workloads(
     latest_workloads: Dict[str, Any],
@@ -84,171 +84,102 @@ def _filter_and_fill_workloads(
     )
     return workloads
 
-
-def _filter_and_fill_workloads_list(
-    all_workloads: List[Dict[str, Any]],
-    cluster_data: Dict[str, Any],
-    timestamp_lookback_seconds: int,
-) -> List[Dict[str, Any]]:
-    """Filter and fill workloads but preserve all snapshots.
-
-    This accepts a list of workload snapshots (possibly many per workload_id)
-    and returns a filtered list where each snapshot is kept (unless it's
-    filtered out due to zero resources). Cluster information is attached to
-    each snapshot when available.
-    """
-    workloads: List[Dict[str, Any]] = []
-    unique_ids = set()
-
-    for w in all_workloads:
-        cpu = w.get("resources", {}).get("cpu", "0")
-        memory = w.get("resources", {}).get("memory", "0")
-        if cpu == "0m" and memory == "0Mi":
-            logger.debug("Skipping workload % snapshot with zero resources", w.get("workload_id"))
-            continue
-
-        cluster_label = w.get("cluster_label")
-        if cluster_label and cluster_label in cluster_data:
-            w["cluster_load"] = cluster_data[cluster_label]["cpu_load"]
-            w["cluster_cpu_capacity"] = cluster_data[cluster_label]["cpu_capacity"]
-            w["cluster_memory_capacity"] = cluster_data[cluster_label]["memory_capacity"]
-
-        wid = w.get("workload_id") or w.get("id")
-        if wid:
-            unique_ids.add(wid)
-
-        workloads.append(w)
-
-    logger.info(
-        format_message(
-            f"Filtered to {len(workloads)} workload snapshots across {len(unique_ids)} \n"
-            f"unique workloads from the last {timestamp_lookback_seconds} seconds",
-            icon="🔄",
-            color="GREEN",
-        )
-    )
-    return workloads
-
-
 def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
     Process monitoring data from different formats and extract workloads.
     Processes data from the last timestamp_lookback_seconds seconds of timestamps.
 
+    Parses timestamps in "%Y-%m-%d %H:%M:%S" format into datetime objects.
+
     Args:
-        data: The loaded JSON data which can be in different formats
-        timestamp_lookback_seconds: Number of seconds to look back in time
-        (defaults to config value)
+        data: JSON monitoring data in one of the supported formats
+        timestamp_lookback_seconds: Number of seconds to look back
+            (defaults to config value)
 
     Returns:
-        List of workload objects with relevant cluster information
+        dict with:
+            - "workloads": list of workload dicts enriched with cluster info
+            - "cluster_info": latest cluster information extracted from data
     """
-    # Load config early so we can respect preserve_history setting even when
-    # timestamp_lookback_seconds is passed explicitly.
     config = load_config()
     if timestamp_lookback_seconds is None:
-        timestamp_lookback_seconds = config.get('ai', {}).get(
-            'timestamp_lookback_seconds', 30
+        timestamp_lookback_seconds = config.get("ai", {}).get(
+            "timestamp_lookback_seconds", 30
         )
-    preserve_history = bool(config.get('ai', {}).get('preserve_history', False))
+
+    preserve_history = bool(config.get("ai", {}).get("preserve_history", False))
 
     if isinstance(data, dict) and all(
         isinstance(value, dict) and "workloads" in value for value in data.values()
     ):
         try:
-            # Convert string timestamps (e.g. "2025-11-12 12:25:57") to datetime objects
             timestamps = sorted(
                 data.keys(),
                 key=lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"),
-                reverse=True
+                reverse=True,
             )
         except Exception as e:
             logger.error(f"Error parsing timestamps: {e}")
-            return []
+            return {"workloads": [], "cluster_info": []}
 
         if not timestamps:
-            logger.error("No valid timestamps found in data")
-            return []
+            return {"workloads": [], "cluster_info": []}
 
         latest_timestamp = timestamps[0]
-        logger.info(format_message(f"Latest timestamp: {latest_timestamp}", color="GREEN"))
-
         latest_dt = datetime.strptime(latest_timestamp, "%Y-%m-%d %H:%M:%S")
         cutoff_dt = latest_dt - timedelta(seconds=timestamp_lookback_seconds)
-        cutoff_timestamp = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
+        cutoff_ts = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-        recent_timestamps = [ts for ts in timestamps if ts >= cutoff_timestamp]
-
-        logger.info(
-            format_message(
-                f"⏱️  Processing data from {len(recent_timestamps)} timestamps in \n"
-                f"the last {timestamp_lookback_seconds} seconds",
-                color="MAGENTA",
-            )
-        )
+        recent_timestamps = [ts for ts in timestamps if ts >= cutoff_ts]
 
         latest_data = data[latest_timestamp]
         cluster_info = latest_data.get("cluster_info", [])
 
+        # Prepare cluster mapping
         cluster_data = {}
         for cluster in cluster_info:
-            if "cluster_label" in cluster:
-                cluster_data[cluster["cluster_label"]] = {
-                    "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
-                    "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
-                    "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
-                    "memory_capacity": cluster.get("cluster_memory_capacity", "16384Mi"),
-                }
+            label = cluster.get("cluster_label")
+            if not label:
+                continue
+            cluster_data[label] = {
+                "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
+                "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
+                "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
+                "memory_capacity": cluster.get("cluster_memory_capacity", "16384Mi"),
+            }
 
-        logger.info(
-            format_message(
-                f"🔍 Found {len(cluster_data)} clusters: {', '.join(cluster_data.keys())}",
-                color="CYAN",
-            )
-        )
-
+        # Build list of snapshots
         all_workloads = []
         for ts in recent_timestamps:
-            timestamp_data = data[ts]
-            raw_workloads = timestamp_data.get("workloads", [])
-
-            for w in raw_workloads:
-                try:
-                    w_ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp()
-                    w["timestamp"] = w_ts
-                except Exception:
-                    logger.debug(f"Skipping workload with unparsable timestamp: {ts}")
-                    continue
+            ts_data = data[ts]
+            for w in ts_data.get("workloads", []):
+                w["timestamp"] = datetime.strptime(
+                    ts, "%Y-%m-%d %H:%M:%S"
+                ).timestamp()
                 all_workloads.append(w)
 
-        if preserve_history:
-            # Keep every snapshot (filtered) and attach cluster info per snapshot.
-            workloads = _filter_and_fill_workloads_list(
-                all_workloads, cluster_data, timestamp_lookback_seconds
-            )
-        else:
-            # Convert the list of workload snapshots into a mapping from workload_id ->
-            # latest workload dict (by timestamp). _filter_and_fill_workloads expects a
-            # dict mapping workload_id to the latest workload entry.
-            latest_workloads: Dict[str, Any] = {}
-            for w in all_workloads:
-                wid = w.get("workload_id") or w.get("id")
-                if not wid:
-                    logger.debug("Skipping workload without workload_id")
-                    continue
-                existing = latest_workloads.get(wid)
-                if existing is None or w.get("timestamp", 0) > existing.get("timestamp", 0):
-                    latest_workloads[wid] = w
+        latest_workloads = {}
+        for w in all_workloads:
+            wid = w.get("workload_id") or w.get("id")
+            if not wid:
+                continue
+            prev = latest_workloads.get(wid)
+            if prev is None or w["timestamp"] > prev["timestamp"]:
+                latest_workloads[wid] = w
 
-            workloads = _filter_and_fill_workloads(
-                latest_workloads, cluster_data, timestamp_lookback_seconds
-            )
+        filled = _filter_and_fill_workloads(
+            latest_workloads, cluster_data, timestamp_lookback_seconds
+        )
 
-    else:
-        logger.warning("Processing data in legacy format")
-        workloads = data
+        return {
+            "workloads": filled,
+            "cluster_info": cluster_info,
+        }
 
-    return workloads
+    return {
+        "workloads": data,
+        "cluster_info": [],
+    }
 
 def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     """
@@ -277,10 +208,12 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
 
     migrated_workloads = df[df["label"] == 1]
     non_migrated_workloads = df[df["label"] == 0]
+    invalid_workloads = df[df["label"] == -1]
 
     total_workloads = len(df)
     migrated_count = len(migrated_workloads)
     non_migrated_count = len(non_migrated_workloads)
+    invalid_count = len(invalid_workloads)
 
     logger.info(
         format_message(
@@ -290,6 +223,15 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             bold=True,
         )
     )
+    if invalid_count > 0:
+        logger.warning(
+            format_message(
+                f"Workloads ignored due to invalid LLM response: {invalid_count} ({invalid_count/total_workloads*100:.1f}%)",
+                icon="❌",
+                color="RED",
+                bold=True,
+            )
+        )
     logger.info(
         format_message(
             f" Workloads to be migrated to public cluster: {migrated_count}",
@@ -344,6 +286,8 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
+
+        df_to_save = pd.concat([migrated_workloads, non_migrated_workloads])
         # Persist legacy CSV columns
         columns_to_save = [
             c
@@ -357,10 +301,12 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             if c in df.columns
         ]
         if columns_to_save:
-            df[columns_to_save].to_csv(output_csv, index=False)
+            # df[columns_to_save].to_csv(output_csv, index=False)
+            df_to_save[columns_to_save].to_csv(output_csv, index=False)
         else:
             # Fallback: write everything
-            df.to_csv(output_csv, index=False)
+            # df.to_csv(output_csv, index=False)
+            df_to_save.to_csv(output_csv, index=False)
         logger.info(
             format_message(
                 f"Recommendations written to {output_csv}", icon="📝", color="MAGENTA"
@@ -411,20 +357,21 @@ def load_monitoring_data(config):
         with open(json_input, "r") as f:
             data = json.load(f)
 
-        workloads = process_monitoring_data(data)
-        return workloads
+        processed_data = process_monitoring_data(data)
+        return processed_data
     except Exception as e:
         logger.error(f"❌ Error loading monitoring data: {e}")
         return None
 
 
-def analyze_workloads(workloads, config):
+def analyze_workloads(workloads, config, cluster_info=None, interval_duration=None):
     """
     Analyze workloads using the configured AI model.
 
     Args:
         workloads: List of workload objects to analyze
         config: Configuration dictionary
+        cluster_info: List of cluster information dictionaries (optional)
 
     Returns:
         Tuple containing (DataFrame with results, explanations dictionary)
@@ -432,7 +379,6 @@ def analyze_workloads(workloads, config):
     provider = (
         config.get("ai", {}).get("default_config", {}).get("provider", "openrouter")
     )
-    multiagent = config.get("ai", {}).get("multi_agent", False)
 
     logger.info(
         format_message(
@@ -442,14 +388,27 @@ def analyze_workloads(workloads, config):
             bold=True,
         )
     )
+    # Don't pass multiagent parameter - let label_workloads use config.mode instead
     labels, explanations = label_workloads(
-        workloads, provider=provider, multiagent=multiagent
+        workloads, cluster_info=cluster_info,interval_duration=interval_duration, provider=provider
     )
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
-    result["label"] = pd.Series(labels)
-    result["label"] = result["label"].fillna(0).astype(int)
+    
+    if not result.empty:
+        label_series = pd.Series(labels)
+        
+        numeric_labels = pd.to_numeric(label_series, errors='coerce')
+        
+        result["label"] = numeric_labels.fillna(-1).astype(int)
+        
+    else:
+        
+        result["label"] = pd.Series(dtype=int) 
+        logger.warning("No workloads processed; 'label' column initialized empty.")
+
+
 
     # Safely attach reasons column
     if (
@@ -549,6 +508,7 @@ def save_and_log_explanations(
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Ensure we have a batch_id; if not provided, increment global counter
+
     global CURRENT_BATCH_ID
 
     if batch_id is None:
@@ -572,10 +532,17 @@ def save_and_log_explanations(
     explanations_list = (explanations or {}).get("workload_explanations", [])
 
     recs_payload = []
+    ignored_workloads = []
+
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
-        destination_cluster = int(row.get("label", 0))
+        destination_cluster = row.get("label", 0)
+
+        
+
+        destination_cluster = int(destination_cluster)
+
         origin_label = origin_by_id.get(wid, "private")
         origin_cluster = 0 if origin_label == "private" else 1
 
@@ -599,6 +566,7 @@ def save_and_log_explanations(
             )
         )
 
+
     # Serialize Pydantic models to plain dicts for JSON output
     recs_payload_serialized = [
         (
@@ -613,6 +581,7 @@ def save_and_log_explanations(
         json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
+    
     logger.info(
         format_message(
             f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
@@ -622,13 +591,20 @@ def save_and_log_explanations(
         )
     )
     logger.info(format_message("Detailed explanations for each workload:", bold=True))
+
     for idx, explanation in enumerate(explanations.get("workload_explanations", [])):
         if idx < len(result_df):
             workload_id = result_df.iloc[idx]["workload_id"]
-            kind = result_df.iloc[idx]["kind"]
             label = result_df.iloc[idx]["label"]
+
+            
+            if str(label) == "-1" or label == -1:
+                continue
+
+            kind = result_df.iloc[idx]["kind"]
             cluster = "public" if label == 1 else "private"
             color = "BLUE" if label == 1 else "GREEN"
+
             logger.info(
                 format_message(
                     f"Workload {workload_id} ({kind}) → {cluster}: {explanation}",

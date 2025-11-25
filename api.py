@@ -166,6 +166,8 @@ def _build_workload_recommendations(result_df, explanations, workloads):
         origin_label = origin_by_id.get(wid, "private")
         origin_cluster = 0 if origin_label == "private" else 1
         destination_cluster = label
+        if destination_cluster == -1:
+            continue
 
         reason = (
             explanations_list[idx]
@@ -210,7 +212,10 @@ async def start():
                 json = {"interval": app_state.config['monitor']['interval']}
 
                 logger.debug(f"Fetching metrics from MONITOR: {url}")
+                # monitor interval: window of metrics we ask the Monitor API to return
                 logger.debug(f"Interval: {app_state.config['monitor']['interval']}")
+                # scheduler interval: cadence (seconds) between successive fetch/analysis cycles
+                logger.debug(f"Scheduler interval: {SCHEDULER_INTERVAL}")
 
                 async with session.get(url, json=json) as response:
                     if response.status == 200:
@@ -229,9 +234,17 @@ async def start():
         except Exception as e:
             logger.error(f"Error fetching metrics from MONITOR: {e}")
 
-        workloads = process_monitoring_data(data)
+        processed_data = process_monitoring_data(data)
+
+        if not processed_data:
+            return
+        
+        workloads = processed_data.get("workloads", [])
+        cluster_info = processed_data.get("cluster_info", [])
+        interval_duration = processed_data.get("interval_duration", "unknown")
+        
         if workloads:
-            result_df, explanations = analyze_workloads(workloads, app_state.config)
+            result_df, explanations = analyze_workloads(workloads, app_state.config, cluster_info=cluster_info, interval_duration=interval_duration)
             save_and_log_explanations(result_df, explanations, workloads)
 
             # Transform into WorkloadRecommendation-shaped list[dict]

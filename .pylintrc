@@ -1,0 +1,3 @@
+[MESSAGES CONTROL]
+# Disable "line too long" (C0301)
+disable=C0301

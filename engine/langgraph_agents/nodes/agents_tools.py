@@ -116,6 +116,7 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = get_prompt("label_workloads", **prompt_data)
     resp = model.invoke(prompt)
 
+
     try:
         # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
         parsed = resp if isinstance(resp, dict) else json.loads(resp)
@@ -127,25 +128,43 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         )
     except (Exception,):
         # Fallback path when response is not valid or schema fails
-        logger.warning(
-            "LLM failed to generate a valid WorkloadLabelOutput. Using fallback."
+        logger.error(
+            "LLM failed to generate a valid WorkloadLabelOutput."
         )
-        decisions_list = [0] * len(workloads)
+        decisions_list = [-1] * len(workloads)
         explanations_list = [
-            "Workload recommended to stay in private cluster (fallback)"
+            "RecommendationsNode failed to produce WorkloadLabelOutput"
             for _ in workloads
         ]
         overall_explanation = (
-            "LLM failed to generate a tool call. Using a fallback decision."
+            "RecommendationsNode failed to produce WorkloadLabelOutput"
         )
 
     final_decisions: list[int] = []
     workload_explanations: list[str] = []
 
     for label, expl in zip(decisions_list, explanations_list):
-        label_int = (
-            int(label) if isinstance(label, (int, str)) and str(label).isdigit() else 0
-        )
+        label_int = -1 
+
+        try:
+            
+            val = int(label)
+            
+            
+            if val in [0, 1]:
+                label_int = val
+            elif val == -1:
+                label_int = -1 
+            else:
+                
+                logger.warning(f"Label value {val} outside of expected range [0, 1, -1]. Setting to -1.")
+                label_int = -1
+                
+        except (ValueError, TypeError):
+            
+            logger.warning(f"Non-numeric label received: {label}. Setting to -1.")
+            label_int = -1
+            
         final_decisions.append(label_int)
         workload_explanations.append(expl)
 
