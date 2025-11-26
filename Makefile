@@ -66,9 +66,15 @@ curl-start:
 	@curl -X POST http://0.0.0.0:8083/start || true
 
 # Launch all services in terminals and then trigger the start curl
-dev-start: start-all-terminals
+dev-start: 
+	@echo "Starting AI-Engine, Fake Monitor, and Fake Actuator"
+	@${MAKE} start-all-terminals
 	@sleep 5
+	@echo "Sending start request..."
 	@$(MAKE) curl-start
+	@sleep 1
+	@echo "AI-Engine is now running and processing recommendations."
+	@echo "Check the API terminal for real-time updates."
 
 run-with-config:
 	$(PYTHON) cli.py --config $(CONFIG_FILE)

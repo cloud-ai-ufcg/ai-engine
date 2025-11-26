@@ -11,9 +11,14 @@ import uvicorn
 from typing import Dict, Any
 import json
 
+
+METRICS_FILENAME = "monitor_test.json"
+PORT = 8082
+RELOAD = True
+
 app = FastAPI(
     title="Metrics API",
-    description="Fake implementation for testing (local development) - Returns data from monitor_test.json for monitoring pipeline testing",
+    description=f"Fake implementation for testing (local development) - Returns data from {METRICS_FILENAME} for monitoring pipeline testing",
     version="1.0.1",
 )
 
@@ -21,7 +26,7 @@ app = FastAPI(
 @app.get("/metrics")
 async def get_metrics() -> Dict[str, Any]:
     """
-    Returns fake monitoring metrics from monitor_test.json.
+    Returns fake monitoring metrics from {METRICS_FILENAME}.
     This endpoint is used by the monitoring system to fetch test metrics.
     It provides a consistent interface for testing the monitoring pipeline
     and simulates the behavior of the real monitoring endpoint.
@@ -30,21 +35,21 @@ async def get_metrics() -> Dict[str, Any]:
         Dict[str, Any]: Monitoring metrics or error information
 
     Raises:
-        FileNotFoundError: If monitor_test.json file is not found
+        FileNotFoundError: If {METRICS_FILENAME} file is not found
         json.JSONDecodeError: If the JSON file is invalid
         Exception: For any other unexpected errors
 
     """
     try:
-        with open("monitor_test.json", "r") as f:
+        with open(METRICS_FILENAME, "r") as f:
             return json.load(f)
     except FileNotFoundError:
-        return {"error": "monitor_test.json not found"}
+        return {"error": f"{METRICS_FILENAME} not found"}
     except json.JSONDecodeError as e:
-        return {"error": f"Invalid JSON in monitor_test.json: {str(e)}"}
+        return {"error": f"Invalid JSON in {METRICS_FILENAME}: {str(e)}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
 
 if __name__ == "__main__":
-    uvicorn.run("fake_monitor:app", host="0.0.0.0", port=8082, reload=True)
+    uvicorn.run("fake_monitor:app", host="0.0.0.0", port=PORT, reload=RELOAD)
