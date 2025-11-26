@@ -3,8 +3,10 @@ import pandas as pd
 import re
 import json
 import uuid
-from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
-from .util import get_logger, load_config, log_token_usage
+from .ai_config import get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
+from .util import get_logger, load_config
+from .cluster_config import get_cluster_manager
+from engine.langgraph_agents.nodes.agents_tools import _convert_binary_decisions_to_cluster_ids
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
 from .client import OpenRouterClient
@@ -42,6 +44,29 @@ def _normalize_workloads_to_dataframe(
     return pd.DataFrame(workloads) if isinstance(workloads, list) else workloads
 
 
+def _get_cluster_list_for_prompt() -> str:
+    """
+    Build a formatted list of available clusters for use in prompts.
+    
+    Returns:
+        A formatted string describing available clusters and their indices
+    """
+    cluster_manager = get_cluster_manager()
+    clusters = cluster_manager.get_all_clusters()
+    
+    if not clusters:
+        logger.warning("No clusters configured. Using default private/public clusters.")
+        return "(0) private cluster, (1) public cluster"
+    
+    cluster_descriptions = []
+    for idx, cluster in enumerate(clusters):
+        cluster_descriptions.append(
+            f"({idx}) {cluster.cluster_id} [Profile: {cluster.cluster_profile}] - {cluster.cluster_description}"
+        )
+    
+    return ", ".join(cluster_descriptions)
+
+
 def _extract_json_from_response(text_response: str) -> Dict[str, Any]:
     """Extract and parse JSON from model response."""
     json_match = re.search(r"\{[\s\S]*\}", text_response)
@@ -77,9 +102,12 @@ def _validate_and_extract_decisions(
 
 
 def _create_explanation_output(
-    labels: List[int], explanations: List[str], df: "pd.DataFrame"
+    labels: List[str], explanations: List[str], df: "pd.DataFrame", cluster_manager=None
 ) -> Dict[str, Any]:
     """Create structured explanation output and log decisions."""
+    if cluster_manager is None:
+        cluster_manager = get_cluster_manager()
+    
     explanation_output = {
         "workload_explanations": [],
     }
@@ -87,17 +115,33 @@ def _create_explanation_output(
     for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
         workload_id = workload[1].get("workload_id", f"workload-{idx}")
         kind = workload[1].get("kind", "unknown")
-        destination = "public" if label == 1 else "private"
+        current_cluster = workload[1].get("cluster_label", "unknown")
+        destination_cluster = label
 
-        # Log the decision
-        logger.info(f"Decision for {workload_id} ({kind}): Cluster {destination}")
+        # Log the decision with context
+        is_staying = current_cluster == destination_cluster
+        logger.info(
+            f"Decision for {workload_id} ({kind}): {current_cluster} → {destination_cluster} "
+            f"[Staying: {is_staying}]"
+        )
 
         # Add explanation for this workload
         explanation = (
             explanations[idx]
             if idx < len(explanations)
-            else f"Workload {workload_id} recommended for {destination} cluster based on resource requirements"
+            else f"Workload {workload_id} recommended for {destination_cluster} cluster based on resource requirements"
         )
+        
+        # Check for potential hallucinations (explanation contradicts decision)
+        if explanation and is_staying:
+            migration_keywords = ["migrate", "move", "transfer", "relocate", "shift", "should go"]
+            if any(keyword in explanation.lower() for keyword in migration_keywords):
+                logger.warning(
+                    f"⚠️  POTENTIAL LLM HALLUCINATION - {workload_id}: "
+                    f"Explanation mentions migration but workload stays in {current_cluster}. "
+                    f"Explanation: \"{explanation}\""
+                )
+        
         explanation_output["workload_explanations"].append(explanation)
 
     return explanation_output
@@ -107,16 +151,17 @@ def label_workloads_with_llm(
     workloads: Union[list, "pd.DataFrame"],
     model: str = "google/gemini-2.0-flash-001",
     client: OpenRouterClient = None,
-) -> Tuple[List[int], Dict[str, Any]]:
+) -> Tuple[List[str], Dict[str, Any]]:
     """
     Uses LLM API to decide workload labels with explanations.
-    Each label: 0 = private, 1 = public.
+    Each label is now a cluster ID (e.g., "private-cluster-1", "aws-3241").
+    
     Args:
         workloads: list of dicts or DataFrame with workload fields.
         model: Model to use via Provider (default: google/gemini-2.0-flash-001)
     Returns:
         Tuple containing:
-        - List of labels (0 or 1) in the same order
+        - List of cluster IDs (strings) in the same order as workloads
         - Dictionary with explanations for each workload
     """
     global REQUEST_COUNTER, TOKEN_TOTALS
@@ -132,8 +177,17 @@ def label_workloads_with_llm(
 
     # Data preparation
     df = _normalize_workloads_to_dataframe(workloads)
+    
+    # Get cluster information for the prompt
+    cluster_manager = get_cluster_manager()
+    clusters = cluster_manager.get_all_clusters()
+    cluster_list_str = _get_cluster_list_for_prompt()
+    
     user_prompt = get_prompt(
-        "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
+        "label_workloads", 
+        workloads_json=df.to_json(orient="records", indent=2),
+        cluster_list=cluster_list_str,
+        num_clusters=len(clusters)
     )
 
 
@@ -183,72 +237,43 @@ def label_workloads_with_llm(
                 )
                 logger.info(f"Truncated decisions to match {len(df)} workloads")
             else:
-                # Too few decisions - pad with original cluster labels (no migration)
+                # Too few decisions - pad with binary 0 (stay in first cluster - no migration)
                 missing_count = len(df) - len(decisions)
-
-                # Get original cluster labels for missing decisions
-                for i in range(len(decisions), len(df)):
-                    workload_row = df.iloc[i]
-                    original_cluster = workload_row.get('cluster_label', 'private')
-                    # Convert cluster label to decision: private=0, public=1
-                    original_decision = 0 if original_cluster == 'private' else 1
-                    decisions.append(original_decision)
+                for i in range(missing_count):
+                    decisions.append(0)  # Binary 0 = stay (will be converted to first cluster)
                     explanations.append(
-                        f"Maintaining original cluster ({original_cluster}) due to missing AI decision"
+                        f"Maintaining current cluster due to missing AI decision"
                     )
-
                 logger.info(
-                    f"Padded {missing_count} missing decisions with original cluster assignments (no migration)"
+                    f"Padded {missing_count} missing decisions with 0 (no migration)"
                 )
 
-        # Convert to integers and create output
-        labels = [int(decision) for decision in decisions]
-        logger.info("Migration decisions extracted from JSON response")
+        # Convert binary indices (0, 1, 2, ...) to actual cluster IDs (strings)
+        labels = _convert_binary_decisions_to_cluster_ids(decisions, workloads)
+        logger.info(f"Converted binary decisions {decisions} to cluster IDs: {labels}")
 
-        explanation_output = _create_explanation_output(labels, explanations, df)
+        explanation_output = _create_explanation_output(labels, explanations, df, cluster_manager)
         return labels, explanation_output
 
     except Exception as e:
         logger.warning(f"Error parsing JSON response: {e}")
 
-        # Fallback: try to extract just the decisions if JSON parsing failed
-        pattern = r"[01]+"
+        # Fallback: try to extract just the cluster indices/IDs
+        # Pattern to match cluster indices or IDs
+        pattern = r"\d+"
         matches = re.findall(pattern, text_response)
 
-        if matches:
-            longest_match = max(matches, key=len)
-            if len(longest_match) == len(df):
-                logger.info(f"Migration pattern identified: {longest_match}")
-                labels = [int(digit) for digit in longest_match]
-
-                # Create a basic explanation output
-                explanation_output = {
-                    "explanation": "Migration decisions based on resource usage patterns",
-                    "workload_explanations": [],
-                }
-
-                # Log the decision for each workload
-                for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                    workload_id = workload[1].get("workload_id", f"workload-{idx}")
-                    kind = workload[1].get("kind", "unknown")
-                    destination = "public" if label == 1 else "private"
-                    logger.info(
-                        f"Decision for {workload_id} ({kind}): Cluster {destination}"
-                    )
-
-                    # Add a generic explanation
-                    if label == 1:
-                        explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-                    else:
-                        explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-                    explanation_output["workload_explanations"].append(explanation)
-
-                return labels, explanation_output
-
-        all_digits = re.findall(r"[01]", text_response)
-        if len(all_digits) >= len(df):
-            logger.info(f"Extracting labels from {model} response: {text_response}")
-            labels = [int(digit) for digit in all_digits[: len(df)]]
+        if matches and len(matches) >= len(df):
+            logger.info(f"Cluster indices identified in response")
+            # Convert indices to cluster IDs
+            labels = []
+            for match in matches[:len(df)]:
+                idx = int(match)
+                if 0 <= idx < len(clusters):
+                    labels.append(clusters[idx].cluster_id)
+                else:
+                    # Fallback to original cluster
+                    labels.append(df.iloc[len(labels)].get('cluster_label', 'private'))
 
             # Create a basic explanation output
             explanation_output = {
@@ -260,16 +285,12 @@ def label_workloads_with_llm(
             for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
                 workload_id = workload[1].get("workload_id", f"workload-{idx}")
                 kind = workload[1].get("kind", "unknown")
-                destination = "public" if label == 1 else "private"
                 logger.info(
-                    f"Decision for {workload_id} ({kind}): Cluster {destination}"
+                    f"Decision for {workload_id} ({kind}): Cluster {label}"
                 )
 
                 # Add a generic explanation
-                if label == 1:
-                    explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-                else:
-                    explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
+                explanation = f"Workload {workload_id} ({kind}) recommended for {label} cluster based on resource requirements"
                 explanation_output["workload_explanations"].append(explanation)
 
             return labels, explanation_output
@@ -288,10 +309,7 @@ def label_workloads_with_llm(
             workload_id = workload[1].get("workload_id", f"workload-{idx}")
             kind = workload[1].get("kind", "unknown")
 
-            if label == 1:
-                explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-            else:
-                explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
+            explanation = f"Workload {workload_id} ({kind}) recommended for {label} cluster based on resource analysis"
             explanation_output["workload_explanations"].append(explanation)
 
         return labels, explanation_output
@@ -310,10 +328,7 @@ def label_workloads_with_llm(
             workload_id = workload[1].get("workload_id", f"workload-{idx}")
             kind = workload[1].get("kind", "unknown")
 
-            if label == 1:
-                explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-            else:
-                explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
+            explanation = f"Workload {workload_id} ({kind}) recommended for {label} cluster based on resource analysis"
             explanation_output["workload_explanations"].append(explanation)
 
         return labels, explanation_output
@@ -324,7 +339,7 @@ def label_workloads_with_llm(
 # ---------------------------------------------------------------------------
 def label_workloads_multiagent(
     workloads: List[dict], cluster_info: List[dict], interval_duration: str = None
-) -> Tuple[List[int], Dict[str, Any]]:
+) -> Tuple[List[str], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
     
     # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
@@ -352,7 +367,7 @@ def label_workloads_multiagent(
         logger.warning("Final decisions missing or length mismatch. Applying existing recommendations ")
         labels = final_decisions
     else:
-        labels = final_decisions
+        labels = _convert_binary_decisions_to_cluster_ids(final_decisions, workloads)
 
     final_explanations = {
         "workload_explanations": workload_explanations,
@@ -383,7 +398,9 @@ def label_workloads_multiagent_votes(workloads, provider="langgraph"):
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
 
-    labels = final_state.get("final_decisions", [])
+    final_decisions = final_state.get("final_decisions", [])
+    
+    labels = _convert_binary_decisions_to_cluster_ids(final_decisions, workloads)
 
     explanations = final_state.get("explanations", {})
 
@@ -399,9 +416,10 @@ def label_workloads(
     interval_duration: str = None,
     provider: str | None = None,
     multiagent: bool | None = None,
-) -> Tuple[List[int], Dict[str, Any]]:
+) -> Tuple[List[str], Dict[str, Any]]:
     """
     Public API to label workloads with the configured AI provider.
+    Now returns cluster IDs (strings) instead of binary decisions.
     
     Args:
         workloads: List of workloads or DataFrame
@@ -410,7 +428,7 @@ def label_workloads(
         multiagent: Override the configured mode (optional, legacy parameter)
     
     Returns:
-        Tuple of (labels, explanations)
+        Tuple of (cluster_ids, explanations) where cluster_ids are now strings
     """
     cfg = load_config()
 
@@ -473,11 +491,21 @@ def label_workloads(
 
 def _label_workloads_with_heuristics(
     workloads: Union[list, "pd.DataFrame"],
-) -> List[int]:
+) -> List[str]:
     """
-    Fallback: uses simple heuristics to decide labels when AI is not available.
+    Fallback: uses simple heuristics to decide cluster assignments when AI is not available.
+    Returns cluster IDs instead of binary decisions.
     """
     logger.info("Using heuristics as fallback for migration decision")
+    cluster_manager = get_cluster_manager()
+    clusters = cluster_manager.get_all_clusters()
+    
+    if not clusters:
+        logger.warning("No clusters configured. Using default assignment.")
+        clusters_for_assignment = [("private", "private"), ("public", "public")]
+    else:
+        clusters_for_assignment = [(c.cluster_id, c.cluster_label) for c in clusters]
+    
     if isinstance(workloads, list):
         df = pd.DataFrame(workloads)
     else:
@@ -507,19 +535,28 @@ def _label_workloads_with_heuristics(
         mem_values = df.get("resources.memory", df.get("memory", 0)).apply(mem_to_float)
 
     # Rules heuristics:
-    # 1. If CPU > 0.5 or memory > 1024Mi: move to public
-    # 2. If percent_pending > 20%: move to public
+    # 1. If CPU > 0.5 or memory > 1024Mi: use first cluster (often public/scaling)
+    # 2. If percent_pending > 20%: use first cluster
     try:
         percent_pending = df["percent_pending"].fillna(0)
     except:
         percent_pending = pd.Series([0] * len(df))
 
-    # Combine rules to decide: 0=private, 1=public
-    labels = ((cpu_values > 0.5) | (mem_values > 1024) | (percent_pending > 50)).astype(
-        int
-    )
+    # Combine rules to decide: high requirements go to first cluster, others to current cluster
+    high_resource_mask = (cpu_values > 0.5) | (mem_values > 1024) | (percent_pending > 50)
+    
+    # If we have multiple clusters, assign high-resource workloads to the first one
+    # Otherwise, keep workloads in their current cluster
+    labels = []
+    for idx, row in df.iterrows():
+        if high_resource_mask.iloc[idx] and len(clusters_for_assignment) > 1:
+            labels.append(clusters_for_assignment[0][0])
+        else:
+            current_cluster_label = row.get('cluster_label', 'private')
+            cluster_id = cluster_manager.resolve_cluster_label_to_id(current_cluster_label)
+            labels.append(cluster_id if cluster_id else current_cluster_label)
 
-    return labels.tolist()
+    return labels
 
 
 # Get metrics of token usage and requests
