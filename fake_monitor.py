@@ -1,3 +1,11 @@
+"""
+Fake monitoring API for testing purposes.
+This API serves as a mock endpoint that returns metrics from monitor_test.json.
+It's used for local development and testing of the monitoring system.
+This endpoint is particularly useful for testing the monitoring pipeline without requiring a real cluster.
+The API is designed to be a drop-in replacement for the real monitoring endpoint during development.
+"""
+
 from fastapi import FastAPI
 import uvicorn
 from typing import Dict, Any
@@ -5,218 +13,37 @@ import json
 
 app = FastAPI(
     title="Metrics API",
-    description="API for providing monitoring metrics",
-    version="1.0.0",
+    description="Fake implementation for testing (local development) - Returns data from monitor_test.json for monitoring pipeline testing",
+    version="1.0.1",
 )
 
 
 @app.get("/metrics")
 async def get_metrics() -> Dict[str, Any]:
-    metrics_data = {
-        "1747936314": {
-            "workloads": [
-                {
-                    "workload_id": "default/prometheus-kube-state-metrics",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/prometheus-prometheus-pushgateway",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/prometheus-server",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/stress",
-                    "kind": "deployment",
-                    "resources": {"cpu": "60000m", "memory": "7680Mi"},
-                    "pods_total": 30,
-                    "pods_pending": 25,
-                    "percent_pending": 83.33333333333334,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/test-monitor-job",
-                    "kind": "job",
-                    "resources": {"cpu": "1500m", "memory": "1920Mi"},
-                    "pods_total": 15,
-                    "pods_pending": 6,
-                    "percent_pending": 40,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "public",
-                },
-                {
-                    "workload_id": "default/prometheus-kube-state-metrics",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "public",
-                },
-                {
-                    "workload_id": "default/prometheus-prometheus-pushgateway",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "public",
-                },
-                {
-                    "workload_id": "default/prometheus-server",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "public",
-                },
-            ],
-            "cluster_info": [
-                {
-                    "cluster_label": "private",
-                    "cluster_load": {"cpu": 5.212, "memory": 0.317},
-                    "cluster_cpu_capacity": "12000m",
-                    "cluster_memory_capacity": "31782Mi",
-                },
-                {
-                    "cluster_label": "public",
-                    "cluster_load": {"cpu": 0.087, "memory": 0.015},
-                    "cluster_cpu_capacity": "12000m",
-                    "cluster_memory_capacity": "31782Mi",
-                },
-            ],
-        },
-        "1747936317": {
-            "workloads": [
-                {
-                    "workload_id": "default/prometheus-kube-state-metrics",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/prometheus-prometheus-pushgateway",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/prometheus-server",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/stress",
-                    "kind": "deployment",
-                    "resources": {"cpu": "60000m", "memory": "7680Mi"},
-                    "pods_total": 30,
-                    "pods_pending": 25,
-                    "percent_pending": 83.33333333333334,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/test-monitor-job",
-                    "kind": "job",
-                    "resources": {"cpu": "1500m", "memory": "1920Mi"},
-                    "pods_total": 15,
-                    "pods_pending": 6,
-                    "percent_pending": 40,
-                    "cluster_label": "private",
-                },
-                {
-                    "workload_id": "default/autoscaler-kwok-kwok-cluster-autoscaler",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "public",
-                },
-                {
-                    "workload_id": "default/prometheus-kube-state-metrics",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "public",
-                },
-                {
-                    "workload_id": "default/prometheus-prometheus-pushgateway",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "public",
-                },
-                {
-                    "workload_id": "default/prometheus-server",
-                    "kind": "deployment",
-                    "resources": {"cpu": "0m", "memory": "0Mi"},
-                    "pods_total": 1,
-                    "pods_pending": 0,
-                    "percent_pending": 0,
-                    "cluster_label": "public",
-                },
-            ],
-            "cluster_info": [
-                {
-                    "cluster_label": "private",
-                    "cluster_load": {"cpu": 5.212, "memory": 0.317},
-                    "cluster_cpu_capacity": "12000m",
-                    "cluster_memory_capacity": "31782Mi",
-                },
-                {
-                    "cluster_label": "public",
-                    "cluster_load": {"cpu": 0.087, "memory": 0.015},
-                    "cluster_cpu_capacity": "12000m",
-                    "cluster_memory_capacity": "31782Mi",
-                },
-            ],
-        },
-    }
-    import json
-    with open("monitor_test.json", "r") as f:
-        return json.load(f)
-     
-    # return metrics_data
+    """
+    Returns fake monitoring metrics from monitor_test.json.
+    This endpoint is used by the monitoring system to fetch test metrics.
+    It provides a consistent interface for testing the monitoring pipeline
+    and simulates the behavior of the real monitoring endpoint.
+
+    Returns:
+        Dict[str, Any]: Monitoring metrics or error information
+
+    Raises:
+        FileNotFoundError: If monitor_test.json file is not found
+        json.JSONDecodeError: If the JSON file is invalid
+        Exception: For any other unexpected errors
+
+    """
+    try:
+        with open("monitor_test.json", "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"error": "monitor_test.json not found"}
+    except json.JSONDecodeError as e:
+        return {"error": f"Invalid JSON in monitor_test.json: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
 
 
 if __name__ == "__main__":
