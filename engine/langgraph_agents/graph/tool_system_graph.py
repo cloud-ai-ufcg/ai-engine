@@ -14,7 +14,7 @@ from ..tools import (
     workload_pricing,
     infra_pricing,
 )
-from ..nodes import recommendationsNode
+from ..nodes import recommendations_node
 
 
 class MigrationStateToolsGraph(TypedDict):
@@ -212,7 +212,7 @@ def create_tool_system_migration_graph():
     graph.add_node("workload_pricing", workload_pricing_node)
     graph.add_node("workload_capacity", workload_capacity_node)
     graph.add_node("infra_pricing", cluster_pricing_node)
-    graph.add_node("recommendations", recommendationsNode)
+    graph.add_node("recommendations", recommendations_node)
 
     # Parallel nodes entry points
     graph.add_edge(START, "input_filter")
