@@ -116,8 +116,9 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
     }
 
-    prompt = get_prompt("label_workloads", **prompt_data)
-    resp = model.invoke(prompt)
+    user_prompt = json.dumps(prompt_data, separators=(',', ':'))
+
+    resp = model.invoke(user_prompt)
 
     try:
         # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
@@ -130,15 +131,42 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
         )
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         # Fallback path when response is not valid or schema fails
-        logger.error("LLM failed to generate a valid WorkloadLabelOutput: %s", exc)
-        decisions_list = [-1] * len(workloads)
-        explanations_list = [
-            "RecommendationsNode failed to produce WorkloadLabelOutput"
-            for _ in workloads
-        ]
-        overall_explanation = (
-            "RecommendationsNode failed to produce WorkloadLabelOutput"
-        )
+        # Log a small snippet of the raw response (if available) to aid debugging
+        try:
+            raw_preview = resp[:500] if isinstance(resp, str) else str(resp)[:500]
+            logger.error(
+                "LLM failed to generate a valid WorkloadLabelOutput: %s. Raw response preview: %s",
+                exc,
+                raw_preview,
+            )
+        except Exception:
+            logger.error(
+                "LLM failed to generate a valid WorkloadLabelOutput and raw response could not be logged: %s",
+                exc,
+            )
+
+        # Instead of marking all workloads as invalid (-1), preserve the original
+        # cluster assignment when available. This avoids treating the entire batch
+        # as ignored just because the LLM output was slightly malformed.
+        decisions_list = []
+        explanations_list = []
+
+        for w in workloads:
+            original_cluster_label = w.get("cluster_label", "private")
+            if original_cluster_label == "public":
+                decision_val = 1
+            elif original_cluster_label == "private":
+                decision_val = 0
+            else:
+                # Unknown/absent label - fall back to -1 for this workload only
+                decision_val = -1
+
+            decisions_list.append(decision_val)
+            explanations_list.append(
+                f"Maintaining original cluster ({original_cluster_label}) due to invalid LLM response"
+            )
+
+        overall_explanation = "RecommendationsNode preserved original cluster assignments due to invalid LLM response"
 
     final_decisions: list[int] = []
     workload_explanations: list[str] = []

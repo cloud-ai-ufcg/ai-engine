@@ -3,8 +3,14 @@ import pandas as pd
 import re
 import json
 import uuid
-from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
-from .util import get_logger, load_config, log_token_usage
+from .ai_config import (
+    get_prompt,
+    PROMPTS,
+    build_system_prompt_from_config,
+    get_agent_mode,
+    get_agent_config,
+)
+from .util import get_logger, load_config
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
 from .client import OpenRouterClient
@@ -134,13 +140,14 @@ def label_workloads_with_llm(
         "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
     )
 
-
     # Initialize to avoid UnboundLocalError if exception raised before assignment
     text_response = ""
 
     try:
         config = load_config()
-        model = config.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
+        model = config.get("ai", {}).get(
+            "selected_model", "google/gemini-2.0-flash-001"
+        )
 
         model_config = config.get("ai", {}).get("default_config", {})
         system_prompt = build_system_prompt_from_config()
@@ -227,13 +234,13 @@ def label_workloads_multiagent(
     workloads: List[dict], cluster_info: List[dict], interval_duration: str = None
 ) -> Tuple[List[int], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
-    
+
     # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
     # so they only appear in the graph output (not in the input trace).
     state = {
         "workloads": df.to_dict(orient="records"),
         "cluster_info": cluster_info,
-        "interval_duration": interval_duration
+        "interval_duration": interval_duration,
     }
 
     graph = create_tool_system_migration_graph()
@@ -242,20 +249,17 @@ def label_workloads_multiagent(
     thread_id = str(uuid.uuid4())
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    
 
     recommendations_dict = final_state.get("explanations", {})
     final_decisions = final_state.get("decisions", [])
     workload_explanations = recommendations_dict.get("workload_explanations", [])
 
-    
     if not final_decisions or len(final_decisions) != len(workloads):
         logger.warning(
             f"Number of decisions ({len(final_decisions)}) does not match number of workloads ({len(workloads)}). "
             "Filling missing recommendations with -1."
         )
 
-        
         corrected_decisions = []
         missing_workloads = []
 
@@ -323,13 +327,13 @@ def label_workloads(
 ) -> Tuple[List[int], Dict[str, Any]]:
     """
     Public API to label workloads with the configured AI provider.
-    
+
     Args:
         workloads: List of workloads or DataFrame
         cluster_info: List of cluster information dictionaries (optional)
         provider: Override the configured provider (optional)
         multiagent: Override the configured mode (optional, legacy parameter)
-    
+
     Returns:
         Tuple of (labels, explanations)
     """
@@ -342,14 +346,14 @@ def label_workloads(
         logger.info(f"Using legacy multiagent parameter: mode={mode}")
     else:
         mode = get_agent_mode()
-    
+
     # Get mode-specific configuration
     agent_config = get_agent_config(mode)
-    
+
     # Determine provider
     if provider is None:
         provider = agent_config.get("provider", "openrouter")
-    
+
     provider = provider.lower()
 
     try:
@@ -370,8 +374,12 @@ def label_workloads(
         # Use provided cluster_info or default to empty list
         if cluster_info is None:
             cluster_info = []
-            logger.warning("No cluster_info provided to label_workloads, using empty list")
-        labels, explanations = label_workloads_multiagent(workloads, cluster_info, interval_duration)
+            logger.warning(
+                "No cluster_info provided to label_workloads, using empty list"
+            )
+        labels, explanations = label_workloads_multiagent(
+            workloads, cluster_info, interval_duration
+        )
     elif provider in {"gemini", "google", "openrouter"}:
         labels, explanations = label_workloads_with_llm(workloads)
     else:
@@ -388,7 +396,3 @@ def label_workloads(
         }
 
     return labels, explanations
-
-# Get metrics of token usage and requests
-def get_usage_metrics() -> Dict[str, Any]:
-    return {"total_requests": REQUEST_COUNTER, "total_tokens": TOKEN_TOTALS}
