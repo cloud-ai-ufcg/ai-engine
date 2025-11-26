@@ -18,6 +18,8 @@ from ..nodes.history_context_node import fetch_history_context_node
 
 class MigrationStateToolsGraph(TypedDict):
     workloads: List[Dict]
+    cluster_info: List[Dict]
+    interval_duration: str
     decisions: List[int]
     explanations: Dict
     pending_tool_result: Dict
@@ -47,29 +49,62 @@ def input_filter_node(state: dict) -> dict:
 def pending_by_workload_node(state: dict) -> dict:
     """Node that uses tool pending_by_cluster to analyze workloads."""
     workloads = state.get("workloads", [])
+    cluster_info = state.get("cluster_info", [])
+    interval_duration = state.get("interval_duration", "30s")
+    
     if not workloads:
         return {"pending_by_workload": {"error": "no workloads provided"}}
 
-    result = pending_by_workload.invoke({"data": {"latest": {"workloads": workloads}}})
+    result = pending_by_workload.invoke({
+        "data": {
+            "latest": {
+                "workloads": workloads,
+                "cluster_info": cluster_info,
+                "interval_duration": interval_duration
+            }
+        }
+    })
 
     return {"pending_by_workload": result}
 
 
 def cluster_capacity_node(state: dict) -> dict:
     workloads = state.get("workloads", [])
+    cluster_info = state.get("cluster_info", [])
+    interval_duration = state.get("interval_duration", "30s")
+    
     if not workloads:
         return {"cluster_capacity": {"error": "no workloads provided"}}
 
-    result = cluster_capacity.invoke({"data": {"latest": {"workloads": workloads}}})
+    result = cluster_capacity.invoke({
+        "data": {
+            "latest": {
+                "workloads": workloads,
+                "cluster_info": cluster_info,
+                "interval_duration": interval_duration
+            }
+        }
+    })
     return {"cluster_capacity": result}
 
 
 def pending_by_cluster_node(state: dict) -> dict:
     workloads = state.get("workloads", [])
+    cluster_info = state.get("cluster_info", [])
+    interval_duration = state.get("interval_duration", "30s")
+    
     if not workloads:
         return {"pending_by_cluster": {"error": "no workloads provided"}}
 
-    result = pending_by_cluster.invoke({"data": {"latest": {"workloads": workloads}}})
+    result = pending_by_cluster.invoke({
+        "data": {
+            "latest": {
+                "workloads": workloads,
+                "cluster_info": cluster_info,
+                "interval_duration": interval_duration
+            }
+        }
+    })
     return {"pending_by_cluster": result}
 
 
@@ -80,28 +115,61 @@ def prepare_pending_data(state: dict) -> dict:
 
 def workload_pricing_node(state: dict) -> dict:
     workloads = state.get("workloads", [])
+    cluster_info = state.get("cluster_info", [])
+    interval_duration = state.get("interval_duration", "30s")
+    
     if not workloads:
         return {"workload_pricing": {"error": "no workloads provided"}}
 
-    result = workload_pricing.invoke({"data": {"latest": {"workloads": workloads}}})
+    result = workload_pricing.invoke({
+        "data": {
+            "latest": {
+                "workloads": workloads,
+                "cluster_info": cluster_info,
+                "interval_duration": interval_duration
+            }
+        }
+    })
     return {"workload_pricing": result}
 
 
 def workload_capacity_node(state: dict) -> dict:
     workloads = state.get("workloads", [])
+    cluster_info = state.get("cluster_info", [])
+    interval_duration = state.get("interval_duration", "30s")
+    
     if not workloads:
         return {"workload_capacity": {"error": "no workloads provided"}}
 
-    result = workload_capacity.invoke({"data": {"latest": {"workloads": workloads}}})
+    result = workload_capacity.invoke({
+        "data": {
+            "latest": {
+                "workloads": workloads,
+                "cluster_info": cluster_info,
+                "interval_duration": interval_duration
+            }
+        }
+    })
     return {"workload_capacity": result}
 
 
 def cluster_pricing_node(state: dict) -> dict:
     workloads = state.get("workloads", [])
+    cluster_info = state.get("cluster_info", [])
+    interval_duration = state.get("interval_duration", "30s")
+    
     if not workloads:
         return {"infra_princing": {"error": "no workloads provided"}}
 
-    result = infra_pricing.invoke({"data": {"latest": {"workloads": workloads}}})
+    result = infra_pricing.invoke({
+        "data": {
+            "latest": {
+                "workloads": workloads,
+                "cluster_info": cluster_info,
+                "interval_duration": interval_duration
+            }
+        }
+    })
     return {"infra_princing": result}
 
 # -----------------------

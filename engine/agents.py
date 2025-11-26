@@ -3,7 +3,7 @@ import pandas as pd
 import re
 import json
 import uuid
-from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config
+from .ai_config import get_model_config, get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
 from .util import get_logger, load_config, log_token_usage
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
@@ -81,7 +81,6 @@ def _create_explanation_output(
 ) -> Dict[str, Any]:
     """Create structured explanation output and log decisions."""
     explanation_output = {
-        "explanation": "Migration decisions based on AI analysis of workload characteristics",
         "workload_explanations": [],
     }
 
@@ -126,10 +125,8 @@ def label_workloads_with_llm(
 
     # Dependency validation - early return if not available
     if not HAS_OPENROUTER or not openrouter_client:
-        logger.warning(
-            "OpenRouter client not available. Using traditional model as fallback."
-        )
-        return _label_workloads_with_heuristics(workloads)
+        logger.error("OpenRouter client not available, skipping this cycle")
+        return [], {}
 
     # Data preparation
     df = _normalize_workloads_to_dataframe(workloads)
@@ -162,7 +159,6 @@ def label_workloads_with_llm(
 
         REQUEST_COUNTER += 1
         logger.info(f"OpenRouter API request count: {REQUEST_COUNTER}")
-        logger.debug(f"Complete OpenRouter response: {text_response}")
 
         # Parse and validate response
         response_data = _extract_json_from_response(text_response)
@@ -203,30 +199,6 @@ def label_workloads_with_llm(
                     f"Padded {missing_count} missing decisions with original cluster assignments (no migration)"
                 )
 
-        # Adicionar logs detalhados para depuração
-        logger.debug(f"Número de workloads no DataFrame: {len(df)}")
-        logger.debug(f"Número de rótulos gerados: {len(labels)}")
-
-        # Garantir que o número de rótulos corresponda ao número de workloads
-        if len(labels) != len(df):
-            logger.warning(
-                f"Mismatch entre número de rótulos ({len(labels)}) e workloads ({len(df)}). Ajustando..."
-            )
-
-            if len(labels) > len(df):
-                # Truncar rótulos extras
-                labels = labels[: len(df)]
-                explanations = explanations[: len(df)]
-            else:
-                # Preencher rótulos ausentes com valores padrão (0)
-                missing_count = len(df) - len(labels)
-                labels.extend([0] * missing_count)
-                explanations.extend([
-                    "Rótulo padrão aplicado devido à ausência de decisão do modelo"
-                ] * missing_count)
-
-            logger.info(f"Rótulos ajustados para corresponder ao número de workloads: {len(labels)}")
-
         # Convert to integers and create output
         labels = [int(decision) for decision in decisions]
         logger.info("Migration decisions extracted from JSON response")
@@ -235,127 +207,33 @@ def label_workloads_with_llm(
         return labels, explanation_output
 
     except Exception as e:
-        logger.warning(f"Error parsing JSON response: {e}")
-
-        # Fallback: try to extract just the decisions if JSON parsing failed
-        pattern = r"[01]+"
-        matches = re.findall(pattern, text_response)
-
-        if matches:
-            longest_match = max(matches, key=len)
-            if len(longest_match) == len(df):
-                logger.info(f"Migration pattern identified: {longest_match}")
-                labels = [int(digit) for digit in longest_match]
-
-                # Create a basic explanation output
-                explanation_output = {
-                    "explanation": "Migration decisions based on resource usage patterns",
-                    "workload_explanations": [],
-                }
-
-                # Log the decision for each workload
-                for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                    workload_id = workload[1].get("workload_id", f"workload-{idx}")
-                    kind = workload[1].get("kind", "unknown")
-                    destination = "public" if label == 1 else "private"
-                    logger.info(
-                        f"Decision for {workload_id} ({kind}): Cluster {destination}"
-                    )
-
-                    # Add a generic explanation
-                    if label == 1:
-                        explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-                    else:
-                        explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-                    explanation_output["workload_explanations"].append(explanation)
-
-                return labels, explanation_output
-
-        all_digits = re.findall(r"[01]", text_response)
-        if len(all_digits) >= len(df):
-            logger.info(f"Extracting labels from {model} response: {text_response}")
-            labels = [int(digit) for digit in all_digits[: len(df)]]
-
-            # Create a basic explanation output
-            explanation_output = {
-                "explanation": "Migration decisions based on resource usage patterns",
-                "workload_explanations": [],
-            }
-
-            # Log the decision for each workload
-            for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                workload_id = workload[1].get("workload_id", f"workload-{idx}")
-                kind = workload[1].get("kind", "unknown")
-                destination = "public" if label == 1 else "private"
-                logger.info(
-                    f"Decision for {workload_id} ({kind}): Cluster {destination}"
-                )
-
-                # Add a generic explanation
-                if label == 1:
-                    explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-                else:
-                    explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-                explanation_output["workload_explanations"].append(explanation)
-
-            return labels, explanation_output
-
-        logger.warning(f"Could not extract labels from LLM, response: {text_response}")
-        labels = _label_workloads_with_heuristics(workloads)
-
-        # Create a fallback explanation output
-        explanation_output = {
-            "explanation": "Migration decisions based on heuristic rules (fallback)",
-            "workload_explanations": [],
-        }
-
-        # Add generic explanations
-        for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get("workload_id", f"workload-{idx}")
-            kind = workload[1].get("kind", "unknown")
-
-            if label == 1:
-                explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-            else:
-                explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-            explanation_output["workload_explanations"].append(explanation)
-
-        return labels, explanation_output
+        logger.error(f"Error parsing JSON response: {e}")
+        try:
+            logger.error(f"Raw LLM response (first 500 chars): {text_response[:500]}")
+        except Exception:
+            logger.error("No LLM response available (error occurred before API call)")
+        logger.error("LLM failed to generate recommendations, skipping this cycle")
+        return [], {}
     except Exception as e:
-        logger.warning(f"Error using {client} API: {e}")
-        labels = _label_workloads_with_heuristics(workloads)
-
-        # Create a fallback explanation output
-        explanation_output = {
-            "explanation": f"Migration decisions based on heuristic rules due to API error: {str(e)}",
-            "workload_explanations": [],
-        }
-
-        # Add generic explanations
-        for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get("workload_id", f"workload-{idx}")
-            kind = workload[1].get("kind", "unknown")
-
-            if label == 1:
-                explanation = f"Workload {workload_id} ({kind}) recommended for public cluster due to high resource requirements"
-            else:
-                explanation = f"Workload {workload_id} ({kind}) recommended to stay in private cluster due to lower resource requirements"
-            explanation_output["workload_explanations"].append(explanation)
-
-        return labels, explanation_output
+        logger.error(f"Error using {client} API: {e}")
+        logger.error("LLM failed to generate recommendations, skipping this cycle")
+        return [], {}
 
 
 # ---------------------------------------------------------------------------
 # MultiAgent implementation
 # ---------------------------------------------------------------------------
 def label_workloads_multiagent(
-    workloads: List[dict], cluster_info: List[dict]
+    workloads: List[dict], cluster_info: List[dict], interval_duration: str = None
 ) -> Tuple[List[int], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
+    
     # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
     # so they only appear in the graph output (not in the input trace).
     state = {
-        "workloads": df.to_dict(orient="records")
+        "workloads": df.to_dict(orient="records"),
+        "cluster_info": cluster_info,
+        "interval_duration": interval_duration
     }
 
     graph = create_tool_system_migration_graph()
@@ -364,24 +242,40 @@ def label_workloads_multiagent(
     thread_id = str(uuid.uuid4())
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    logger.info("Final state: ", final_state)
+    
 
     recommendations_dict = final_state.get("explanations", {})
-
     final_decisions = final_state.get("decisions", [])
     workload_explanations = recommendations_dict.get("workload_explanations", [])
-    overall_explanation = recommendations_dict.get(
-        "overall_explanation", "No overall explanation provided."
-    )
 
+    
     if not final_decisions or len(final_decisions) != len(workloads):
-        logger.warning("Final decisions missing or length mismatch. Applying existing recommendations ")
-        labels = final_decisions
+        logger.warning(
+            f"Number of decisions ({len(final_decisions)}) does not match number of workloads ({len(workloads)}). "
+            "Filling missing recommendations with -1."
+        )
+
+        
+        corrected_decisions = []
+        missing_workloads = []
+
+        for i, wl in enumerate(workloads):
+            if i < len(final_decisions):
+                corrected_decisions.append(final_decisions[i])
+            else:
+                corrected_decisions.append(-1)
+                missing_workloads.append(wl.get("workload_id", f"workload_{i}"))
+
+        if missing_workloads:
+            logger.warning(
+                f"No response from LLM for workloads: {', '.join(missing_workloads)}"
+            )
+
+        labels = corrected_decisions
     else:
         labels = final_decisions
 
     final_explanations = {
-        "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
     }
 
@@ -422,105 +316,78 @@ def label_workloads_multiagent_votes(workloads, provider="langgraph"):
 # ---------------------------------------------------------------------------
 def label_workloads(
     workloads: Union[list, "pd.DataFrame"],
+    cluster_info: List[dict] = None,
+    interval_duration: str = None,
     provider: str | None = None,
     multiagent: bool | None = None,
 ) -> Tuple[List[int], Dict[str, Any]]:
-    """Public API to label workloads with the configured AI provider."""
-
+    """
+    Public API to label workloads with the configured AI provider.
+    
+    Args:
+        workloads: List of workloads or DataFrame
+        cluster_info: List of cluster information dictionaries (optional)
+        provider: Override the configured provider (optional)
+        multiagent: Override the configured mode (optional, legacy parameter)
+    
+    Returns:
+        Tuple of (labels, explanations)
+    """
     cfg = load_config()
 
+    # Determine the agent mode
+    if multiagent is not None:
+        # Legacy parameter support
+        mode = "multi_agent" if multiagent else "single_agent"
+        logger.info(f"Using legacy multiagent parameter: mode={mode}")
+    else:
+        mode = get_agent_mode()
+    
+    # Get mode-specific configuration
+    agent_config = get_agent_config(mode)
+    
+    # Determine provider
     if provider is None:
-        provider = cfg.get("ai", {}).get("default_config", {}).get("provider", "google")
-
-    if multiagent is None:
-        multiagent = cfg.get("ai", {}).get("multiagent", False)
-
+        provider = agent_config.get("provider", "openrouter")
+    
     provider = provider.lower()
+
     try:
         model = cfg.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
-        model_config = cfg.get("ai", {}).get("default_config", {})
-        generation_config = model_config.get("generation_config", {})
+        generation_config = agent_config.get("generation_config", {})
 
-        logger.info(f"CONFIG: Using OpenRouter model: {model}")
+        logger.info(f"CONFIG: Using agent mode: {mode}")
+        logger.info(f"CONFIG: Using provider: {provider}")
+        logger.info(f"CONFIG: Using model: {model}")
         logger.info(f"CONFIG: Using generation config: {generation_config}")
     except Exception as e:
         logger.warning(f"Could not log model configuration: {e}")
-        
+
     labels = []
     explanations = {}
-    if multiagent:
-        cluster_info = cfg.get("cluster_info", [])
-        labels, explanations = label_workloads_multiagent(workloads, cluster_info)
+    # Route to appropriate labeling function based on mode
+    if mode == "multi_agent":
+        # Use provided cluster_info or default to empty list
+        if cluster_info is None:
+            cluster_info = []
+            logger.warning("No cluster_info provided to label_workloads, using empty list")
+        labels, explanations = label_workloads_multiagent(workloads, cluster_info, interval_duration)
     elif provider in {"gemini", "google", "openrouter"}:
         labels, explanations = label_workloads_with_llm(workloads)
     else:
-        logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
-        labels = _label_workloads_with_heuristics(workloads)
+        logger.warning(f"Unknown provider '{provider}'. skipping this cycle.")
         explanations = {
-            "overall_explanation": "Used heuristic rules due to unknown provider.",
             "workload_explanations": [],
         }
 
+    # Normalize explanations format
     if isinstance(explanations, list):
         workload_explanations = explanations
         explanations = {
-            "overall_explanation": "Recommendations for each workload:",
             "workload_explanations": workload_explanations,
         }
 
     return labels, explanations
-
-
-def _label_workloads_with_heuristics(
-    workloads: Union[list, "pd.DataFrame"],
-) -> List[int]:
-    """
-    Fallback: uses simple heuristics to decide labels when AI is not available.
-    """
-    logger.info("Using heuristics as fallback for migration decision")
-    if isinstance(workloads, list):
-        df = pd.DataFrame(workloads)
-    else:
-        df = workloads.copy()
-
-    def cpu_to_float(cpu):
-        if isinstance(cpu, str) and cpu.endswith("m"):
-            return float(cpu[:-1]) / 1000.0
-        return float(cpu) if cpu else 0.0
-
-    def mem_to_float(mem):
-        if isinstance(mem, str) and mem.endswith("Mi"):
-            return float(mem[:-2])
-        return float(mem) if mem else 0.0
-
-    # Extract and convert resources
-    try:
-        cpu_values = df["resources"].apply(
-            lambda x: cpu_to_float(x.get("cpu", 0)) if isinstance(x, dict) else 0.0
-        )
-        mem_values = df["resources"].apply(
-            lambda x: mem_to_float(x.get("memory", 0)) if isinstance(x, dict) else 0.0
-        )
-    except:
-        # Alternative if the format is different
-        cpu_values = df.get("resources.cpu", df.get("cpu", 0)).apply(cpu_to_float)
-        mem_values = df.get("resources.memory", df.get("memory", 0)).apply(mem_to_float)
-
-    # Rules heuristics:
-    # 1. If CPU > 0.5 or memory > 1024Mi: move to public
-    # 2. If percent_pending > 20%: move to public
-    try:
-        percent_pending = df["percent_pending"].fillna(0)
-    except:
-        percent_pending = pd.Series([0] * len(df))
-
-    # Combine rules to decide: 0=private, 1=public
-    labels = ((cpu_values > 0.5) | (mem_values > 1024) | (percent_pending > 50)).astype(
-        int
-    )
-
-    return labels.tolist()
-
 
 # Get metrics of token usage and requests
 def get_usage_metrics() -> Dict[str, Any]:

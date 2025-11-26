@@ -11,7 +11,14 @@ def cli():
     """
     config = load_config()
 
-    workloads = load_monitoring_data(config)
+    processed_data = load_monitoring_data(config)
+    if not processed_data:
+        logger.error("❌ No data found")
+        return
+    
+    workloads = processed_data.get("workloads", [])
+    cluster_info = processed_data.get("cluster_info", [])
+    
     if not workloads:
         logger.error("❌ No workloads found")
         return
@@ -26,7 +33,7 @@ def cli():
         current_history_batch_id = history_batch_mgr.start_new_batch()
         logger.info(f"Started history batch {current_history_batch_id}")
 
-    result, explanations = analyze_workloads(workloads, config)
+    result, explanations = analyze_workloads(workloads, config, cluster_info=cluster_info)
 
     metrics = get_usage_metrics()
 
