@@ -14,7 +14,7 @@ def input_filter(
 
     This tool converts *raw* monitoring data (potentially in several formats) into a
     normalized list of workload dictionaries, mirroring the behaviour of
-    ``engine.main.process_monitoring_data``.
+    ``engine.data_processor.process_monitoring_data``.
 
     It is a very thin wrapper around that function so it can be used as a LangChain
     / LangGraph "@tool".  If the data is already a list of workload dictionaries it
@@ -44,17 +44,23 @@ def input_filter(
     if isinstance(data, list):
         return [w for w in data if w.get("workload_id") is not None]
 
-    # Otherwise delegate to the canonical implementation in engine.main
+    # Otherwise delegate to the canonical implementation in engine.data_processor
     global process_monitoring_data
     if process_monitoring_data is None:
-        # Local import to break the circular dependency
-        from engine.main import process_monitoring_data as _process_monitoring_data  # type: ignore
+        # Local import to avoid issues with import ordering
+        from engine.data_processor import process_monitoring_data as _process_monitoring_data  # type: ignore
         process_monitoring_data = _process_monitoring_data
 
     try:
-        return process_monitoring_data(
+        result = process_monitoring_data(
             data, timestamp_lookback_seconds=timestamp_lookback_seconds
         )
+        # process_monitoring_data now returns a dict with workloads, cluster_info, etc.
+        # For this tool, we only return the workloads list for backward compatibility
+        if isinstance(result, dict):
+            return result.get("workloads", [])
+        # Fallback for old behavior (shouldn't happen with new implementation)
+        return result if isinstance(result, list) else []
     except Exception as exc:  # pragma: no cover – defensive fallback
         # If anything goes wrong fallback to returning an empty list so that the
         # graph does not crash catastrophically.
