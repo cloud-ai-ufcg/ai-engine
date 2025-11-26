@@ -4,7 +4,7 @@ data:
 ai:
   mode: multi_agent                 # Agent mode: 'single_agent' or 'multi_agent'
   selected_model: x-ai/grok-4-fast  # Selected model to be used 
-  scheduler_interval: 300           # Number of seconds between scheduler runs
+  scheduler_interval: 30           # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600   # Number of seconds to look back for metrics
   workloads_shard_size: 200         # DEPRECIATED
   fetch_metrics_immediately: false   # Whether to fetch metrics immediately or wait for the scheduler
@@ -19,7 +19,7 @@ ai:
 
   # Multi-Agent Configuration
   multi_agent:
-    selected_prompt: multi_agent
+    selected_prompt: multi_agent_v2
     provider: openrouter
     generation_config:
       temperature: 0.1
@@ -71,6 +71,26 @@ ai:
 
   cluster_selection: # Configuration for selecting clusters to analyze
     listed_clusters: [] # List of specific cluster labels to include. Empty means all clusters.
+
+clusters: # Multi-cluster configuration
+  enabled: true # Enable multi-cluster support
+  definitions: # List of cluster definitions
+    - cluster_id: "private-cluster-cost"
+      cluster_profile: "private-cost"
+      cluster_label: "private-cost" # Used for backward compatibility with monitoring data
+      cluster_description: "Private cluster for internal workloads"
+    - cluster_id: "private-cluster-performance"
+      cluster_profile: "private-performance"
+      cluster_label: "private-performance" # Used for backward compatibility with monitoring data
+      cluster_description: "Private cluster for internal workloads"
+    - cluster_id: "public-cluster-cost"
+      cluster_profile: "public-cost"
+      cluster_label: "public-cost" # Used for backward compatibility with monitoring data
+      cluster_description: "Public cloud cluster for external/scalable workloads"
+    - cluster_id: "public-cluster-performance"
+      cluster_profile: "public-performance"
+      cluster_label: "public-performance" # Used for backward compatibility with monitoring data
+      cluster_description: "Public cloud cluster for external/scalable workloads"
 
 paths:
   output_dir: ai-engine/data/output

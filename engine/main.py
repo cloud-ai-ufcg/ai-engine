@@ -1,16 +1,14 @@
 import os
 import json
 import pandas as pd
-from typing import Dict, List, Any
 import datetime
 import concurrent.futures
 from .ai_config import WorkloadRecommendation
+from .cluster_config import get_cluster_manager
 
 from .util import (
     get_logger,
-    load_config,
     format_message,
-    COLORS,
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
@@ -26,30 +24,44 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     Write recommendations summary and CSV output.
 
     Accepts either:
-      - A pandas DataFrame with columns [workload_id, kind, label] (legacy), or
+      - A pandas DataFrame with columns [workload_id, kind, label] where label is now a cluster ID (string), or
       - A list of dicts shaped like WorkloadRecommendation with fields
         [workload_id, kind, origin_cluster, destination_cluster, reason].
 
-    Behavior remains backward compatible (CSV with workload_id, kind, label).
+    Behavior remains backward compatible (CSV with workload_id, kind, destination_cluster).
     """
     structured_input = False
     df = result_df
+    
     # If recommendations come in the new structured list[dict] form, convert to DataFrame
     if not hasattr(result_df, "to_dict") and isinstance(result_df, list):
         structured_input = True
         try:
             df = pd.DataFrame(result_df)
-            # Map destination_cluster -> label for legacy-compatible reporting
+            # Map destination_cluster -> label for reporting
             if "label" not in df.columns and "destination_cluster" in df.columns:
-                df["label"] = df["destination_cluster"].astype(int)
+                df["label"] = df["destination_cluster"].astype(str)
         except Exception as e:
             logger.error(
                 f"Failed to convert structured recommendations to DataFrame: {e}"
             )
             return None
 
-    migrated_workloads = df[df["label"] == 1]
-    non_migrated_workloads = df[df["label"] == 0]
+    # Count migrations (workloads that changed clusters)
+    migrations_list = []
+    non_migrations_list = []
+    
+    for idx, row in df.iterrows():
+        origin = str(row.get("origin_cluster", "unknown"))
+        destination = str(row.get("destination_cluster", row.get("label", "unknown")))
+        
+        if origin != destination:
+            migrations_list.append(row)
+        else:
+            non_migrations_list.append(row)
+    
+    migrated_workloads = pd.DataFrame(migrations_list) if migrations_list else pd.DataFrame()
+    non_migrated_workloads = pd.DataFrame(non_migrations_list) if non_migrations_list else pd.DataFrame()
 
     total_workloads = len(df)
     migrated_count = len(migrated_workloads)
@@ -65,16 +77,16 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     )
     logger.info(
         format_message(
-            f" Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)",
-            icon="☁️",
+            f"Workloads recommended for migration: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)",
+            icon="🔄",
             color="BLUE",
             bold=True,
         )
     )
     logger.info(
         format_message(
-            f"Workloads remaining in private cluster: {non_migrated_count} ({non_migrated_count/total_workloads*100:.1f}%)",
-            icon="🔁",
+            f"Workloads staying in current cluster: {non_migrated_count} ({non_migrated_count/total_workloads*100:.1f}%)",
+            icon="✅",
             color="GREEN",
             bold=True,
         )
@@ -83,16 +95,18 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     if not migrated_workloads.empty:
         logger.info(
             format_message(
-                " Workloads to be migrated to public cluster:",
-                icon="☁️",
+                "Workloads recommended for migration:",
+                icon="🔄",
                 color="BLUE",
                 bold=True,
             )
         )
         for _, row in migrated_workloads.iterrows():
+            origin = str(row.get("origin_cluster", "unknown"))
+            destination = str(row.get("destination_cluster", row.get("label", "unknown")))
             logger.info(
                 format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
+                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, {origin} → {destination}, Reason: {row.get('reason', 'N/A')}",
                     color="BLUE",
                 )
             )
@@ -100,23 +114,24 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     if not non_migrated_workloads.empty:
         logger.info(
             format_message(
-                "Workloads remaining in private cluster:",
-                icon="🔁",
+                "Workloads staying in current cluster:",
+                icon="✅",
                 color="GREEN",
                 bold=True,
             )
         )
         for _, row in non_migrated_workloads.iterrows():
+            cluster = str(row.get("origin_cluster", row.get("label", "unknown")))
             logger.info(
                 format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Reason: {row.get('reason', 'N/A')}",
+                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, Cluster: {cluster}, Reason: {row.get('reason', 'N/A')}",
                     color="GREEN",
                 )
             )
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
-        # Persist legacy CSV columns
+        # Persist columns relevant to multi-cluster
         columns_to_save = [
             c
             for c in [
@@ -214,15 +229,21 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
             bold=True,
         )
     )
-    # Don't pass multiagent parameter - let label_workloads use config.mode instead
+    cluster_manager = get_cluster_manager()
+    
+    # labels now contain cluster IDs (strings) instead of binary decisions
     labels, explanations = label_workloads(
-        workloads, cluster_info=cluster_info,interval_duration=interval_duration, provider=provider
+        workloads, cluster_info=cluster_info, interval_duration=interval_duration, provider=provider
     )
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
-    result["label"] = pd.Series(labels)
-    result["label"] = result["label"].fillna(0).astype(int)
+    
+    result["origin_cluster"] = df["cluster_label"].apply(
+        lambda label: cluster_manager.resolve_cluster_label_to_id(label) or label
+    )
+    
+    result["destination_cluster"] = labels
 
     # Safely attach reasons column
     if (
@@ -316,7 +337,7 @@ def save_and_log_explanations(
     Save recommendations log using the WorkloadRecommendation schema and log them.
 
     Args:
-        result_df: DataFrame with workload results
+        result_df: DataFrame with workload results (now contains origin_cluster and destination_cluster as strings)
         explanations: Dictionary with explanations
         workloads: Optional original workloads list to infer origin_cluster
     """
@@ -334,6 +355,8 @@ def save_and_log_explanations(
         ENGINE_LOG_DIR, f"recommendations_explanations_{timestamp}.json"
     )
 
+    cluster_manager = get_cluster_manager()
+    
     # Build WorkloadRecommendation-shaped list[dict]
     origin_by_id = {}
     if workloads:
@@ -348,17 +371,33 @@ def save_and_log_explanations(
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
-        destination_cluster = int(row.get("label", 0))
-        origin_label = origin_by_id.get(wid, "private")
-        origin_cluster = 0 if origin_label == "private" else 1
+        destination_cluster = str(row.get("destination_cluster", row.get("label", "unknown")))
+        
+        origin_label = origin_by_id.get(wid, row.get("origin_cluster", "private"))
+        if isinstance(origin_label, str) and origin_label in ["0", "1"]:
+            # Handle legacy binary cluster labels
+            origin_cluster = "private" if origin_label == "0" else "public"
+        else:
+            origin_cluster = str(origin_label)
 
         reason = (
             explanations_list[idx]
             if idx < len(explanations_list)
             else (
-                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
+                f"Recommended to {destination_cluster} cluster based on resource analysis"
             )
         )
+        
+        # Get profile information if available
+        origin_profile = None
+        destination_profile = None
+        origin_config = cluster_manager.get_cluster_by_id(origin_cluster) or cluster_manager.get_cluster_by_label(origin_cluster)
+        dest_config = cluster_manager.get_cluster_by_id(destination_cluster) or cluster_manager.get_cluster_by_label(destination_cluster)
+        
+        if origin_config:
+            origin_profile = origin_config.cluster_profile
+        if dest_config:
+            destination_profile = dest_config.cluster_profile
 
         recs_payload.append(
             WorkloadRecommendation(
@@ -368,6 +407,8 @@ def save_and_log_explanations(
                 origin_cluster=origin_cluster,
                 destination_cluster=destination_cluster,
                 reason=reason,
+                origin_cluster_profile=origin_profile,
+                destination_cluster_profile=destination_profile,
             )
         )
 
@@ -390,13 +431,20 @@ def save_and_log_explanations(
         if idx < len(result_df):
             workload_id = result_df.iloc[idx]["workload_id"]
             kind = result_df.iloc[idx]["kind"]
-            label = result_df.iloc[idx]["label"]
-            cluster = "public" if label == 1 else "private"
-            color = "BLUE" if label == 1 else "GREEN"
+            origin = str(result_df.iloc[idx].get("origin_cluster", "unknown"))
+            destination = str(result_df.iloc[idx].get("destination_cluster", result_df.iloc[idx].get("label", "unknown")))
+            
+            if origin != destination:
+                icon = "🔄"
+                color = "BLUE"
+            else:
+                icon = "✅"
+                color = "GREEN"
+            
             logger.info(
                 format_message(
-                    f"Workload {workload_id} ({kind}) → {cluster}: {explanation}",
-                    icon="💡",
+                    f"Workload {workload_id} ({kind}) {origin} → {destination}: {explanation}",
+                    icon=icon,
                     color=color,
                 )
             )

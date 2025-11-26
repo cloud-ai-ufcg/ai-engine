@@ -5,10 +5,9 @@ This module handles the transformation of raw monitoring data into normalized
 workload structures, independent of AI agent functionality.
 """
 
-import os
-import json
 from typing import Dict, List, Any
 from .ai_config import build_cluster_selection_from_config
+from .cluster_config import get_cluster_manager
 
 from .util import (
     get_logger,
@@ -76,13 +75,16 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         timestamp_lookback_seconds: Number of seconds to look back in time (defaults to config value)
 
     Returns:
-        List of workload objects with relevant cluster information
+        Dict with workloads, cluster_info, and interval_duration
     """
     if timestamp_lookback_seconds is None:
         config = load_config()
         timestamp_lookback_seconds = config.get("ai", {}).get(
             "timestamp_lookback_seconds", 30
         )
+
+    cluster_manager = get_cluster_manager()
+    cluster_labels = cluster_manager.get_cluster_labels()
 
     # Handle different data structures
     if isinstance(data, dict) and all(
@@ -93,7 +95,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
         if not timestamps:
             logger.error("No valid timestamps found in data")
-            return []
+            return {"workloads": [], "cluster_info": [], "interval_duration": "30s"}
 
         latest_timestamp = str(timestamps[0])
         logger.info(
@@ -112,13 +114,21 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             )
         )
 
-        # Get the cluster selection from config
+        # Get the cluster selection from config (legacy support)
         listed_clusters = build_cluster_selection_from_config()
 
         if listed_clusters:
             logger.info(
                 format_message(
                     f"Using listed clusters from config: {', '.join(listed_clusters)}",
+                    icon="🔍",
+                    color="CYAN",
+                )
+            )
+        elif cluster_labels:
+            logger.info(
+                format_message(
+                    f"Using configured clusters: {', '.join(cluster_labels)}",
                     icon="🔍",
                     color="CYAN",
                 )
@@ -134,9 +144,13 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             if "cluster_label" in cluster:
                 cluster_label = cluster["cluster_label"]
 
-                if listed_clusters and (cluster_label not in listed_clusters):
-                    # Skip clusters that are not in the listed clusters
-                    continue
+                # Filter by listed_clusters if specified, otherwise filter by configured clusters
+                if listed_clusters:
+                    if cluster_label not in listed_clusters:
+                        continue
+                elif cluster_labels:
+                    if cluster_label not in cluster_labels:
+                        continue
 
                 cluster_data[cluster_label] = {
                     "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
@@ -163,7 +177,15 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
             # Add timestamp to each workload
             for w in raw_workloads:
-                if not listed_clusters or (w.get("cluster_label") in listed_clusters):
+                cluster_label = w.get("cluster_label", "private")
+                # Filter by listed_clusters if specified, otherwise filter by configured clusters
+                include_workload = True
+                if listed_clusters:
+                    include_workload = cluster_label in listed_clusters
+                elif cluster_labels:
+                    include_workload = cluster_label in cluster_labels
+                
+                if include_workload:
                     w["timestamp"] = int(ts)
                     all_workloads.append(w)
 

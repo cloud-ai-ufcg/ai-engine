@@ -12,6 +12,7 @@ from engine.main import (
 )
 
 from engine.data_types import *
+from engine.cluster_config import get_cluster_manager
 
 from engine.util import (
     get_logger,
@@ -143,17 +144,20 @@ def _build_workload_recommendations(result_df, explanations, workloads):
     WorkloadRecommendation fields:
       - workload_id: str
       - kind: str
-      - origin_cluster: int  (0=private, 1=public)
-      - destination_cluster: int (0=private, 1=public) from result_df['label']
+      - origin_cluster: str (cluster ID)
+      - destination_cluster: str (cluster ID)
       - reason: str
+      - origin_cluster_profile: str (optional, e.g., "private", "public")
+      - destination_cluster_profile: str (optional, e.g., "private", "public")
     """
-    # Map workload_id -> origin cluster label from original workloads
+    # Map workload_id -> origin cluster from original workloads
     origin_by_id = {}
     for w in workloads:
         wid = w.get("workload_id")
         if wid is not None:
             origin_by_id[wid] = w.get("cluster_label", "private")
 
+    cluster_manager = get_cluster_manager()
     explanations_list = (explanations or {}).get("workload_explanations", [])
     global CURRENT_BATCH_ID
     CURRENT_BATCH_ID += 1
@@ -161,19 +165,30 @@ def _build_workload_recommendations(result_df, explanations, workloads):
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
-        label = int(row.get("label", 0))
-
+        
+        destination_cluster = str(row.get("destination_cluster", row.get("label", "private")))
+        
         origin_label = origin_by_id.get(wid, "private")
-        origin_cluster = 0 if origin_label == "private" else 1
-        destination_cluster = label
+        origin_cluster = cluster_manager.resolve_cluster_label_to_id(origin_label) or origin_label
 
         reason = (
             explanations_list[idx]
             if idx < len(explanations_list)
             else (
-                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
+                f"Recommended to {destination_cluster} cluster based on resource analysis"
             )
         )
+        
+        # Get profile information if available
+        origin_profile = None
+        destination_profile = None
+        origin_config = cluster_manager.get_cluster_by_id(origin_cluster) or cluster_manager.get_cluster_by_label(origin_cluster)
+        dest_config = cluster_manager.get_cluster_by_id(destination_cluster) or cluster_manager.get_cluster_by_label(destination_cluster)
+        
+        if origin_config:
+            origin_profile = origin_config.cluster_profile
+        if dest_config:
+            destination_profile = dest_config.cluster_profile
 
         recs.append(
             WorkloadRecommendation(
@@ -183,6 +198,8 @@ def _build_workload_recommendations(result_df, explanations, workloads):
                 origin_cluster=origin_cluster,
                 destination_cluster=destination_cluster,
                 reason=reason,
+                origin_cluster_profile=origin_profile,
+                destination_cluster_profile=destination_profile,
             )
         )
 

@@ -39,9 +39,11 @@ class WorkloadRecommendation(BaseModel):
     batch_id: int | None = None
     workload_id: str
     kind: str
-    origin_cluster: int
-    destination_cluster: int
+    origin_cluster: str
+    destination_cluster: str
     reason: str  # Explanation for the decision
+    origin_cluster_profile: str | None = None  
+    destination_cluster_profile: str | None = None
 
 
 MODEL_CONFIGS: Dict[str, Any] = {}  # Deprecated placeholder
@@ -50,15 +52,21 @@ PROMPTS = {
     "label_workloads": {
         "version": "1.0",
         "output_schema": WorkloadLabelOutput,
-        "template": """You are a Kubernetes orchestrator. For each workload, decide if it should run in the 'private' cluster (0) or 'public' cluster (1).
+        "template": """You are a Kubernetes orchestrator. For each workload, decide which cluster it should run in.
+
+Available clusters:
+{cluster_list}
+
 Rules:
-- If private is overloaded or workload needs high resources, prefer public (1).
-- If workload is in public and private has capacity, allow migrating back to private (0).
-- Use percent_pending and cluster_load to guide decisions.
+- Recommend the cluster that best matches the workload's resource needs
+- Consider cluster load, available capacity, and workload requirements
+- Use cluster indices (0, 1, 2, etc.) in your decisions to match the cluster list above
+- Use percent_pending and cluster_load to guide decisions
+- Minimize migrations when cluster is stable
 
 Respond with JSON:
 {{
-  "decisions": [0, 1, ...],
+  "decisions": [0, 1, 0, ...],
   "explanations": [
     "Short explanation for workload 1",
     "Short explanation for workload 2",
