@@ -41,13 +41,13 @@ async def get_metrics() -> Dict[str, Any]:
 
     """
     try:
-        with open(METRICS_FILENAME, "r") as f:
+        with open(METRICS_FILENAME, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         return {"error": f"{METRICS_FILENAME} not found"}
     except json.JSONDecodeError as e:
         return {"error": f"Invalid JSON in {METRICS_FILENAME}: {str(e)}"}
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         return {"error": f"Unexpected error: {str(e)}"}
 
 
