@@ -12,6 +12,7 @@ from engine.cluster_config import get_cluster_manager
 from langsmith import traceable
 
 from engine.client import OpenRouterClient
+from engine.ai_config import build_cluster_selection_from_config
 
 logger = get_logger("langgraph_agents")
 
@@ -176,11 +177,24 @@ def _get_cluster_list_for_langgraph_prompt() -> str:
     Returns:
         A formatted string describing available clusters and their indices
     """
+    
     cluster_manager = get_cluster_manager()
-    clusters = cluster_manager.get_all_clusters()
+    all_clusters = cluster_manager.get_all_clusters()
+    listed_clusters = build_cluster_selection_from_config()
+    
+    # Filter clusters based on listed_clusters config
+    if listed_clusters:
+        clusters = [
+            c for c in all_clusters 
+            if c.cluster_label in listed_clusters or c.cluster_id in listed_clusters
+        ]
+        logger.info(f"Filtered clusters for LangGraph prompt: {[c.cluster_label for c in clusters]}")
+    else:
+        clusters = all_clusters
+        logger.info(f"Using all clusters for LangGraph prompt (no filter configured)")
     
     if not clusters:
-        logger.warning("No clusters configured. Using default private/public clusters.")
+        logger.warning("No clusters available after filtering. Using default private/public clusters.")
         return "(0) private cluster, (1) public cluster"
     
     cluster_descriptions = []
@@ -210,8 +224,20 @@ def _convert_binary_decisions_to_cluster_ids(decisions: list, workloads: list = 
     Returns:
         List of cluster IDs (strings)
     """
+    
     cluster_manager = get_cluster_manager()
-    clusters = cluster_manager.get_all_clusters()
+    all_clusters = cluster_manager.get_all_clusters()
+    listed_clusters = build_cluster_selection_from_config()
+    
+    if listed_clusters:
+        clusters = [
+            c for c in all_clusters 
+            if c.cluster_label in listed_clusters or c.cluster_id in listed_clusters
+        ]
+        logger.info(f"Using filtered clusters for decision conversion: {[c.cluster_label for c in clusters]}")
+    else:
+        clusters = all_clusters
+        logger.info(f"Using all clusters for decision conversion (no filter configured)")
     
     if not clusters:
         # Fallback: no clusters configured
