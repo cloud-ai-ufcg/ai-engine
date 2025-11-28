@@ -1,5 +1,9 @@
-from langchain.tools import tool
+"""
+Tool for extracting pending workload percentages.
+"""
+
 from typing import Dict, Any
+from langchain.tools import tool
 
 
 @tool("pending_by_workload", return_direct=False)
