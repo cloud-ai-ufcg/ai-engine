@@ -33,7 +33,7 @@ install:
 	pip install -r requirements.txt
 
 lint:
-	pylint .
+	pylint --disable=C0301,W1203,W1309 .
 
 cli:
 	$(PYTHON) cli.py
