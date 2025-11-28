@@ -7,6 +7,7 @@ from .ai_config import get_prompt, PROMPTS, build_system_prompt_from_config, get
 from .util import get_logger, load_config
 from .cluster_config import get_cluster_manager
 from engine.langgraph_agents.nodes.agents_tools import _convert_binary_decisions_to_cluster_ids
+from .ai_config import build_cluster_selection_from_config
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
 from .client import OpenRouterClient
@@ -51,11 +52,24 @@ def _get_cluster_list_for_prompt() -> str:
     Returns:
         A formatted string describing available clusters and their indices
     """
+    
     cluster_manager = get_cluster_manager()
-    clusters = cluster_manager.get_all_clusters()
+    all_clusters = cluster_manager.get_all_clusters()
+    listed_clusters = build_cluster_selection_from_config()
+    
+    # Filter clusters based on listed_clusters config
+    if listed_clusters:
+        clusters = [
+            c for c in all_clusters 
+            if c.cluster_label in listed_clusters or c.cluster_id in listed_clusters
+        ]
+        logger.info(f"Filtered clusters for LLM prompt: {[c.cluster_label for c in clusters]}")
+    else:
+        clusters = all_clusters
+        logger.info(f"Using all clusters for LLM prompt (no filter configured)")
     
     if not clusters:
-        logger.warning("No clusters configured. Using default private/public clusters.")
+        logger.warning("No clusters available after filtering. Using default private/public clusters.")
         return "(0) private cluster, (1) public cluster"
     
     cluster_descriptions = []
@@ -178,9 +192,18 @@ def label_workloads_with_llm(
     # Data preparation
     df = _normalize_workloads_to_dataframe(workloads)
     
-    # Get cluster information for the prompt
     cluster_manager = get_cluster_manager()
-    clusters = cluster_manager.get_all_clusters()
+    all_clusters = cluster_manager.get_all_clusters()
+    listed_clusters = build_cluster_selection_from_config()
+    
+    if listed_clusters:
+        clusters = [
+            c for c in all_clusters 
+            if c.cluster_label in listed_clusters or c.cluster_id in listed_clusters
+        ]
+    else:
+        clusters = all_clusters
+    
     cluster_list_str = _get_cluster_list_for_prompt()
     
     user_prompt = get_prompt(
@@ -356,7 +379,6 @@ def label_workloads_multiagent(
     thread_id = str(uuid.uuid4())
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
-    logger.info("Final state: ", final_state)
 
     recommendations_dict = final_state.get("explanations", {})
 
@@ -496,6 +518,7 @@ def _label_workloads_with_heuristics(
     Fallback: uses simple heuristics to decide cluster assignments when AI is not available.
     Returns cluster IDs instead of binary decisions.
     """
+    
     logger.info("Using heuristics as fallback for migration decision")
     cluster_manager = get_cluster_manager()
     clusters = cluster_manager.get_all_clusters()

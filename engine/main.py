@@ -243,6 +243,20 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
         lambda label: cluster_manager.resolve_cluster_label_to_id(label) or label
     )
     
+    # Validate and fix labels length mismatch
+    if len(labels) != len(result):
+        logger.warning(f"Labels length mismatch: expected {len(result)}, got {len(labels)}")
+        if len(labels) > len(result):
+            # Truncate extra labels
+            labels = labels[:len(result)]
+            logger.info(f"Truncated labels to {len(result)} items")
+        else:
+            # Pad with default cluster assignments
+            missing_count = len(result) - len(labels)
+            default_cluster = df.iloc[0]["cluster_label"] if len(df) > 0 else "private"
+            labels = labels + [default_cluster] * missing_count
+            logger.info(f"Padded labels with {missing_count} default assignments")
+    
     result["destination_cluster"] = labels
 
     # Safely attach reasons column
