@@ -9,7 +9,6 @@ from langsmith import traceable
 
 from engine.ai_config import (
     build_system_prompt_from_config,
-    get_prompt,
     WorkloadLabelOutput,
 )
 from engine.client import OpenRouterClient
@@ -40,6 +39,7 @@ class OpenRouterInvokeModel:
         }
 
     def invoke(self, user_prompt: str) -> str:
+        """Invoke the model with the given user prompt."""
         return self._client.chat_structured(
             model=self._model_name,
             system_prompt=self._system_prompt,
