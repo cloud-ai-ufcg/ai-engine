@@ -7,12 +7,10 @@ from typing import List, Dict, Union
 from dotenv import load_dotenv
 from engine.ai_config import get_prompt
 from engine.util import load_config, get_logger
-from openai import OpenAI
 from engine.ai_config import get_prompt
 from engine.util import load_config, log_token_usage
 from engine.client import OpenRouterClient
 from langsmith import traceable
-from langchain_google_genai import ChatGoogleGenerativeAI
 
 logger = get_logger("agents")
 logger = logging.getLogger(__name__)
@@ -72,7 +70,10 @@ def get_llm():
         generation_config = dict(model_cfg.get("generation_config", {}))
 
         # Prefer config-provided system prompt if available, else fall back to default
-        system_prompt = generation_config.get("system_prompt", "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.")
+        system_prompt = generation_config.get(
+            "system_prompt",
+            "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.",
+        )
 
         model = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config
