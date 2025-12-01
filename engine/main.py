@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Dict, List, Any
 import datetime
 import concurrent.futures
-from .ai_config import WorkloadRecommendation
+from .data_types import WorkloadRecommendation
 
 from .util import (
     get_logger,
@@ -90,7 +90,6 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             bold=True,
         )
     )
-
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
@@ -198,25 +197,26 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
     )
     # Don't pass multiagent parameter - let label_workloads use config.mode instead
     labels, explanations = label_workloads(
-        workloads, cluster_info=cluster_info,interval_duration=interval_duration, provider=provider
+        workloads,
+        cluster_info=cluster_info,
+        interval_duration=interval_duration,
+        provider=provider,
     )
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
-    
+
     if not result.empty:
         label_series = pd.Series(labels)
-        
+
         numeric_labels = pd.to_numeric(label_series, errors='coerce')
-        
+
         result["label"] = numeric_labels.fillna(-1).astype(int)
-        
+
     else:
-        
-        result["label"] = pd.Series(dtype=int) 
+
+        result["label"] = pd.Series(dtype=int)
         logger.warning("No workloads processed; 'label' column initialized empty.")
-
-
 
     # Safely attach reasons column
     if (
@@ -344,8 +344,6 @@ def save_and_log_explanations(
         kind = row.get("kind")
         destination_cluster = row.get("label", 0)
 
-        
-
         destination_cluster = int(destination_cluster)
 
         origin_label = origin_by_id.get(wid, "private")
@@ -370,7 +368,6 @@ def save_and_log_explanations(
             )
         )
 
-
     # Serialize Pydantic models to plain dicts for JSON output
     recs_payload_serialized = [
         (
@@ -392,7 +389,6 @@ def save_and_log_explanations(
             workload_id = result_df.iloc[idx]["workload_id"]
             label = result_df.iloc[idx]["label"]
 
-            
             if str(label) == "-1" or label == -1:
                 continue
 

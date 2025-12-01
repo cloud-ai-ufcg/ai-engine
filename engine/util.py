@@ -5,8 +5,10 @@ import logging.handlers
 from copy import deepcopy
 from dotenv import load_dotenv
 import yaml
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 import json
+from engine.data_types import WorkloadRecommendation
+
 
 # Default directory paths
 # Calculate BASE_DIR as the project root (two levels up from this file)
@@ -212,7 +214,9 @@ def format_message(message, icon=None, color=None, bold=False):
     return formatted
 
 
-def _deep_merge_dicts(base: Optional[Dict[str, Any]], overrides: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _deep_merge_dicts(
+    base: Optional[Dict[str, Any]], overrides: Optional[Dict[str, Any]]
+) -> Dict[str, Any]:
     """
     Recursively merge two dictionaries without mutating the originals.
 
@@ -232,11 +236,7 @@ def _deep_merge_dicts(base: Optional[Dict[str, Any]], overrides: Optional[Dict[s
 
     merged = deepcopy(base)
     for key, value in overrides.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
             merged[key] = _deep_merge_dicts(merged[key], value)
         else:
             merged[key] = deepcopy(value)
@@ -278,14 +278,24 @@ def _resolve_simulator_config_candidates() -> list:
     return candidates
 
 
-def _extract_ai_engine_config(raw_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _extract_ai_engine_config(
+    raw_config: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
     """
     Extract the AI Engine specific configuration from the global simulator config.
     """
     if not raw_config:
         return None
 
-    ai_section_keys = {"data", "ai", "paths", "logging", "server", "monitor", "actuator"}
+    ai_section_keys = {
+        "data",
+        "ai",
+        "paths",
+        "logging",
+        "server",
+        "monitor",
+        "actuator",
+    }
 
     # Treat files that only contain AI Engine keys as full AI configs
     raw_keys = set(raw_config.keys())
@@ -347,13 +357,15 @@ def load_config(config_path=None) -> Dict[str, Any]:
 
     # Track the actual config file used for logging
     actual_config_file = None
-    
+
     # Explicit config path has highest priority (primarily used for tests/tools)
     if config_path is not None:
         resolved_path = os.path.abspath(config_path)
         config = _read_yaml(resolved_path)
         if config is None:
-            raise FileNotFoundError(f"Unable to load configuration from {resolved_path}")
+            raise FileNotFoundError(
+                f"Unable to load configuration from {resolved_path}"
+            )
         actual_config_file = resolved_path
         logger.info(f"Loaded AI Engine configuration from {resolved_path}")
     else:
@@ -372,7 +384,9 @@ def load_config(config_path=None) -> Dict[str, Any]:
                 central_config = _apply_flat_overrides(deepcopy(ai_engine_config))
                 central_source = candidate
                 monitor_block = central_data.get("monitor", {}) if central_data else {}
-                central_monitor_interval = monitor_block.get("collection_interval") or monitor_block.get("interval")
+                central_monitor_interval = monitor_block.get(
+                    "collection_interval"
+                ) or monitor_block.get("interval")
                 break
 
         if central_config:
@@ -500,3 +514,70 @@ def log_token_usage(
     )
 
     return token_counts
+
+
+def build_workload_recommendations(
+    result_df,
+    explanations: Dict[str, Any],
+    workloads: List[Dict[str, Any]],
+    batch_id: int,
+) -> List[WorkloadRecommendation]:
+    """
+    Transform analysis outputs into WorkloadRecommendation objects.
+
+    Args:
+        result_df: DataFrame containing analysis results.
+        explanations: Dictionary containing explanations for the decisions.
+        workloads: List of original workload dictionaries.
+        batch_id: The current batch ID for these recommendations.
+
+    Returns:
+        List[WorkloadRecommendation]: A list of recommendation objects.
+    """
+    # Map workload_id -> origin cluster label from original workloads
+    origin_by_id = {}
+    for w in workloads:
+        wid = w.get("workload_id")
+        if wid is not None:
+            origin_by_id[wid] = w.get("cluster_label", "private")
+
+    explanations_list = (explanations or {}).get("workload_explanations", [])
+    recs = []
+
+    for idx, row in result_df.iterrows():
+        wid = row.get("workload_id")
+        kind = row.get("kind")
+        label = int(row.get("label", 0))
+
+        origin_label = origin_by_id.get(wid, "private")
+        origin_cluster = 0 if origin_label == "private" else 1
+        destination_cluster = label
+
+        # Skip invalid entries if necessary, or handle them.
+        # The original code in api.py skipped if destination_cluster == -1,
+        # but cli.py didn't seem to explicitly skip in the loop shown (though it might have filtered before).
+        # Let's keep the behavior consistent: if it's -1, it's an error/unknown, maybe we should skip or keep.
+        # In api.py: if destination_cluster == -1: continue
+        if destination_cluster == -1:
+            continue
+
+        reason = (
+            explanations_list[idx]
+            if idx < len(explanations_list)
+            else (
+                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
+            )
+        )
+
+        recs.append(
+            WorkloadRecommendation(
+                batch_id=batch_id,
+                workload_id=wid,
+                kind=kind,
+                origin_cluster=origin_cluster,
+                destination_cluster=destination_cluster,
+                reason=reason,
+            )
+        )
+
+    return recs
