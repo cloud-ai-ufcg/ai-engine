@@ -1,19 +1,19 @@
-import json
-import pandas as pd
-import re
-import logging
+"""
+Module containing LangGraph agents for workload migration analysis.
+"""
 
+import json
+import re
 from typing import List, Dict, Union
+
+import pandas as pd
 from dotenv import load_dotenv
-from engine.ai_config import get_prompt
-from engine.util import load_config, get_logger
-from engine.ai_config import get_prompt
-from engine.util import load_config, log_token_usage
-from engine.client import OpenRouterClient
 from langsmith import traceable
 
-logger = get_logger("agents")
-logger = logging.getLogger(__name__)
+from engine.ai_config import get_prompt
+from engine.util import load_config, get_logger
+from engine.client import OpenRouterClient
+
 logger = get_logger("langgraph_agents")
 
 load_dotenv()
@@ -39,6 +39,7 @@ class OpenRouterInvokeModel:
         }
 
     def invoke(self, user_prompt: str) -> str:
+        """Invoke the model with the given user prompt."""
         return self._client.chat(
             model=self._model_name,
             system_prompt=self._system_prompt,
@@ -70,12 +71,15 @@ def get_llm():
         generation_config = dict(model_cfg.get("generation_config", {}))
 
         # Prefer config-provided system prompt if available, else fall back to default
-        system_prompt = generation_config.get("system_prompt", "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.")
+        system_prompt = generation_config.get(
+            "system_prompt",
+            "You are an expert Kubernetes workload migration advisor. Analyze the provided workloads and make migration decisions.",
+        )
 
-        model = OpenRouterInvokeModel(
+        model_instance = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config
         )
-        return model
+        return model_instance
     except Exception as e:
         logger.error(f"Failed to initialize OpenRouter client/model: {e}")
         raise ValueError(f"Failed to initialize OpenRouter client/model: {e}")
@@ -132,12 +136,6 @@ def _invoke_model(prompt: str) -> str:
     try:
         # Use the LangChain-like interface with `.invoke`
         response_text = model.invoke(prompt)
-
-        # Token accounting (estimate) for observability
-        token_counts = log_token_usage(prompt, response_text, model_type="openrouter")
-        logger.info(
-            f"Token usage (estimate): input={token_counts['input_tokens']}, output={token_counts['output_tokens']}, total={token_counts['total_tokens']}"
-        )
 
         logger.debug(f"OpenRouter response: {response_text}")
         return response_text
