@@ -1,5 +1,10 @@
+"""
+AI Configuration Module
+"""
+
+import os
 import logging
-from typing import List, Dict, Any
+from typing import Dict, Any
 from dotenv import load_dotenv
 from .util import load_config
 from .data_types import WorkloadLabelOutput
@@ -182,8 +187,6 @@ def build_system_prompt_from_config(mode=None):
     Returns:
         str: The complete system prompt from the file
     """
-    import os
-
     cfg = load_config()
     ai_config = cfg.get("ai", {})
 
