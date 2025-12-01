@@ -2,13 +2,11 @@ import os
 import json
 import pandas as pd
 import datetime
-from .ai_config import WorkloadRecommendation
+from .data_types import WorkloadRecommendation
 
 from .util import (
     get_logger,
-    load_config,
     format_message,
-    COLORS,
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
@@ -88,7 +86,6 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             bold=True,
         )
     )
-
 
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
@@ -196,25 +193,26 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
     )
     # Don't pass multiagent parameter - let label_workloads use config.mode instead
     labels, explanations = label_workloads(
-        workloads, cluster_info=cluster_info,interval_duration=interval_duration, provider=provider
+        workloads,
+        cluster_info=cluster_info,
+        interval_duration=interval_duration,
+        provider=provider,
     )
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
-    
+
     if not result.empty:
         label_series = pd.Series(labels)
-        
+
         numeric_labels = pd.to_numeric(label_series, errors='coerce')
-        
+
         result["label"] = numeric_labels.fillna(-1).astype(int)
-        
+
     else:
-        
-        result["label"] = pd.Series(dtype=int) 
+
+        result["label"] = pd.Series(dtype=int)
         logger.warning("No workloads processed; 'label' column initialized empty.")
-
-
 
     # Safely attach reasons column
     if (
@@ -233,6 +231,7 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
         result["reason"] = "No explanation provided"
 
     return result, explanations
+
 
 def save_and_log_explanations(
     result_df, explanations, workloads=None, batch_id: int | None = None
@@ -269,14 +268,11 @@ def save_and_log_explanations(
     explanations_list = (explanations or {}).get("workload_explanations", [])
 
     recs_payload = []
-    ignored_workloads = []
 
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
         destination_cluster = row.get("label", 0)
-
-        
 
         destination_cluster = int(destination_cluster)
 
@@ -302,7 +298,6 @@ def save_and_log_explanations(
             )
         )
 
-
     # Serialize Pydantic models to plain dicts for JSON output
     recs_payload_serialized = [
         (
@@ -317,15 +312,6 @@ def save_and_log_explanations(
         json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
-    
-    logger.info(
-        format_message(
-            f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
-            icon="💡",
-            color="YELLOW",
-            bold=True,
-        )
-    )
     logger.info(format_message("Detailed explanations for each workload:", bold=True))
 
     for idx, explanation in enumerate(explanations.get("workload_explanations", [])):
@@ -333,7 +319,6 @@ def save_and_log_explanations(
             workload_id = result_df.iloc[idx]["workload_id"]
             label = result_df.iloc[idx]["label"]
 
-            
             if str(label) == "-1" or label == -1:
                 continue
 
