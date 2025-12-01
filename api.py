@@ -12,6 +12,7 @@ Endpoints:
 
 import asyncio
 import threading
+import json
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, List
 
@@ -92,9 +93,6 @@ app = FastAPI(
 )
 
 
-import json as json_lib
-
-
 @app.get("/")
 async def root():
     """Health check endpoint"""
@@ -127,7 +125,7 @@ async def apply_recommendations(
         elif hasattr(recommendations, "to_dict"):
             payload = recommendations.to_dict(orient="records")
 
-        recommendations_json = json_lib.dumps(payload, ensure_ascii=False)
+        recommendations_json = json.dumps(payload, ensure_ascii=False)
 
         actuator_config = app_state.config.get("actuator", {})
         host = actuator_config.get("host", "localhost")
