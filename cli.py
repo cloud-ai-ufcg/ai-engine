@@ -1,13 +1,14 @@
+from engine.util import load_config, format_message, get_logger
 from engine.main import (
-    load_config,
     load_monitoring_data,
     analyze_workloads,
     save_and_log_explanations,
     write_recommendations,
-    logger,
-    format_message,
 )
 from engine.util import build_workload_recommendations
+
+logger = get_logger("cli")
+
 
 # Maintain a local batch counter for CLI runs
 # pylint: disable=invalid-name

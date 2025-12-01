@@ -2,13 +2,11 @@ import os
 import json
 import pandas as pd
 import datetime
-from .ai_config import WorkloadRecommendation
+from .data_types import WorkloadRecommendation
 
 from .util import (
     get_logger,
-    load_config,
     format_message,
-    COLORS,
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
@@ -233,6 +231,7 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
         result["reason"] = "No explanation provided"
 
     return result, explanations
+
 
 def save_and_log_explanations(
     result_df, explanations, workloads=None, batch_id: int | None = None
