@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from langsmith import traceable
 
 from engine.ai_config import get_prompt
-from engine.util import load_config, get_logger, log_token_usage
+from engine.util import load_config, get_logger
 from engine.client import OpenRouterClient
 
 logger = get_logger("langgraph_agents")
@@ -136,12 +136,6 @@ def _invoke_model(prompt: str) -> str:
     try:
         # Use the LangChain-like interface with `.invoke`
         response_text = model.invoke(prompt)
-
-        # Token accounting (estimate) for observability
-        token_counts = log_token_usage(prompt, response_text, model_type="openrouter")
-        logger.info(
-            f"Token usage (estimate): input={token_counts['input_tokens']}, output={token_counts['output_tokens']}, total={token_counts['total_tokens']}"
-        )
 
         logger.debug(f"OpenRouter response: {response_text}")
         return response_text

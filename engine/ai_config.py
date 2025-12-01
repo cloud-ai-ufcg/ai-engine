@@ -106,20 +106,6 @@ Votes: {workload_json}
 }
 
 
-def get_model_config(model_key="gemini"):
-    """
-    Get model configuration by key.
-
-    Args:
-        model_key: The key for the model configuration
-
-    Returns:
-        Dictionary with model configuration
-    """
-    cfg = load_config()
-    return cfg.get("ai", {}).get("models", {}).get(model_key, {})
-
-
 def get_prompt(prompt_key, **kwargs):
     """
     Get a prompt by key and format it with provided kwargs.
