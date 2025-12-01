@@ -132,31 +132,35 @@ def _create_explanation_output(
         current_cluster = workload[1].get("cluster_label", "unknown")
         destination_cluster = label
 
-        # Log the decision with context
-        is_staying = current_cluster == destination_cluster
+        dest_cluster_config = cluster_manager.get_cluster_by_id(destination_cluster)
+        dest_cluster_label = dest_cluster_config.cluster_label if dest_cluster_config else destination_cluster
+        
+        is_staying = (
+            current_cluster == destination_cluster or 
+            current_cluster == dest_cluster_label
+        )
         logger.info(
             f"Decision for {workload_id} ({kind}): {current_cluster} → {destination_cluster} "
             f"[Staying: {is_staying}]"
         )
 
-        # Add explanation for this workload
-        explanation = (
+        llm_explanation = (
             explanations[idx]
             if idx < len(explanations)
             else f"Workload {workload_id} recommended for {destination_cluster} cluster based on resource requirements"
         )
         
         # Check for potential hallucinations (explanation contradicts decision)
-        if explanation and is_staying:
+        if llm_explanation and is_staying:
             migration_keywords = ["migrate", "move", "transfer", "relocate", "shift", "should go"]
-            if any(keyword in explanation.lower() for keyword in migration_keywords):
+            if any(keyword in llm_explanation.lower() for keyword in migration_keywords):
                 logger.warning(
                     f"⚠️  POTENTIAL LLM HALLUCINATION - {workload_id}: "
                     f"Explanation mentions migration but workload stays in {current_cluster}. "
-                    f"Explanation: \"{explanation}\""
+                    f"Explanation: \"{llm_explanation}\""
                 )
         
-        explanation_output["workload_explanations"].append(explanation)
+        explanation_output["workload_explanations"].append(llm_explanation)
 
     return explanation_output
 
