@@ -13,6 +13,7 @@ from .ai_config import (
 from .util import get_logger, load_config
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
+from .langgraph_agents.graph.vote_system_graph import create_vote_system_migration_graph
 from .client import OpenRouterClient
 
 logger = get_logger("agents")
@@ -302,7 +303,7 @@ def label_workloads_multiagent_votes(workloads, provider="langgraph"):
         "explanations": {},
     }
 
-    graph = create_migration_graph()
+    graph = create_vote_system_migration_graph()
 
     thread_id = str(uuid.uuid4())
 

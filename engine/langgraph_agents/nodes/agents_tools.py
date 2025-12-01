@@ -160,8 +160,6 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 f"Maintaining original cluster ({original_cluster_label}) due to invalid LLM response"
             )
 
-        overall_explanation = "RecommendationsNode preserved original cluster assignments due to invalid LLM response"
-
     final_decisions: list[int] = []
     workload_explanations: list[str] = []
 
@@ -189,7 +187,6 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     state["decisions"] = final_decisions
     state["explanations"] = {
-        "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
     }
 
