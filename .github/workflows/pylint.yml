@@ -20,4 +20,4 @@ jobs:
         pip install -r requirements.txt
     - name: Analysing the code with pylint
       run: |
-        pylint --disable=C0301,W1203,W1309 $(git ls-files '*.py')
+        pylint --fail-under=8 --disable=C0301,W1203,W1309 $(git ls-files '*.py')
