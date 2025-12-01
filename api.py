@@ -1,54 +1,58 @@
-from fastapi import FastAPI
-from typing import Optional
+"""
+AI Engine API
+
+This module provides a FastAPI-based REST API for workload analysis and migration recommendations.
+
+Endpoints:
+- GET /: Health check
+- POST /start: Start the AI Engine
+- POST /stop: Stop the AI Engine
+- POST /analyze: Analyze workloads and generate recommendations
+"""
+
+import asyncio
+import threading
 from contextlib import asynccontextmanager
+from typing import Optional, Dict, Any, List
+
+import aiohttp
+import schedule
 import uvicorn
-import json
+from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from engine.main import (
     process_monitoring_data,
     save_and_log_explanations,
-    analyze_workloads
+    analyze_workloads,
 )
 
-from engine.data_types import *
+
+from engine.data_types import *  # pylint: disable=wildcard-import, unused-wildcard-import
 
 from engine.util import (
     get_logger,
     load_config,
     format_message,
 )
-from engine.ai_config import WorkloadRecommendation
-
-import asyncio
-import aiohttp
-import json
-import schedule
-import threading
-
-
-# Global state variables to control the recommendation loop
-config = load_config()
-
-SCHEDULER_INTERVAL_DEFAULT = 60 * 5  # 5 minutes
-SCHEDULER_INTERVAL: int = int(config["ai"]["scheduler_interval"]) or int(
-    SCHEDULER_INTERVAL_DEFAULT
-)  # seconds between recommendation cycles
-
-CURRENT_BATCH_ID = 0
-
-running: bool = False
-stop_event: threading.Event = threading.Event()
-# Background thread that runs the scheduler; populated when `/start` is called
-scheduler_thread: Optional[threading.Thread] = None
+from engine.util import build_workload_recommendations
 
 logger = get_logger("api")
 
 
 class AppState:
+    """
+    Application state to hold configuration and runtime variables.
+    """
+
     def __init__(self):
         self.models = {}
         self.config = None
+        self.running: bool = False
+        self.stop_event: threading.Event = threading.Event()
+        self.scheduler_thread: Optional[threading.Thread] = None
+        self.current_batch_id: int = 0
+        self.scheduler_interval: int = 300
 
 
 app_state = AppState()
@@ -57,9 +61,27 @@ app_state = AppState()
 # Define lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for FastAPI.
+    Loads configuration and models at startup.
+    """
     # Load configuration and models at startup
     app_state.config = load_config()
+
+    # Initialize scheduler interval
+    default_interval = 60 * 5
+    interval_config = app_state.config.get("ai", {}).get("scheduler_interval")
+    app_state.scheduler_interval = (
+        int(interval_config) if interval_config else default_interval
+    )
+
     yield
+
+    # Clean up
+    if app_state.scheduler_thread and app_state.scheduler_thread.is_alive():
+        app_state.running = False
+        app_state.stop_event.set()
+        app_state.scheduler_thread.join(timeout=5)
 
 
 app = FastAPI(
@@ -70,53 +92,53 @@ app = FastAPI(
 )
 
 
+import json as json_lib
+
+
 @app.get("/")
 async def root():
     """Health check endpoint"""
     return {"status": "healthy", "message": "AI Engine API is running"}
 
 
-async def apply_recommendations(recommendations):
+async def apply_recommendations(
+    recommendations: List[WorkloadRecommendation] | List[Dict] | Any,
+):
     """
     Sends a POST request to the Actuator service endpoint with the recommendations
 
     Args:
-        recommendations: Either a DataFrame with columns (workload_id, kind, label)
-                         or a list of dicts in the WorkloadRecommendation shape.
+        recommendations: List of WorkloadRecommendation objects or dicts.
     Returns:
         None
     """
     try:
         # Apply recommendations
-        if hasattr(recommendations, "to_dict"):
-            # Backward compatibility: accept DataFrame
-            payload = recommendations.to_dict(orient="records")
-        else:
-            # Convert Pydantic models to dicts if needed
-            if isinstance(recommendations, list):
-                payload = [
-                    (
-                        r.model_dump()
-                        if hasattr(r, "model_dump")
-                        else (r.dict() if hasattr(r, "dict") else r)
-                    )
-                    for r in recommendations
-                ]
-            else:
-                payload = (
-                    recommendations.model_dump()
-                    if hasattr(recommendations, "model_dump")
-                    else (
-                        recommendations.dict()
-                        if hasattr(recommendations, "dict")
-                        else recommendations
-                    )
+        payload = []
+        if isinstance(recommendations, list):
+            payload = [
+                (
+                    r.model_dump()
+                    if hasattr(r, "model_dump")
+                    else (r.dict() if hasattr(r, "dict") else r)
                 )
+                for r in recommendations
+            ]
+        elif hasattr(recommendations, "to_dict"):
+            payload = recommendations.to_dict(orient="records")
 
-        recommendations_json = json.dumps(payload, ensure_ascii=False)
+        recommendations_json = json_lib.dumps(payload, ensure_ascii=False)
+
+        actuator_config = app_state.config.get("actuator", {})
+        host = actuator_config.get("host", "localhost")
+        port = actuator_config.get("port", 8080)
+        route = actuator_config.get("route", "actuate")
+
+        url = f"http://{host}:{port}/{route}"
+
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"http://{app_state.config['actuator']['host']}:{app_state.config['actuator']['port']}/{app_state.config['actuator']['route']}",
+                url,
                 data=recommendations_json,
                 headers={"Content-Type": "application/json"},
             ) as response:
@@ -129,95 +151,38 @@ async def apply_recommendations(recommendations):
                         )
                     )
                 else:
-                    logger.error(f"Failed to apply recommendations: {response.status}")
+                    logger.error("Failed to apply recommendations: %s", response.status)
 
-    except Exception as e:
-        logger.error(f"Error applying recommendations: {e}")
-        # raise HTTPException(status_code=500, detail=str(e))
-
-
-def _build_workload_recommendations(result_df, explanations, workloads):
-    """
-    Transform analysis outputs into WorkloadRecommendation-shaped dictionaries.
-
-    WorkloadRecommendation fields:
-      - workload_id: str
-      - kind: str
-      - origin_cluster: int  (0=private, 1=public)
-      - destination_cluster: int (0=private, 1=public) from result_df['label']
-      - reason: str
-    """
-    # Map workload_id -> origin cluster label from original workloads
-    origin_by_id = {}
-    for w in workloads:
-        wid = w.get("workload_id")
-        if wid is not None:
-            origin_by_id[wid] = w.get("cluster_label", "private")
-
-    explanations_list = (explanations or {}).get("workload_explanations", [])
-    global CURRENT_BATCH_ID
-    CURRENT_BATCH_ID += 1
-    recs = []
-    for idx, row in result_df.iterrows():
-        wid = row.get("workload_id")
-        kind = row.get("kind")
-        label = int(row.get("label", 0))
-
-        origin_label = origin_by_id.get(wid, "private")
-        origin_cluster = 0 if origin_label == "private" else 1
-        destination_cluster = label
-        if destination_cluster == -1:
-            continue
-
-        reason = (
-            explanations_list[idx]
-            if idx < len(explanations_list)
-            else (
-                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
-            )
-        )
-
-        recs.append(
-            WorkloadRecommendation(
-                batch_id=CURRENT_BATCH_ID,
-                workload_id=wid,
-                kind=kind,
-                origin_cluster=origin_cluster,
-                destination_cluster=destination_cluster,
-                reason=reason,
-            )
-        )
-
-    return recs
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.error("Error applying recommendations: %s", e)
 
 
 @app.post("/start")
 async def start():
     """Start the AI Engine"""
-    global running, stop_event
-
     # Mark the engine as running and clear any previous stop signal
-    running = True
-    if stop_event.is_set():
-        stop_event.clear()
+    app_state.running = True
+    if app_state.stop_event.is_set():
+        app_state.stop_event.clear()
 
     # Function to fetch metrics from monitor
     async def fetch_metrics():
-        if not running:
+        if not app_state.running:
             return
 
         try:
+            monitor_config = app_state.config.get("monitor", {})
+            host = monitor_config.get("host", "localhost")
+            port = monitor_config.get("port", 8080)
+            route = monitor_config.get("route", "metrics")
+            interval = monitor_config.get("interval", "5m")
+
+            url = f"http://{host}:{port}/{route}"
+            json_payload = {"interval": interval}
+
+            logger.debug("Fetching metrics from MONITOR: %s", url)
             async with aiohttp.ClientSession() as session:
-                url = f"http://{app_state.config['monitor']['host']}:{app_state.config['monitor']['port']}/{app_state.config['monitor']['route']}"
-                json = {"interval": app_state.config['monitor']['interval']}
-
-                logger.debug(f"Fetching metrics from MONITOR: {url}")
-                # monitor interval: window of metrics we ask the Monitor API to return
-                logger.debug(f"Interval: {app_state.config['monitor']['interval']}")
-                # scheduler interval: cadence (seconds) between successive fetch/analysis cycles
-                logger.debug(f"Scheduler interval: {SCHEDULER_INTERVAL}")
-
-                async with session.get(url, json=json) as response:
+                async with session.get(url, json=json_payload) as response:
                     if response.status == 200:
                         data = await response.json()
                         logger.info(
@@ -229,48 +194,56 @@ async def start():
                         )
                     else:
                         logger.error(
-                            f"Failed to fetch metrics from MONITOR: {response.status}"
+                            "Failed to fetch metrics from MONITOR: %s", response.status
                         )
-        except Exception as e:
-            logger.error(f"Error fetching metrics from MONITOR: {e}")
+                        return
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error fetching metrics from MONITOR: %s", e)
+            return
 
         processed_data = process_monitoring_data(data)
 
         if not processed_data:
             return
-        
+
         workloads = processed_data.get("workloads", [])
         cluster_info = processed_data.get("cluster_info", [])
         interval_duration = processed_data.get("interval_duration", "unknown")
-        
+
         if workloads:
-            result_df, explanations = analyze_workloads(workloads, app_state.config, cluster_info=cluster_info, interval_duration=interval_duration)
+            result_df, explanations = analyze_workloads(
+                workloads,
+                app_state.config,
+                cluster_info=cluster_info,
+                interval_duration=interval_duration,
+            )
             save_and_log_explanations(result_df, explanations, workloads)
 
             # Transform into WorkloadRecommendation-shaped list[dict]
-            recommendations = _build_workload_recommendations(
-                result_df, explanations, workloads
+            app_state.current_batch_id += 1
+            recommendations = build_workload_recommendations(
+                result_df, explanations, workloads, app_state.current_batch_id
             )
 
             await apply_recommendations(recommendations)
 
     # run the scheduler in a separate thread
     def run_scheduler():
-        while not stop_event.is_set():
+        while not app_state.stop_event.is_set():
             schedule.run_pending()
 
     # Run fetch_metrics immediately if configured
-    if app_state.config["ai"]["fetch_metrics_immediately"]:
+    if app_state.config["ai"].get("fetch_metrics_immediately", False):
         await fetch_metrics()
 
     # Start the scheduler to run every SCHEDULER_INTERVAL seconds after the first execution
-    global scheduler_thread
-
-    schedule.every(SCHEDULER_INTERVAL).seconds.do(lambda: asyncio.run(fetch_metrics()))
-    scheduler_thread = threading.Thread(
+    schedule.every(app_state.scheduler_interval).seconds.do(
+        lambda: asyncio.run(fetch_metrics())
+    )
+    app_state.scheduler_thread = threading.Thread(
         target=run_scheduler, name="scheduler-thread", daemon=True
     )
-    scheduler_thread.start()
+    app_state.scheduler_thread.start()
 
     logger.info(format_message("Recommendations are running", icon="🚀", color="GREEN"))
     return {"status": "Recommendations are running"}
@@ -279,15 +252,13 @@ async def start():
 @app.post("/stop")
 async def stop():
     """Stop the AI Engine"""
-    global running, stop_event, scheduler_thread
-
-    running = False
-    stop_event.set()
+    app_state.running = False
+    app_state.stop_event.set()
 
     # Wait for the background thread to finish in a non-blocking way
-    if scheduler_thread is not None and scheduler_thread.is_alive():
+    if app_state.scheduler_thread is not None and app_state.scheduler_thread.is_alive():
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, scheduler_thread.join)
+        await loop.run_in_executor(None, app_state.scheduler_thread.join)
 
     logger.info(format_message("Recommendations stopped", icon="🛑", color="RED"))
     return {"status": "Recommendations stopped"}
@@ -319,7 +290,7 @@ async def analyze_workloads_direct(request: AnalyzeRequest):
         workloads: Optional[list] = None
         if request.input_json:
             try:
-                with open(request.input_json, "r") as f:
+                with open(request.input_json, "r", encoding="utf-8") as f:
                     workloads = json.load(f)
             except Exception as e:
                 logger.error(f"Failed to read input_json file: {e}")

@@ -1,7 +1,17 @@
-from engine.main import *
+from engine.main import (
+    load_config,
+    load_monitoring_data,
+    analyze_workloads,
+    save_and_log_explanations,
+    write_recommendations,
+    logger,
+    format_message,
+)
+from engine.util import build_workload_recommendations
 
 # Maintain a local batch counter for CLI runs
-CURRENT_BATCH_ID = 0
+# pylint: disable=invalid-name
+current_batch_id = 0
 
 
 def cli():
@@ -28,9 +38,12 @@ def cli():
 
     save_and_log_explanations(result, explanations, workloads)
 
+    global current_batch_id
+    current_batch_id += 1
+
     # Build WorkloadRecommendation-shaped list[dict] (keeps backward compatibility)
-    recommendations = _build_workload_recommendations_cli(
-        result, explanations, workloads
+    recommendations = build_workload_recommendations(
+        result, explanations, workloads, current_batch_id
     )
 
     # Log a concise preview of recommendations
@@ -44,64 +57,6 @@ def cli():
 
     # Keep existing CSV output for backward compatibility
     write_recommendations(result)
-
-
-def _build_workload_recommendations_cli(result_df, explanations, workloads):
-    """
-    CLI variant of the builder used in API to transform results into the
-    WorkloadRecommendation-shaped dictionaries.
-
-    Fields:
-      - workload_id: str
-      - kind: str
-      - origin_cluster: int  (0=private, 1=public)
-      - destination_cluster: int (0=private, 1=public) from result_df['label']
-      - reason: str
-    """
-    # Map workload_id -> origin cluster label from original workloads
-    origin_by_id = {}
-    for w in workloads:
-        wid = w.get("workload_id")
-        if wid is not None:
-            origin_by_id[wid] = w.get("cluster_label", "private")
-
-    explanations_list = (explanations or {}).get("workload_explanations", [])
-
-    # Increment batch id for this CLI build
-    global CURRENT_BATCH_ID
-    CURRENT_BATCH_ID += 1
-    batch_id = CURRENT_BATCH_ID
-
-    recs = []
-    for idx, row in result_df.iterrows():
-        wid = row.get("workload_id")
-        kind = row.get("kind")
-        label = int(row.get("label", 0))
-
-        origin_label = origin_by_id.get(wid, "private")
-        origin_cluster = 0 if origin_label == "private" else 1
-        destination_cluster = label
-
-        reason = (
-            explanations_list[idx]
-            if idx < len(explanations_list)
-            else (
-                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
-            )
-        )
-
-        recs.append(
-            WorkloadRecommendation(
-                batch_id=batch_id,
-                workload_id=wid,
-                kind=kind,
-                origin_cluster=origin_cluster,
-                destination_cluster=destination_cluster,
-                reason=reason,
-            )
-        )
-
-    return recs
 
 
 if __name__ == "__main__":
