@@ -1,4 +1,8 @@
-from typing import Dict, Any
+"""
+Tool for calculating workload capacity and usage.
+"""
+
+from typing import Dict, Any, Tuple
 from langchain.tools import tool
 
 
