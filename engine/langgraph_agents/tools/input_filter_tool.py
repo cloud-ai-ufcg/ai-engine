@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Union, Optional
 from langchain_core.tools import tool
-
+from engine.util import get_logger, format_message
 
 process_monitoring_data = None  # will be set on first call
 
@@ -15,11 +15,6 @@ def input_filter(
     This tool converts *raw* monitoring data (potentially in several formats) into a
     normalized list of workload dictionaries, mirroring the behaviour of
     ``engine.data_processor.process_monitoring_data``.
-
-    It is a very thin wrapper around that function so it can be used as a LangChain
-    / LangGraph "@tool".  If the data is already a list of workload dictionaries it
-    will simply filter out entries that do not contain a ``workload_id`` key –
-    replicating the legacy behaviour.
 
     Parameters
     ----------
@@ -48,7 +43,9 @@ def input_filter(
     global process_monitoring_data
     if process_monitoring_data is None:
         # Local import to avoid issues with import ordering
+        # pylint: disable=import-outside-toplevel
         from engine.data_processor import process_monitoring_data as _process_monitoring_data  # type: ignore
+
         process_monitoring_data = _process_monitoring_data
 
     try:
@@ -64,8 +61,8 @@ def input_filter(
     except Exception as exc:  # pragma: no cover – defensive fallback
         # If anything goes wrong fallback to returning an empty list so that the
         # graph does not crash catastrophically.
-        from engine.util import get_logger, format_message  # late import
-
         logger = get_logger("input_filter")
-        logger.error(format_message(f"input_filter failed: {exc}", icon="❌", color="RED"))
+        logger.error(
+            format_message(f"input_filter failed: {exc}", icon="❌", color="RED")
+        )
         return []
