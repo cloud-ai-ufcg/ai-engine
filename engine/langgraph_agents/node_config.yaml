@@ -1,7 +1,0 @@
-nodes:
-  cpu:
-    execute: false
-  memory:
-    execute: false
-  pending:
-    execute: true
