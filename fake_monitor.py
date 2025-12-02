@@ -12,7 +12,8 @@ from fastapi import FastAPI
 import uvicorn
 
 
-METRICS_FILENAME = "monitor_test_menorzin.json"
+DATA_INPUT_PATH = "/data/input/"
+METRICS_FILENAME = f"{DATA_INPUT_PATH}monitor_test.json"
 PORT = 8082
 RELOAD = True
 
