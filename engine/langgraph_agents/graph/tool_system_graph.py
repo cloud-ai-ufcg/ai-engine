@@ -14,8 +14,8 @@ from ..tools import (
     workload_pricing,
     infra_pricing,
 )
-from ..nodes import recommendations_node
-
+from ..nodes import recommendationsNode
+from ..nodes.history_context_node import fetch_history_context_node
 
 class MigrationStateToolsGraph(TypedDict):
     """State container used by the migration tools LangGraph."""
@@ -205,6 +205,9 @@ def create_tool_system_migration_graph():
     """
     graph = StateGraph(MigrationStateToolsGraph)
 
+    # Add history context node
+    graph.add_node("fetch_history", fetch_history_context_node)
+    
     graph.add_node("input_filter", input_filter_node)
     graph.add_node("cluster_capacity", cluster_capacity_node)
     graph.add_node("pending_by_cluster", pending_by_cluster_node)
@@ -214,8 +217,9 @@ def create_tool_system_migration_graph():
     graph.add_node("infra_pricing", cluster_pricing_node)
     graph.add_node("recommendations", recommendations_node)
 
-    # Parallel nodes entry points
-    graph.add_edge(START, "input_filter")
+    # New flow: START -> fetch_history -> input_filter -> parallel tools -> recommendations
+    graph.add_edge(START, "fetch_history")
+    graph.add_edge("fetch_history", "input_filter")
 
     graph.add_edge("input_filter", "pending_by_workload")
     graph.add_edge("input_filter", "cluster_capacity")
