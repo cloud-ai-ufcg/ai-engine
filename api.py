@@ -209,12 +209,24 @@ async def start():
         interval_duration = processed_data.get("interval_duration", "unknown")
 
         if workloads:
+
+            # Start new history batch if feature enabled
+            history_config = app_state.config.get('recommendation_history', {})
+            if history_config.get('enabled', False):
+                from engine.history_batch_manager import get_history_batch_manager
+                from engine.recommendation_history_db import save_history_batch_recommendations
+                
+                history_batch_mgr = get_history_batch_manager(app_state.config)
+                current_history_batch_id = history_batch_mgr.start_new_batch()
+                logger.info(f"Started history batch {current_history_batch_id}")
+            
             result_df, explanations = analyze_workloads(
                 workloads,
                 app_state.config,
                 cluster_info=cluster_info,
                 interval_duration=interval_duration,
             )
+
             save_and_log_explanations(result_df, explanations, workloads)
 
             # Transform into WorkloadRecommendation-shaped list[dict]
@@ -222,6 +234,18 @@ async def start():
             recommendations = build_workload_recommendations(
                 result_df, explanations, workloads, app_state.current_batch_id
             )
+            
+            # Save to history database if feature enabled
+            if history_config.get('enabled', False):
+                try:
+                    save_history_batch_recommendations(
+                        history_config.get('mongodb'),
+                        current_history_batch_id,
+                        recommendations
+                    )
+                    logger.info(f"Saved recommendations to history batch {current_history_batch_id}")
+                except Exception as e:
+                    logger.error(f"Failed to save history batch recommendations: {e}")
 
             await apply_recommendations(recommendations)
 
@@ -302,8 +326,33 @@ async def analyze_workloads_direct(request: AnalyzeRequest):
         if not workloads:
             return {"status": "error", "message": "No workload data provided"}
 
+        # Start new history batch if feature enabled
+        history_config = app_state.config.get('recommendation_history', {})
+        if history_config.get('enabled', False):
+            from engine.history_batch_manager import get_history_batch_manager
+            from engine.recommendation_history_db import save_history_batch_recommendations
+            
+            history_batch_mgr = get_history_batch_manager(app_state.config)
+            current_history_batch_id = history_batch_mgr.start_new_batch()
+            logger.info(f"Started history batch {current_history_batch_id}")
+
         result_df, explanations = analyze_workloads(workloads, app_state.config)
         save_and_log_explanations(result_df, explanations, workloads)
+        
+        # Save to history database if feature enabled
+        if history_config.get('enabled', False):
+            try:
+                recommendations = _build_workload_recommendations(
+                    result_df, explanations, workloads
+                )
+                save_history_batch_recommendations(
+                    history_config.get('mongodb'),
+                    current_history_batch_id,
+                    recommendations
+                )
+                logger.info(f"Saved recommendations to history batch {current_history_batch_id}")
+            except Exception as e:
+                logger.error(f"Failed to save history batch recommendations: {e}")
 
         return {
             "status": "success",
