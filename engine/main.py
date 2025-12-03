@@ -217,9 +217,7 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
     Returns:
         Tuple containing (DataFrame with results, explanations dictionary)
     """
-    provider = (
-        config.get("ai", {}).get("default_config", {}).get("provider", "openrouter")
-    )
+    provider = config.get("ai", {}).get("default_config", {}).get("provider", "openrouter")
 
     logger.info(
         format_message(
@@ -229,51 +227,31 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
             bold=True,
         )
     )
-    cluster_manager = get_cluster_manager()
     
-    # labels now contain cluster IDs (strings) instead of binary decisions
     labels, explanations = label_workloads(
         workloads, cluster_info=cluster_info, interval_duration=interval_duration, provider=provider
     )
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
+    result["origin_cluster"] = df["cluster_id"]
     
-    result["origin_cluster"] = df["cluster_label"].apply(
-        lambda label: cluster_manager.resolve_cluster_label_to_id(label) or label
-    )
+    # Normalize labels and explanations to match result length
+    def _normalize_list(items, target_len, default_value):
+        """Normalize list length by truncating or padding."""
+        if len(items) == target_len:
+            return items
+        if len(items) > target_len:
+            logger.warning(f"Truncating {len(items)} items to {target_len}")
+            return items[:target_len]
+        missing = target_len - len(items)
+        logger.warning(f"Padding with {missing} default values")
+        return items + [default_value] * missing
     
-    # Validate and fix labels length mismatch
-    if len(labels) != len(result):
-        logger.warning(f"Labels length mismatch: expected {len(result)}, got {len(labels)}")
-        if len(labels) > len(result):
-            # Truncate extra labels
-            labels = labels[:len(result)]
-            logger.info(f"Truncated labels to {len(result)} items")
-        else:
-            # Pad with default cluster assignments
-            missing_count = len(result) - len(labels)
-            default_cluster = df.iloc[0]["cluster_label"] if len(df) > 0 else "private"
-            labels = labels + [default_cluster] * missing_count
-            logger.info(f"Padded labels with {missing_count} default assignments")
+    result["destination_cluster"] = _normalize_list(labels, len(result), df.iloc[0]["cluster_id"] if len(df) > 0 else "unknown")
     
-    result["destination_cluster"] = labels
-
-    # Safely attach reasons column
-    if (
-        isinstance(explanations, dict)
-        and "workload_explanations" in explanations
-        and explanations["workload_explanations"]
-    ):
-        expl_list = explanations["workload_explanations"]
-        if len(expl_list) == len(result):
-            result["reason"] = expl_list
-        else:
-            # Pad / truncate to match length
-            padded = (expl_list + ["No explanation."] * len(result))[: len(result)]
-            result["reason"] = padded
-    else:
-        result["reason"] = "No explanation provided"
+    expl_list = explanations.get("workload_explanations", []) if isinstance(explanations, dict) else []
+    result["reason"] = _normalize_list(expl_list, len(result), "No explanation provided")
 
     return result, explanations
 
@@ -351,67 +329,54 @@ def save_and_log_explanations(
     Save recommendations log using the WorkloadRecommendation schema and log them.
 
     Args:
-        result_df: DataFrame with workload results (now contains origin_cluster and destination_cluster as strings)
+        result_df: DataFrame with workload results (contains origin_cluster and destination_cluster as cluster IDs)
         explanations: Dictionary with explanations
         workloads: Optional original workloads list to infer origin_cluster
+        batch_id: Optional batch ID; incremented if not provided
     """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # Ensure we have a batch_id; if not provided, increment global counter
     global CURRENT_BATCH_ID
 
     if batch_id is None:
         CURRENT_BATCH_ID += 1
         batch_id = CURRENT_BATCH_ID
 
-    if not os.path.exists(ENGINE_LOG_DIR):
-        os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
+    os.makedirs(ENGINE_LOG_DIR, exist_ok=True)
     explanations_file = os.path.join(
         ENGINE_LOG_DIR, f"recommendations_explanations_{timestamp}.json"
     )
 
     cluster_manager = get_cluster_manager()
     
-    # Build WorkloadRecommendation-shaped list[dict]
-    origin_by_id = {}
-    if workloads:
-        for w in workloads:
-            wid = w.get("workload_id")
-            if wid is not None:
-                origin_by_id[wid] = w.get("cluster_label", "private")
-
+    # Map workload_id -> origin cluster from original workloads
+    origin_by_id = {w.get("workload_id"): w.get("cluster_id") for w in (workloads or []) if w.get("workload_id")}
     explanations_list = (explanations or {}).get("workload_explanations", [])
+
+    def _get_cluster_profile(cluster_id):
+        """Helper to get cluster profile, checking by ID first then by label."""
+        config = cluster_manager.get_cluster_by_id(cluster_id) or cluster_manager.get_cluster_by_label(cluster_id)
+        return config.cluster_profile if config else None
+
+    def _serialize_model(obj):
+        """Convert Pydantic model to dict if needed."""
+        if hasattr(obj, "model_dump"):
+            return obj.model_dump()
+        elif hasattr(obj, "dict"):
+            return obj.dict()
+        return obj
 
     recs_payload = []
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
-        destination_cluster = str(row.get("destination_cluster", row.get("label", "unknown")))
+        origin_cluster = str(origin_by_id.get(wid, row.get("origin_cluster")))
+        destination_cluster = str(row.get("destination_cluster", row.get("label")))
         
-        origin_label = origin_by_id.get(wid, row.get("origin_cluster", "private"))
-        if isinstance(origin_label, str) and origin_label in ["0", "1"]:
-            # Handle legacy binary cluster labels
-            origin_cluster = "private" if origin_label == "0" else "public"
-        else:
-            origin_cluster = str(origin_label)
-
         reason = (
             explanations_list[idx]
             if idx < len(explanations_list)
-            else (
-                f"Recommended to {destination_cluster} cluster based on resource analysis"
-            )
+            else f"Recommended to {destination_cluster} cluster based on resource analysis"
         )
-        
-        # Get profile information if available
-        origin_profile = None
-        destination_profile = None
-        origin_config = cluster_manager.get_cluster_by_id(origin_cluster) or cluster_manager.get_cluster_by_label(origin_cluster)
-        dest_config = cluster_manager.get_cluster_by_id(destination_cluster) or cluster_manager.get_cluster_by_label(destination_cluster)
-        
-        if origin_config:
-            origin_profile = origin_config.cluster_profile
-        if dest_config:
-            destination_profile = dest_config.cluster_profile
 
         recs_payload.append(
             WorkloadRecommendation(
@@ -421,23 +386,14 @@ def save_and_log_explanations(
                 origin_cluster=origin_cluster,
                 destination_cluster=destination_cluster,
                 reason=reason,
-                origin_cluster_profile=origin_profile,
-                destination_cluster_profile=destination_profile,
+                origin_cluster_profile=_get_cluster_profile(origin_cluster),
+                destination_cluster_profile=_get_cluster_profile(destination_cluster),
             )
         )
 
-    # Serialize Pydantic models to plain dicts for JSON output
-    recs_payload_serialized = [
-        (
-            r.model_dump()
-            if hasattr(r, "model_dump")
-            else (r.dict() if hasattr(r, "dict") else r)
-        )
-        for r in recs_payload
-    ]
-
+    # Serialize and save recommendations
     with open(explanations_file, "w") as f:
-        json.dump(recs_payload_serialized, f, indent=2)
+        json.dump([_serialize_model(r) for r in recs_payload], f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
     logger.info(format_message("Detailed explanations for each workload:", bold=True))
@@ -445,15 +401,10 @@ def save_and_log_explanations(
         if idx < len(result_df):
             workload_id = result_df.iloc[idx]["workload_id"]
             kind = result_df.iloc[idx]["kind"]
-            origin = str(result_df.iloc[idx].get("origin_cluster", "unknown"))
-            destination = str(result_df.iloc[idx].get("destination_cluster", result_df.iloc[idx].get("label", "unknown")))
+            origin = str(result_df.iloc[idx].get("origin_cluster"))
+            destination = str(result_df.iloc[idx].get("destination_cluster", result_df.iloc[idx].get("label")))
             
-            if origin != destination:
-                icon = "🔄"
-                color = "BLUE"
-            else:
-                icon = "✅"
-                color = "GREEN"
+            icon, color = ("🔄", "BLUE") if origin != destination else ("✅", "GREEN")
             
             logger.info(
                 format_message(

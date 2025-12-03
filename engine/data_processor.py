@@ -44,11 +44,11 @@ def _filter_and_fill_workloads(
             continue
 
         # Fill cluster details if available
-        cluster_label = w.get("cluster_label")
-        if cluster_label and cluster_label in cluster_data:
-            w["cluster_load"] = cluster_data[cluster_label]["cpu_load"]
-            w["cluster_cpu_capacity"] = cluster_data[cluster_label]["cpu_capacity"]
-            w["cluster_memory_capacity"] = cluster_data[cluster_label][
+        cluster_id = w.get("cluster_id")
+        if cluster_id and cluster_id in cluster_data:
+            w["cluster_load"] = cluster_data[cluster_id]["cpu_load"]
+            w["cluster_cpu_capacity"] = cluster_data[cluster_id]["cpu_capacity"]
+            w["cluster_memory_capacity"] = cluster_data[cluster_id][
                 "memory_capacity"
             ]
 
@@ -141,18 +141,16 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         # Create a dictionary of cluster information for easy lookup
         cluster_data = {}
         for cluster in cluster_info:
-            if "cluster_label" in cluster:
-                cluster_label = cluster["cluster_label"]
+            if "cluster_id" in cluster:
+                cluster_id = cluster["cluster_id"]
 
-                # Filter by listed_clusters if specified, otherwise filter by configured clusters
+                # Filter by listed_clusters if specified (from config.yaml)
+                # Otherwise, include all clusters from the data
                 if listed_clusters:
-                    if cluster_label not in listed_clusters:
-                        continue
-                elif cluster_labels:
-                    if cluster_label not in cluster_labels:
+                    if cluster_id not in listed_clusters:
                         continue
 
-                cluster_data[cluster_label] = {
+                cluster_data[cluster_id] = {
                     "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
                     "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
                     "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
@@ -177,13 +175,12 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
             # Add timestamp to each workload
             for w in raw_workloads:
-                cluster_label = w.get("cluster_label", "private")
-                # Filter by listed_clusters if specified, otherwise filter by configured clusters
+                cluster_id = w.get("cluster_id")
+                # Filter by listed_clusters if specified (from config.yaml)
+                # Otherwise, include all workloads from the data
                 include_workload = True
                 if listed_clusters:
-                    include_workload = cluster_label in listed_clusters
-                elif cluster_labels:
-                    include_workload = cluster_label in cluster_labels
+                    include_workload = cluster_id in listed_clusters
                 
                 if include_workload:
                     w["timestamp"] = int(ts)
