@@ -196,7 +196,7 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 @traceable(name="performance_agent")
-def performance_agent(state:Dict[str, Any]) -> Dict[str, Any]:
+def performance_agent_node(state:Dict[str, Any]) -> Dict[str, Any]:
     """
     Invokes the LLM to generate migration recommendations and explanations.
     Now includes historical context if available.
@@ -232,7 +232,8 @@ def performance_agent(state:Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 @traceable(name="cost_agent")
-def cost_agent(state:Dict[str, Any]) -> Dict[str, Any]:
+def cost_agent_node(state:Dict[str, Any]) -> Dict[str, Any]:
+    """Invoke the cost agent to generate migration recommendations and explanations."""
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
     historical_context = state.get("historical_context", "")  # Get from state
@@ -264,7 +265,41 @@ def cost_agent(state:Dict[str, Any]) -> Dict[str, Any]:
     
     return state
 
-def _validation_timestamps(pending_percentage_result_all_timestamps: Any = None, workloads: Any = None):
+@traceable(name="consolidator")
+def consolidator_node(state:Dict[str, Any]) -> Dict[str, Any]:
+    """Invoke the consolidator agent to finalize decisions based on other agents' outputs."""
+    decisions = state.get("decisions", [])
+    overall_explanations = state.get("overall_explanation", [])
+    workload_explanations = state.get("workload_explanations", [])
+    historical_context = state.get("historical_context", "")  # Get from state
+
+    prompt_data = {
+        "decisions_json": json.dumps(decisions, indent=2),
+        "overall_explanation_json": json.dumps(overall_explanations, indent=2),
+        "workload_explanations_json": json.dumps(workload_explanations, indent=2),
+        "historical_context": historical_context
+    }
+
+    user_prompt = json.dumps(prompt_data)
+
+    resp = model.invoke(user_prompt)
+
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp, "consolidator")
+
+    final_decisions, workload_explanations = _error_handling(decisions_list,
+                                                            explanations_list)
+    
+    state["decisions"] = final_decisions
+    state["explanations"] = {
+        "overall_explanation": overall_explanation,
+        "workload_explanations": workload_explanations,
+    }
+    
+    return state
+
+def _validation_timestamps(pending_percentage_result_all_timestamps: Any = None,
+                           workloads: Any = None):
+    """Validate and extract latest pending percentage data for workloads."""
     valid_timestamps = [
         key for key in pending_percentage_result_all_timestamps.keys() if key.isdigit()
     ]
@@ -281,23 +316,8 @@ def _validation_timestamps(pending_percentage_result_all_timestamps: Any = None,
         w["percent_pending"] = pending_percentage_result_latest.get(workload_id, "0%")
     return pending_percentage_result_all_timestamps, pending_percentage_result_latest
 
-
-def _get_prompt_data(pending_percentage_result_all_timestamps: Any,
-                     pending_percentage_result_latest: Any,
-                     clusters: Any,
-                     workloads:Any):
-    for w in workloads:
-        workload_id = w.get("workload_id")
-        w["percent_pending"] = pending_percentage_result_latest.get(workload_id, "0%")
-
-    prompt_data = {
-        "workloads_json": json.dumps(workloads, indent=2),
-        "clusters_json": json.dumps(clusters, indent=2),
-        "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
-    }
-    return prompt_data
-
 def _parse_response(resp: Any, workloads: Any):
+    """Parse LLM response into decisions and explanations, with error handling."""
     try:
         # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
         parsed = resp if isinstance(resp, dict) else json.loads(resp)
@@ -345,6 +365,7 @@ def _parse_response(resp: Any, workloads: Any):
     return decisions_list, explanations_list, wl_output.overall_explanation
 
 def _error_handling(decisions_list: Any, explanations_list: Any):
+    """Handle errors in LLM output and ensure valid decisions and explanations."""
     final_decisions: list[int] = []
     workload_explanations: list[str] = []
 
@@ -369,6 +390,5 @@ def _error_handling(decisions_list: Any, explanations_list: Any):
 
         final_decisions.append(label_int)
         workload_explanations.append(expl)
-
 
     return final_decisions, workload_explanations

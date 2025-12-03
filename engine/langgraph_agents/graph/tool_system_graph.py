@@ -15,7 +15,7 @@ from ..tools import (
     infra_pricing,
 )
 from ..nodes.history_context_node import fetch_history_context_node
-from ..nodes.agents_tools import recommendations_node
+from ..nodes.agents_tools import recommendations_node, cost_agent_node, performance_agent_node, consolidator_node
 class MigrationStateToolsGraph(TypedDict):
     """State container used by the migration tools LangGraph."""
 
@@ -246,6 +246,9 @@ def create_tool_system_migration_graph_v2():
     """
     graph = StateGraph(MigrationStateToolsGraph)
 
+    # Add history context node
+    graph.add_node("fetch_history", fetch_history_context_node)
+
     graph.add_node("input_filter", input_filter_node)
     graph.add_node("cluster_capacity", cluster_capacity_node)
     graph.add_node("pending_by_cluster", pending_by_cluster_node)
@@ -253,10 +256,13 @@ def create_tool_system_migration_graph_v2():
     graph.add_node("workload_pricing", workload_pricing_node)
     graph.add_node("workload_capacity", workload_capacity_node)
     graph.add_node("infra_pricing", cluster_pricing_node)
-    graph.add_node("recommendations", recommendations_node)
+    graph.add_node("performance", performance_agent_node)
+    graph.add_node("cost", cost_agent_node)
+    graph.add_node("consolidator", consolidator_node)
 
-    #Parallel nodes entry points
-    graph.add_edge(START, "input_filter")
+    # New flow: START -> fetch_history -> input_filter -> parallel tools -> recommendations
+    graph.add_edge(START, "fetch_history")
+    graph.add_edge("fetch_history", "input_filter")
 
     graph.add_edge("input_filter", "pending_by_workload")
     graph.add_edge("input_filter", "cluster_capacity")
@@ -265,13 +271,17 @@ def create_tool_system_migration_graph_v2():
     graph.add_edge("input_filter", "workload_pricing")
     graph.add_edge("input_filter", "infra_pricing")
 
-    graph.add_edge("pending_by_workload", "recommendations")
-    graph.add_edge("cluster_capacity", "recommendations")
-    graph.add_edge("pending_by_cluster", "recommendations")
-    graph.add_edge("workload_capacity", "recommendations")
-    graph.add_edge("workload_pricing", "recommendations")
-    graph.add_edge("infra_pricing", "recommendations")
+    graph.add_edge("pending_by_workload", "performance")
+    graph.add_edge("cluster_capacity", "performance")
+    graph.add_edge("pending_by_cluster", "performance")
+    graph.add_edge("workload_capacity", "performance")
 
-    graph.add_edge("recommendations", END)
+    graph.add_edge("workload_pricing", "cost")
+    graph.add_edge("infra_pricing", "cost")
+
+    graph.add_edge("performance", "consolidator")
+    graph.add_edge("cost", "consolidator")
+    
+    graph.add_edge("consolidator", END)
 
     return graph.compile(checkpointer=MemorySaver())
