@@ -211,3 +211,41 @@ def create_tool_system_migration_graph():
     graph.add_edge("recommendations", END)
 
     return graph.compile(checkpointer=MemorySaver())
+
+def create_tool_system_migration_graph_v2():
+    """Create a migration graph based on tool system nodes.
+
+    Returns:
+        StateGraph: Configured state graph for migration analysis.
+    """
+    graph = StateGraph(MigrationStateToolsGraph)
+
+    graph.add_node("input_filter", input_filter_node)
+    graph.add_node("cluster_capacity", cluster_capacity_node)
+    graph.add_node("pending_by_cluster", pending_by_cluster_node)
+    graph.add_node("pending_by_workload", pending_by_workload_node)
+    graph.add_node("workload_pricing", workload_pricing_node)
+    graph.add_node("workload_capacity", workload_capacity_node)
+    graph.add_node("infra_pricing", cluster_pricing_node)
+    graph.add_node("recommendations", recommendationsNode)
+
+    #Parallel nodes entry points
+    graph.add_edge(START, "input_filter")
+
+    graph.add_edge("input_filter", "pending_by_workload")
+    graph.add_edge("input_filter", "cluster_capacity")
+    graph.add_edge("input_filter", "pending_by_cluster")
+    graph.add_edge("input_filter", "workload_capacity")
+    graph.add_edge("input_filter", "workload_pricing")
+    graph.add_edge("input_filter", "infra_pricing")
+
+    graph.add_edge("pending_by_workload", "recommendations")
+    graph.add_edge("cluster_capacity", "recommendations")
+    graph.add_edge("pending_by_cluster", "recommendations")
+    graph.add_edge("workload_capacity", "recommendations")
+    graph.add_edge("workload_pricing", "recommendations")
+    graph.add_edge("infra_pricing", "recommendations")
+
+    graph.add_edge("recommendations", END)
+
+    return graph.compile(checkpointer=MemorySaver())
