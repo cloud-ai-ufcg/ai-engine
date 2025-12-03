@@ -75,21 +75,17 @@ ai:
 clusters: # Multi-cluster configuration
   enabled: true # Enable multi-cluster support
   definitions: # List of cluster definitions
-    - cluster_id: "private-cluster-cost"
-      cluster_profile: "private-cost"
-      cluster_label: "private-cost" # Used for backward compatibility with monitoring data
+    - cluster_id: "member1"
+      cluster_profile: "private"
+      cluster_label: "private" # Used for backward compatibility with monitoring data
       cluster_description: "Private cluster for internal workloads"
-    - cluster_id: "private-cluster-performance"
-      cluster_profile: "private-performance"
-      cluster_label: "private-performance" # Used for backward compatibility with monitoring data
+    - cluster_id: "member3"
+      cluster_profile: "private"
+      cluster_label: "private" # Used for backward compatibility with monitoring data
       cluster_description: "Private cluster for internal workloads"
-    - cluster_id: "public-cluster-cost"
-      cluster_profile: "public-cost"
-      cluster_label: "public-cost" # Used for backward compatibility with monitoring data
-      cluster_description: "Public cloud cluster for external/scalable workloads"
-    - cluster_id: "public-cluster-performance"
-      cluster_profile: "public-performance"
-      cluster_label: "public-performance" # Used for backward compatibility with monitoring data
+    - cluster_id: "member2"
+      cluster_profile: "public"
+      cluster_label: "public" # Used for backward compatibility with monitoring data
       cluster_description: "Public cloud cluster for external/scalable workloads"
 
 paths:
