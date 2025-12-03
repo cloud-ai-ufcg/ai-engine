@@ -1,16 +1,16 @@
+"""Nodes and helpers for LangGraph agents using the OpenRouter-backed LLM."""
+
 import json
 
 from typing import Any, Dict
+
 from dotenv import load_dotenv
-from engine.ai_config import (
-    build_system_prompt_from_config,
-    get_prompt,
-    WorkloadLabelOutput,
-)
-from engine.util import load_config, get_logger
 from langsmith import traceable
 
+from engine.ai_config import build_system_prompt_from_config
+from engine.data_types import WorkloadLabelOutput
 from engine.client import OpenRouterClient
+from engine.util import get_logger, load_config
 
 logger = get_logger("langgraph_agents")
 
@@ -37,6 +37,7 @@ class OpenRouterInvokeModel:
         }
 
     def invoke(self, user_prompt: str) -> str:
+        """Invoke the model with the given user prompt."""
         return self._client.chat_structured(
             model=self._model_name,
             system_prompt=self._system_prompt,
@@ -67,13 +68,13 @@ def get_llm():
         generation_config.pop("system_prompt", None)
         generation_config.pop("rules", None)
 
-        model = OpenRouterInvokeModel(
+        llm_model = OpenRouterInvokeModel(
             client, model_name, system_prompt, **generation_config
         )
-        return model
-    except Exception as e:
-        logger.error(f"Failed to initialize OpenRouter client/model: {e}")
-        raise ValueError(f"Failed to initialize OpenRouter client/model: {e}")
+        return llm_model
+    except Exception as e:  # pragma: no cover - defensive logging
+        logger.error("Failed to initialize OpenRouter client/model: %s", e)
+        raise ValueError("Failed to initialize OpenRouter client/model") from e
 
 
 model = get_llm()
@@ -196,22 +197,30 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 @traceable(name="performance_agent")
 def performance_agent(state:Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Invokes the LLM to generate migration recommendations and explanations.
+    Now includes historical context if available.
+    """
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
+    historical_context = state.get("historical_context", "")  # Get from state
+    pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
-    pending_percentage_result_latest, pending_percentage_result_all_timestamps = _validation_timestamps(state)
+    _validation_timestamps(pending_percentage_result_all_timestamps, workloads)
 
-    prompt_data = _get_prompt_data(pending_percentage_result_all_timestamps,
-                                   pending_percentage_result_latest, clusters,
-                                   workloads)
+    prompt_data = {
+        "workloads_json": json.dumps(workloads, indent=2),
+        "clusters_json": json.dumps(clusters, indent=2),
+        "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
+        "historical_context": historical_context,  # Pass to prompt
+    }
+    user_prompt = json.dumps(prompt_data, separators=(',', ':'))
 
-    prompt = get_prompt("label_workloads", **prompt_data)
-    resp = model.invoke(prompt)
+    resp = model.invoke(user_prompt)
 
-    decisions_list, explanations_list, overall_explanation = _parse_response(resp,
-                                                                             "PerformanceAgent")
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp, "PerformanceAgent")
 
-    final_decisions, workload_explanations = error_handling(decisions_list,
+    final_decisions, workload_explanations = _error_handling(decisions_list,
                                                             explanations_list)
 
     state["decisions"] = final_decisions
@@ -224,34 +233,38 @@ def performance_agent(state:Dict[str, Any]) -> Dict[str, Any]:
 
 @traceable(name="cost_agent")
 def cost_agent(state:Dict[str, Any]) -> Dict[str, Any]:
-
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
+    historical_context = state.get("historical_context", "")  # Get from state
+    pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
-    pending_percentage_result_latest, pending_percentage_result_all_timestamps = _validation_timestamps(state)
+    _validation_timestamps(pending_percentage_result_all_timestamps, workloads)
 
-    prompt_data = _get_prompt_data(pending_percentage_result_all_timestamps,
-                                   pending_percentage_result_latest, clusters,
-                                   workloads)
+    prompt_data = {
+        "workloads_json": json.dumps(workloads, indent=2),
+        "clusters_json": json.dumps(clusters, indent=2),
+        "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
+        "historical_context": historical_context,  # Pass to prompt
+    }
 
-    prompt = get_prompt("label_workloads", **prompt_data)
-    resp = model.invoke(prompt)
+    user_prompt = json.dumps(prompt_data, separators=(',', ':'))
+
+    resp = model.invoke(user_prompt)
 
     decisions_list, explanations_list, overall_explanation = _parse_response(resp, "CostAgent")
 
-    final_decisions, workload_explanations = error_handling(decisions_list, explanations_list)
-
+    final_decisions, workload_explanations = _error_handling(decisions_list,
+                                                            explanations_list)
+    
     state["decisions"] = final_decisions
     state["explanations"] = {
         "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
     }
-
+    
     return state
 
-def _validation_timestamps(state: Dict[str, Any]):
-    pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
-
+def _validation_timestamps(pending_percentage_result_all_timestamps: Any = None, workloads: Any = None):
     valid_timestamps = [
         key for key in pending_percentage_result_all_timestamps.keys() if key.isdigit()
     ]
@@ -262,6 +275,10 @@ def _validation_timestamps(state: Dict[str, Any]):
         )
     else:
         pending_percentage_result_latest = {}
+
+    for w in workloads:
+        workload_id = w.get("workload_id")
+        w["percent_pending"] = pending_percentage_result_latest.get(workload_id, "0%")
     return pending_percentage_result_all_timestamps, pending_percentage_result_latest
 
 
@@ -280,33 +297,54 @@ def _get_prompt_data(pending_percentage_result_all_timestamps: Any,
     }
     return prompt_data
 
-def _parse_response(resp: Any, agent):
+def _parse_response(resp: Any, workloads: Any):
     try:
         # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
         parsed = resp if isinstance(resp, dict) else json.loads(resp)
         wl_output = WorkloadLabelOutput.from_dict(parsed)
         decisions_list = wl_output.decisions
         explanations_list = wl_output.explanations
-        overall_explanation = parsed.get(
-            "overall_explanation", "Migration decisions generated by LLM"
-        )
-    except (Exception,):
-        # Fallback path when response is not valid or schema fails
-        logger.error(
-            "LLM failed to generate a valid WorkloadLabelOutput."
-        )
-        decisions_list = [-1] * len(workloads)
-        explanations_list = [
-            f"{agent} failed to produce WorkloadLabelOutput"
-            for _ in workloads
-        ]
-        overall_explanation = (
-            f"{agent} failed to produce WorkloadLabelOutput"
-        )
-    return decisions_list, explanations_list, overall_explanation
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        # Log a small snippet of the raw response (if available) to aid debugging
+        try:
+            raw_preview = resp[:500] if isinstance(resp, str) else str(resp)[:500]
+            logger.error(
+                "LLM failed to generate a valid WorkloadLabelOutput: %s. " \
+                "Raw response preview: %s",
+                exc,
+                raw_preview,
+            )
+        except Exception:
+            logger.error(
+                "LLM failed to generate a valid WorkloadLabelOutput and " \
+                "raw response could not be logged: %s",
+                exc,
+            )
 
+        # Instead of marking all workloads as invalid (-1), preserve the original
+        # cluster assignment when available. This avoids treating the entire batch
+        # as ignored just because the LLM output was slightly malformed.
+        decisions_list = []
+        explanations_list = []
 
-def error_handling(decisions_list: Any, explanations_list: Any):
+        for w in workloads:
+            original_cluster_label = w.get("cluster_label", "private")
+            if original_cluster_label == "public":
+                decision_val = 1
+            elif original_cluster_label == "private":
+                decision_val = 0
+            else:
+                # Unknown/absent label - fall back to -1 for this workload only
+                decision_val = -1
+
+            decisions_list.append(decision_val)
+            explanations_list.append(
+                f"Maintaining original cluster ({original_cluster_label}) due to invalid LLM response"
+            )
+
+    return decisions_list, explanations_list, wl_output.overall_explanation
+
+def _error_handling(decisions_list: Any, explanations_list: Any):
     final_decisions: list[int] = []
     workload_explanations: list[str] = []
 
@@ -315,18 +353,22 @@ def error_handling(decisions_list: Any, explanations_list: Any):
 
         try:
             val = int(label)
-            if val in [0, 1]:
+
+            if val in (0, 1, -1):
                 label_int = val
-            elif val == -1:
-                label_int = -1
             else:
-                logger.warning(f"Label value {val} outside of expected range [0, 1, -1]. Setting to -1.")
-                label_int = -1
+                logger.warning(
+                    "Label value %s outside of expected range [0, 1, -1]. Setting to -1.",
+                    val,
+                )
         except (ValueError, TypeError):
-            logger.warning(f"Non-numeric label received: {label}. Setting to -1.")
-            label_int = -1
-            
+            logger.warning(
+                "Non-numeric label received: %s. Setting to -1.",
+                label,
+            )
+
         final_decisions.append(label_int)
         workload_explanations.append(expl)
+
 
     return final_decisions, workload_explanations

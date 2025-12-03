@@ -66,7 +66,7 @@ class Client(ABC):
         """
         if not system_prompt or not user_prompt:
             raise ValueError("system_prompt and user_prompt are required")
-        
+
         # Prepare the request parameters
         request_params = {
             "model": model,
@@ -173,7 +173,7 @@ class OpenRouterClient(Client):
 
         Accepts extra kwargs (e.g., proxies) and forwards to base Client.
         """
-        if self._initialized:
+        if getattr(self, "_initialized", False):
             return
 
         api_key = os.getenv("OPENROUTER_API_KEY")
