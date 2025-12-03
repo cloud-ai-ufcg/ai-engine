@@ -9,7 +9,7 @@ import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pymongo import MongoClient, ASCENDING
-from .ai_config import WorkloadRecommendation
+from .data_types import WorkloadRecommendation
 
 logger = logging.getLogger(__name__)
 
