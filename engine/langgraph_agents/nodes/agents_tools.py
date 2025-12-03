@@ -89,7 +89,85 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
+    pending_percentage_result_latest, pending_percentage_result_all_timestamps = _validation_timestamps(state)
 
+    prompt_data = _get_prompt_data(pending_percentage_result_all_timestamps,
+                                   pending_percentage_result_latest, clusters,
+                                   workloads)
+    
+    prompt = get_prompt("label_workloads", **prompt_data)
+    resp = model.invoke(prompt)
+
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp,
+                                                                             "RecommendationsNode")
+
+    final_decisions, workload_explanations = error_handling(decisions_list,
+                                                            explanations_list)
+
+    state["decisions"] = final_decisions
+    state["explanations"] = {
+        "overall_explanation": overall_explanation,
+        "workload_explanations": workload_explanations,
+    }
+
+    return state
+
+@traceable(name="performance_agent")
+def performance_agent(state:Dict[str, Any]) -> Dict[str, Any]:
+    workloads = state.get("workloads", [])
+    clusters = state.get("cluster_info", [])
+
+    pending_percentage_result_latest, pending_percentage_result_all_timestamps = _validation_timestamps(state)
+
+    prompt_data = _get_prompt_data(pending_percentage_result_all_timestamps,
+                                   pending_percentage_result_latest, clusters,
+                                   workloads)
+
+    prompt = get_prompt("label_workloads", **prompt_data)
+    resp = model.invoke(prompt)
+
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp,
+                                                                             "PerformanceAgent")
+
+    final_decisions, workload_explanations = error_handling(decisions_list,
+                                                            explanations_list)
+
+    state["decisions"] = final_decisions
+    state["explanations"] = {
+        "overall_explanation": overall_explanation,
+        "workload_explanations": workload_explanations,
+    }
+
+    return state
+
+@traceable(name="cost_agent")
+def cost_agent(state:Dict[str, Any]) -> Dict[str, Any]:
+
+    workloads = state.get("workloads", [])
+    clusters = state.get("cluster_info", [])
+
+    pending_percentage_result_latest, pending_percentage_result_all_timestamps = _validation_timestamps(state)
+
+    prompt_data = _get_prompt_data(pending_percentage_result_all_timestamps,
+                                   pending_percentage_result_latest, clusters,
+                                   workloads)
+
+    prompt = get_prompt("label_workloads", **prompt_data)
+    resp = model.invoke(prompt)
+
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp, "CostAgent")
+
+    final_decisions, workload_explanations = error_handling(decisions_list, explanations_list)
+
+    state["decisions"] = final_decisions
+    state["explanations"] = {
+        "overall_explanation": overall_explanation,
+        "workload_explanations": workload_explanations,
+    }
+
+    return state
+
+def _validation_timestamps(state: Dict[str, Any]):
     pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
     valid_timestamps = [
@@ -102,7 +180,13 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         )
     else:
         pending_percentage_result_latest = {}
+    return pending_percentage_result_all_timestamps, pending_percentage_result_latest
 
+
+def _get_prompt_data(pending_percentage_result_all_timestamps: Any,
+                     pending_percentage_result_latest: Any,
+                     clusters: Any,
+                     workloads:Any):
     for w in workloads:
         workload_id = w.get("workload_id")
         w["percent_pending"] = pending_percentage_result_latest.get(workload_id, "0%")
@@ -112,11 +196,9 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         "clusters_json": json.dumps(clusters, indent=2),
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
     }
+    return prompt_data
 
-    prompt = get_prompt("label_workloads", **prompt_data)
-    resp = model.invoke(prompt)
-
-
+def _parse_response(resp: Any, agent):
     try:
         # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
         parsed = resp if isinstance(resp, dict) else json.loads(resp)
@@ -133,45 +215,36 @@ def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
         )
         decisions_list = [-1] * len(workloads)
         explanations_list = [
-            "RecommendationsNode failed to produce WorkloadLabelOutput"
+            f"{agent} failed to produce WorkloadLabelOutput"
             for _ in workloads
         ]
         overall_explanation = (
-            "RecommendationsNode failed to produce WorkloadLabelOutput"
+            f"{agent} failed to produce WorkloadLabelOutput"
         )
+    return decisions_list, explanations_list, overall_explanation
 
+
+def error_handling(decisions_list: Any, explanations_list: Any):
     final_decisions: list[int] = []
     workload_explanations: list[str] = []
 
     for label, expl in zip(decisions_list, explanations_list):
-        label_int = -1 
+        label_int = -1
 
         try:
-            
             val = int(label)
-            
-            
             if val in [0, 1]:
                 label_int = val
             elif val == -1:
-                label_int = -1 
+                label_int = -1
             else:
-                
                 logger.warning(f"Label value {val} outside of expected range [0, 1, -1]. Setting to -1.")
                 label_int = -1
-                
         except (ValueError, TypeError):
-            
             logger.warning(f"Non-numeric label received: {label}. Setting to -1.")
             label_int = -1
             
         final_decisions.append(label_int)
         workload_explanations.append(expl)
 
-    state["decisions"] = final_decisions
-    state["explanations"] = {
-        "overall_explanation": overall_explanation,
-        "workload_explanations": workload_explanations,
-    }
-
-    return state
+    return final_decisions, workload_explanations
