@@ -83,30 +83,112 @@ model = get_llm()
 # Langraph agents
 # -----------------------
 @traceable(name="recommendations_node")
-def recommendationsNode(state: Dict[str, Any]) -> Dict[str, Any]:
+def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Invokes the LLM to generate migration recommendations and explanations.
+    Now includes historical context if available.
     """
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
-    pending_percentage_result_latest, pending_percentage_result_all_timestamps = _validation_timestamps(state)
+    historical_context = state.get("historical_context", "")  # Get from state
 
-    prompt_data = _get_prompt_data(pending_percentage_result_all_timestamps,
-                                   pending_percentage_result_latest, clusters,
-                                   workloads)
-    
-    prompt = get_prompt("label_workloads", **prompt_data)
-    resp = model.invoke(prompt)
+    pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
-    decisions_list, explanations_list, overall_explanation = _parse_response(resp,
-                                                                             "RecommendationsNode")
+    valid_timestamps = [
+        key for key in pending_percentage_result_all_timestamps.keys() if key.isdigit()
+    ]
+    if valid_timestamps:
+        latest_timestamp = max(valid_timestamps, key=int)
+        pending_percentage_result_latest = pending_percentage_result_all_timestamps.get(
+            latest_timestamp, {}
+        )
+    else:
+        pending_percentage_result_latest = {}
 
-    final_decisions, workload_explanations = error_handling(decisions_list,
-                                                            explanations_list)
+    for w in workloads:
+        workload_id = w.get("workload_id")
+        w["percent_pending"] = pending_percentage_result_latest.get(workload_id, "0%")
+
+    prompt_data = {
+        "workloads_json": json.dumps(workloads, indent=2),
+        "clusters_json": json.dumps(clusters, indent=2),
+        "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
+        "historical_context": historical_context,  # Pass to prompt
+    }
+
+    user_prompt = json.dumps(prompt_data, separators=(',', ':'))
+
+    resp = model.invoke(user_prompt)
+
+    try:
+        # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
+        parsed = resp if isinstance(resp, dict) else json.loads(resp)
+        wl_output = WorkloadLabelOutput.from_dict(parsed)
+        decisions_list = wl_output.decisions
+        explanations_list = wl_output.explanations
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        # Log a small snippet of the raw response (if available) to aid debugging
+        try:
+            raw_preview = resp[:500] if isinstance(resp, str) else str(resp)[:500]
+            logger.error(
+                "LLM failed to generate a valid WorkloadLabelOutput: %s. Raw response preview: %s",
+                exc,
+                raw_preview,
+            )
+        except Exception:
+            logger.error(
+                "LLM failed to generate a valid WorkloadLabelOutput and raw response could not be logged: %s",
+                exc,
+            )
+
+        # Instead of marking all workloads as invalid (-1), preserve the original
+        # cluster assignment when available. This avoids treating the entire batch
+        # as ignored just because the LLM output was slightly malformed.
+        decisions_list = []
+        explanations_list = []
+
+        for w in workloads:
+            original_cluster_label = w.get("cluster_label", "private")
+            if original_cluster_label == "public":
+                decision_val = 1
+            elif original_cluster_label == "private":
+                decision_val = 0
+            else:
+                # Unknown/absent label - fall back to -1 for this workload only
+                decision_val = -1
+
+            decisions_list.append(decision_val)
+            explanations_list.append(
+                f"Maintaining original cluster ({original_cluster_label}) due to invalid LLM response"
+            )
+
+    final_decisions: list[int] = []
+    workload_explanations: list[str] = []
+
+    for label, expl in zip(decisions_list, explanations_list):
+        label_int = -1
+
+        try:
+            val = int(label)
+
+            if val in (0, 1, -1):
+                label_int = val
+            else:
+                logger.warning(
+                    "Label value %s outside of expected range [0, 1, -1]. Setting to -1.",
+                    val,
+                )
+        except (ValueError, TypeError):
+            logger.warning(
+                "Non-numeric label received: %s. Setting to -1.",
+                label,
+            )
+
+        final_decisions.append(label_int)
+        workload_explanations.append(expl)
 
     state["decisions"] = final_decisions
     state["explanations"] = {
-        "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
     }
 
