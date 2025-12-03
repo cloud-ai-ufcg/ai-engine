@@ -45,17 +45,6 @@ def cli():
 
     result, explanations = analyze_workloads(workloads, config, cluster_info=cluster_info)
 
-    metrics = get_usage_metrics()
-
-    logger.info(
-        format_message(
-            f"Requisições totais: {metrics['total_requests']} | "
-            f"Tokens usados: {metrics['total_tokens']}",
-            icon="📝",
-            color="MAGENTA",
-            bold=True,
-        )
-
 
     save_and_log_explanations(result, explanations, workloads)
 
