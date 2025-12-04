@@ -34,6 +34,10 @@ ai:
       pending_checker:
         enabled: true
         weight: 1.5
+    prompts:
+      performance_prompt_file: performance_agent
+      cost_prompt_file: cost_agent
+      consolidator_prompt_file: consolidator_agent
 
   # Legacy default_config for backward compatibility
   default_config:

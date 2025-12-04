@@ -22,8 +22,12 @@ class MigrationStateToolsGraph(TypedDict):
     workloads: List[Dict]
     cluster_info: List[Dict]
     interval_duration: str
-    decisions: List[int]
-    explanations: Dict
+    decisions: List[int]  # Performance agent decisions
+    explanations: Dict    # Performance agent explanations
+    cost_decisions: List[int]  # Cost agent decisions
+    cost_explanations: Dict    # Cost agent explanations
+    final_decisions: List[int]  # Consolidated decisions
+    final_explanations: Dict    # Consolidated explanations
     pending_tool_result: Dict
 
 
