@@ -84,7 +84,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         )
 
     cluster_manager = get_cluster_manager()
-    cluster_labels = cluster_manager.get_cluster_labels()
+    cluster_ids = cluster_manager.get_cluster_ids()
 
     # Handle different data structures
     if isinstance(data, dict) and all(
@@ -125,10 +125,10 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
                     color="CYAN",
                 )
             )
-        elif cluster_labels:
+        elif cluster_ids:
             logger.info(
                 format_message(
-                    f"Using configured clusters: {', '.join(cluster_labels)}",
+                    f"Using configured clusters: {', '.join(cluster_ids)}",
                     icon="🔍",
                     color="CYAN",
                 )
