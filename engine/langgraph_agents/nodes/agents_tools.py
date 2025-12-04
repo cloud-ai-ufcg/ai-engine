@@ -196,14 +196,14 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return state
 
 @traceable(name="performance_agent")
-def performance_agent_node(state:Dict[str, Any]) -> Dict[str, Any]:
+def performance_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Invokes the LLM to generate migration recommendations and explanations.
-    Now includes historical context if available.
+    Performance agent analyzes workloads based on performance metrics.
+    Returns ONLY the keys it modifies (decisions, explanations).
     """
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
-    historical_context = state.get("historical_context", "")  # Get from state
+    historical_context = state.get("historical_context", "")
     pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
     _validation_timestamps(pending_percentage_result_all_timestamps, workloads)
@@ -212,31 +212,34 @@ def performance_agent_node(state:Dict[str, Any]) -> Dict[str, Any]:
         "workloads_json": json.dumps(workloads, indent=2),
         "clusters_json": json.dumps(clusters, indent=2),
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
-        "historical_context": historical_context,  # Pass to prompt
+        "historical_context": historical_context,
     }
     user_prompt = json.dumps(prompt_data, separators=(',', ':'))
 
     resp = model.invoke(user_prompt)
 
-    decisions_list, explanations_list, overall_explanation = _parse_response(resp, "PerformanceAgent")
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp, workloads)
 
-    final_decisions, workload_explanations = _error_handling(decisions_list,
-                                                            explanations_list)
+    final_decisions, workload_explanations = _error_handling(decisions_list, explanations_list)
 
-    state["decisions"] = final_decisions
-    state["explanations"] = {
-        "overall_explanation": overall_explanation,
-        "workload_explanations": workload_explanations,
+    # Return ONLY the keys this node modifies, not 'workloads' or full state
+    return {
+        "decisions": final_decisions,
+        "explanations": {
+            "overall_explanation": overall_explanation,
+            "workload_explanations": workload_explanations,
+        }
     }
-
-    return state
 
 @traceable(name="cost_agent")
-def cost_agent_node(state:Dict[str, Any]) -> Dict[str, Any]:
-    """Invoke the cost agent to generate migration recommendations and explanations."""
+def cost_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Cost agent analyzes workloads based on pricing and cost metrics.
+    Returns ONLY the keys it modifies (cost_decisions, cost_explanations).
+    """
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
-    historical_context = state.get("historical_context", "")  # Get from state
+    historical_context = state.get("historical_context", "")
     pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
     _validation_timestamps(pending_percentage_result_all_timestamps, workloads)
@@ -245,57 +248,79 @@ def cost_agent_node(state:Dict[str, Any]) -> Dict[str, Any]:
         "workloads_json": json.dumps(workloads, indent=2),
         "clusters_json": json.dumps(clusters, indent=2),
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
-        "historical_context": historical_context,  # Pass to prompt
+        "historical_context": historical_context,
     }
 
     user_prompt = json.dumps(prompt_data, separators=(',', ':'))
 
     resp = model.invoke(user_prompt)
 
-    decisions_list, explanations_list, overall_explanation = _parse_response(resp, "CostAgent")
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp, workloads)
 
-    final_decisions, workload_explanations = _error_handling(decisions_list,
-                                                            explanations_list)
-    
-    state["decisions"] = final_decisions
-    state["explanations"] = {
-        "overall_explanation": overall_explanation,
-        "workload_explanations": workload_explanations,
+    final_decisions, workload_explanations = _error_handling(decisions_list, explanations_list)
+
+    # Return ONLY the keys this node modifies (with 'cost_' prefix to avoid conflicts
+    # with performance agent)
+    return {
+        "cost_decisions": final_decisions,
+        "cost_explanations": {
+            "overall_explanation": overall_explanation,
+            "workload_explanations": workload_explanations,
+        }
     }
-    
-    return state
 
 @traceable(name="consolidator")
-def consolidator_node(state:Dict[str, Any]) -> Dict[str, Any]:
-    """Invoke the consolidator agent to finalize decisions based on other agents' outputs."""
-    decisions = state.get("decisions", [])
-    overall_explanations = state.get("overall_explanation", [])
-    workload_explanations = state.get("workload_explanations", [])
-    historical_context = state.get("historical_context", "")  # Get from state
+def consolidator_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Consolidate decisions from performance_agent and cost_agent using LLM.
+    
+    The consolidator receives decisions and explanations from two agents:
+    - performance_agent (considers CPU, memory, pending pods)
+    - cost_agent (considers pricing)
+    
+    The LLM applies its own consolidation logic based on the prompt instructions.
+    Returns ONLY the keys it modifies (final_decisions, final_explanations).
+    """
+    # Get decisions and explanations from performance agent
+    performance_decisions = state.get("decisions", [])
+    performance_explanations = state.get("explanations", {}).get("workload_explanations", [])
 
+    # Get decisions and explanations from cost agent
+    cost_decisions = state.get("cost_decisions", [])
+    cost_explanations = state.get("cost_explanations", {}).get("workload_explanations", [])
+
+    # Build prompt with both agents' outputs for LLM to
+    # consolidate Note: consolidator doesn't need
+    # workloads - only the decisions
+    # and explanations from prior agents
     prompt_data = {
-        "decisions_json": json.dumps(decisions, indent=2),
-        "overall_explanation_json": json.dumps(overall_explanations, indent=2),
-        "workload_explanations_json": json.dumps(workload_explanations, indent=2),
-        "historical_context": historical_context
+        "performance_decisions": performance_decisions,
+        "performance_explanations": performance_explanations,
+        "cost_decisions": cost_decisions,
+        "cost_explanations": cost_explanations,
     }
 
-    user_prompt = json.dumps(prompt_data)
-
+    user_prompt = json.dumps(prompt_data, separators=(',', ':'))
+    
     resp = model.invoke(user_prompt)
 
-    decisions_list, explanations_list, overall_explanation = _parse_response(resp, "consolidator")
+    # Pass empty list for fallback since we don't have workloads in consolidator
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp, [])
 
-    final_decisions, workload_explanations = _error_handling(decisions_list,
-                                                            explanations_list)
-    
-    state["decisions"] = final_decisions
-    state["explanations"] = {
-        "overall_explanation": overall_explanation,
-        "workload_explanations": workload_explanations,
+    final_decisions, workload_explanations = _error_handling(decisions_list, explanations_list)
+
+    logger.info(
+        f"Consolidation complete: {len(final_decisions)} workload decisions finalized"
+    )
+
+    # Return ONLY the keys this node modifies (with 'final_' prefix for consolidated results)
+    return {
+        "final_decisions": final_decisions,
+        "final_explanations": {
+            "overall_explanation": overall_explanation,
+            "workload_explanations": workload_explanations,
+        }
     }
-    
-    return state
 
 def _validation_timestamps(pending_percentage_result_all_timestamps: Any = None,
                            workloads: Any = None):
@@ -316,14 +341,78 @@ def _validation_timestamps(pending_percentage_result_all_timestamps: Any = None,
         w["percent_pending"] = pending_percentage_result_latest.get(workload_id, "0%")
     return pending_percentage_result_all_timestamps, pending_percentage_result_latest
 
+def _recover_truncated_json(resp: str, num_workloads: int) -> dict:
+    """
+    Attempt to recover from truncated JSON response by finding the last valid structure.
+    Returns a partial dict with decisions list (truncated) and empty explanations.
+    """
+    try:
+        # Try to find and close incomplete structures
+        # Look for the last valid decision in the decisions array
+        decisions_match = resp.find('"decisions"')
+        if decisions_match == -1:
+            return None
+
+        # Find the array opening bracket
+        array_start = resp.find('[', decisions_match)
+        if array_start == -1:
+            return None
+
+        # Try to extract whatever decisions we can parse
+        # Find the last complete number followed by comma or closing bracket
+        last_valid_idx = array_start
+        depth = 0
+        for i in range(array_start, len(resp)):
+            if resp[i] == '[':
+                depth += 1
+            elif resp[i] == ']':
+                depth -= 1
+                if depth == 0:
+                    last_valid_idx = i
+                    break
+
+        if last_valid_idx == array_start:
+            return None
+
+        # Extract decisions substring and try to parse
+        decisions_str = resp[array_start:last_valid_idx+1]
+        try:
+            decisions = json.loads(decisions_str)
+            if isinstance(decisions, list) and len(decisions) > 0:
+                logger.warning(
+                    f"Recovered truncated JSON with {len(decisions)} decisions out of ~{num_workloads}"
+                )
+                return {
+                    "decisions": decisions,
+                    "explanations": [f"Decision {i}" for i in range(len(decisions))],
+                    "overall_explanation": "Recovered from truncated LLM response"
+                }
+        except json.JSONDecodeError:
+            pass
+    except Exception:
+        pass
+    
+    return None
+
+
 def _parse_response(resp: Any, workloads: Any):
-    """Parse LLM response into decisions and explanations, with error handling."""
+    """Parse LLM response into decisions and explanations,
+        with error handling and truncation recovery."""
+    overall_explanation = ""
+    parsed = None
+    wl_output = None
     try:
         # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
         parsed = resp if isinstance(resp, dict) else json.loads(resp)
         wl_output = WorkloadLabelOutput.from_dict(parsed)
         decisions_list = wl_output.decisions
         explanations_list = wl_output.explanations
+        # Try to extract an overall explanation if present in the parsed dict
+        if isinstance(parsed, dict):
+            overall_explanation = parsed.get("overall_explanation", "")
+        # As a fallback, try attribute access on the pydantic model (if available)
+        if not overall_explanation and wl_output is not None:
+            overall_explanation = getattr(wl_output, "overall_explanation", "")
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         # Log a small snippet of the raw response (if available) to aid debugging
         try:
@@ -341,28 +430,44 @@ def _parse_response(resp: Any, workloads: Any):
                 exc,
             )
 
-        # Instead of marking all workloads as invalid (-1), preserve the original
-        # cluster assignment when available. This avoids treating the entire batch
-        # as ignored just because the LLM output was slightly malformed.
-        decisions_list = []
-        explanations_list = []
+        # Try to recover truncated JSON
+        recovered = None
+        if isinstance(resp, str) and len(resp) > 100:
+            recovered = _recover_truncated_json(resp, len(workloads))
+        
+        if recovered:
+            decisions_list = recovered.get("decisions", [])
+            explanations_list = recovered.get("explanations", [])
+            overall_explanation = recovered.get("overall_explanation", "")
+        else:
+            # Fallback: preserve the original cluster assignment
+            decisions_list = []
+            explanations_list = []
 
-        for w in workloads:
-            original_cluster_label = w.get("cluster_label", "private")
-            if original_cluster_label == "public":
-                decision_val = 1
-            elif original_cluster_label == "private":
-                decision_val = 0
-            else:
-                # Unknown/absent label - fall back to -1 for this workload only
-                decision_val = -1
+            for w in workloads:
+                original_cluster_label = w.get("cluster_label", "private")
+                if original_cluster_label == "public":
+                    decision_val = 1
+                elif original_cluster_label == "private":
+                    decision_val = 0
+                else:
+                    decision_val = -1
 
-            decisions_list.append(decision_val)
-            explanations_list.append(
-                f"Maintaining original cluster ({original_cluster_label}) due to invalid LLM response"
-            )
+                decisions_list.append(decision_val)
+                explanations_list.append(
+                    f"Maintaining original cluster ({original_cluster_label})\n"
+                    f" due to invalid LLM response"
+                )
+    # Ensure we always return an overall_explanation string (may be empty)
+    if not overall_explanation:
+        try:
+            if isinstance(parsed, dict):
+                overall_explanation = parsed.get("overall_explanation", "")
+        except Exception:
+            overall_explanation = ""
 
-    return decisions_list, explanations_list, wl_output.overall_explanation
+    return decisions_list, explanations_list, overall_explanation
+
 
 def _error_handling(decisions_list: Any, explanations_list: Any):
     """Handle errors in LLM output and ensure valid decisions and explanations."""
