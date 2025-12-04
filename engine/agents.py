@@ -12,7 +12,7 @@ from .ai_config import (
 )
 from .util import get_logger, load_config
 
-from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
+from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph, create_tool_system_migration_graph_v2
 from .langgraph_agents.graph.vote_system_graph import create_vote_system_migration_graph
 from .client import OpenRouterClient
 
@@ -244,15 +244,17 @@ def label_workloads_multiagent(
         "interval_duration": interval_duration,
     }
 
-    graph = create_tool_system_migration_graph()
+    graph = create_tool_system_migration_graph_v2()
     logger.info("Using LangGraph for workload recommendations")
 
     thread_id = str(uuid.uuid4())
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
 
-    recommendations_dict = final_state.get("explanations", {})
-    final_decisions = final_state.get("decisions", [])
+    # Get consolidated decisions and explanations from consolidator node
+    # (use final_* keys which are output from consolidator_node)
+    final_decisions = final_state.get("final_decisions", [])
+    recommendations_dict = final_state.get("final_explanations", {})
     workload_explanations = recommendations_dict.get("workload_explanations", [])
 
     if not final_decisions or len(final_decisions) != len(workloads):
