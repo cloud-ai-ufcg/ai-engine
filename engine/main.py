@@ -11,12 +11,14 @@ from .util import (
     format_message,
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
+    load_config,
 )
 from .agents import label_workloads
 from .data_processor import process_monitoring_data
 
 logger = get_logger("main")
 CURRENT_BATCH_ID = 1
+
 
 def _filter_and_fill_workloads(
     latest_workloads: Dict[str, Any],
@@ -80,6 +82,7 @@ def _filter_and_fill_workloads(
         )
     )
     return workloads
+
 
 def process_monitoring_data(data, timestamp_lookback_seconds=None):
     """
@@ -150,9 +153,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         for ts in recent_timestamps:
             ts_data = data[ts]
             for w in ts_data.get("workloads", []):
-                w["timestamp"] = datetime.strptime(
-                    ts, "%Y-%m-%d %H:%M:%S"
-                ).timestamp()
+                w["timestamp"] = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp()
                 all_workloads.append(w)
 
         latest_workloads = {}
@@ -178,6 +179,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         "cluster_info": [],
     }
 
+
 def write_recommendations(result_df, output_dir=OUTPUT_DIR):
     """
     Write recommendations summary and CSV output.
@@ -200,7 +202,9 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
             if "label" not in df.columns and "destination_cluster" in df.columns:
                 df["label"] = df["destination_cluster"].astype(int)
         except Exception as e:
-            logger.error(f"Failed to convert structured recommendations to DataFrame: {e}")
+            logger.error(
+                f"Failed to convert structured recommendations to DataFrame: {e}"
+            )
             return None
 
     migrated_workloads = df[df["label"] == 1]
