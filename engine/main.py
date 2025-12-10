@@ -4,14 +4,11 @@ import pandas as pd
 import threading
 from typing import Dict, List, Any
 from datetime import datetime, timedelta
-import concurrent.futures
-from .ai_config import WorkloadRecommendation
+from .data_types import WorkloadRecommendation
 
 from .util import (
     get_logger,
-    load_config,
     format_message,
-    COLORS,
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
 )
@@ -251,39 +248,6 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
     )
 
-    if not migrated_workloads.empty:
-        logger.info(
-            format_message(
-                " Workloads to be migrated to public cluster:",
-                icon="☁️",
-                color="BLUE",
-                bold=True,
-            )
-        )
-        for _, row in migrated_workloads.iterrows():
-            logger.info(
-                format_message(f"Workload ID: {row['workload_id']}, Kind: "
-                               f"{row['kind']}, Reason: {row.get('reason', 'N/A')}", color="BLUE")
-            )
-
-    if not non_migrated_workloads.empty:
-        logger.info(
-            format_message(
-                "Workloads remaining in private cluster:",
-                icon="🔁",
-                color="GREEN",
-                bold=True,
-            )
-        )
-        for _, row in non_migrated_workloads.iterrows():
-            logger.info(
-                format_message(
-                    f"Workload ID: {row['workload_id']}, Kind: {row['kind']}, "
-                    f"Reason: {row.get('reason', 'N/A')}",
-                    color="GREEN",
-                )
-            )
-
     try:
         output_csv = os.path.join(output_dir, "recommendations.csv")
 
@@ -390,25 +354,26 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
     )
     # Don't pass multiagent parameter - let label_workloads use config.mode instead
     labels, explanations = label_workloads(
-        workloads, cluster_info=cluster_info,interval_duration=interval_duration, provider=provider
+        workloads,
+        cluster_info=cluster_info,
+        interval_duration=interval_duration,
+        provider=provider,
     )
 
     df = pd.DataFrame(workloads)
     result = df[["workload_id", "kind"]].copy()
-    
+
     if not result.empty:
         label_series = pd.Series(labels)
-        
+
         numeric_labels = pd.to_numeric(label_series, errors='coerce')
-        
+
         result["label"] = numeric_labels.fillna(-1).astype(int)
-        
+
     else:
-        
-        result["label"] = pd.Series(dtype=int) 
+
+        result["label"] = pd.Series(dtype=int)
         logger.warning("No workloads processed; 'label' column initialized empty.")
-
-
 
     # Safely attach reasons column
     if (
@@ -427,72 +392,6 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
         result["reason"] = "No explanation provided"
 
     return result, explanations
-
-
-def shard_and_analyze_workloads(workloads, config):
-    """Analyze workloads in shards using threads.
-
-    Args:
-        workloads: List of workload items to analyze.
-        config: Configuration dictionary loaded from YAML.
-
-    Returns:
-        Tuple[pd.DataFrame, dict]: Combined DataFrame with all shard results
-        and aggregated explanations.
-    """
-    # Retrieve shard size from config; fallback to processing all at once
-    shard_size = int(
-        config.get('ai', {}).get('workloads_shard_size', len(workloads))
-    ) or len(workloads)
-    if shard_size <= 0:
-        shard_size = len(workloads)
-
-    # Split workloads into shards
-    shards = [
-        workloads[i : i + shard_size] for i in range(0, len(workloads), shard_size)
-    ]
-
-    results = []
-    combined_explanations = {"workload_explanations": []}
-
-    def _analyze(shard_idx, shard):
-        """Analyze a shard, logging its thread and position."""
-
-        logger.info(
-            format_message(
-                f"🔢 Starting shard {shard_idx + 1}/{len(shards)} "
-                f"({len(shard)} workloads) on thread {threading.current_thread().name}",
-                color="CYAN",
-            )
-        )
-        df, expl = analyze_workloads(shard, config)
-        logger.info(
-            format_message(
-                f"✅ Finished shard {shard_idx + 1}/{len(shards)}",
-                color="GREEN",
-            )
-        )
-        return df, expl
-
-    # Create a thread for each shard
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(shards)) as executor:
-        future_to_shard = {
-            executor.submit(_analyze, idx, shard): idx
-            for idx, shard in enumerate(shards)
-        }
-        for future in concurrent.futures.as_completed(future_to_shard):
-            try:
-                shard_df, shard_expl = future.result()
-                results.append(shard_df)
-                if shard_expl:
-                    combined_explanations["workload_explanations"].extend(
-                        shard_expl.get("workload_explanations", [])
-                    )
-            except Exception as exc:
-                logger.error(f"Error analyzing shard: {exc}")
-
-    combined_df = pd.concat(results, ignore_index=True) if results else pd.DataFrame()
-    return combined_df, combined_explanations
 
 
 def save_and_log_explanations(
@@ -532,14 +431,11 @@ def save_and_log_explanations(
     explanations_list = (explanations or {}).get("workload_explanations", [])
 
     recs_payload = []
-    ignored_workloads = []
 
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
         destination_cluster = row.get("label", 0)
-
-        
 
         destination_cluster = int(destination_cluster)
 
@@ -566,7 +462,6 @@ def save_and_log_explanations(
             )
         )
 
-
     # Serialize Pydantic models to plain dicts for JSON output
     recs_payload_serialized = [
         (
@@ -581,15 +476,6 @@ def save_and_log_explanations(
         json.dump(recs_payload_serialized, f, indent=2)
     logger.info(f"Explanations written to {explanations_file}")
 
-    
-    logger.info(
-        format_message(
-            f"Overall explanation: {explanations.get('explanation', 'No overall explanation provided')}",
-            icon="💡",
-            color="YELLOW",
-            bold=True,
-        )
-    )
     logger.info(format_message("Detailed explanations for each workload:", bold=True))
 
     for idx, explanation in enumerate(explanations.get("workload_explanations", [])):
@@ -597,7 +483,6 @@ def save_and_log_explanations(
             workload_id = result_df.iloc[idx]["workload_id"]
             label = result_df.iloc[idx]["label"]
 
-            
             if str(label) == "-1" or label == -1:
                 continue
 
