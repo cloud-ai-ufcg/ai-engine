@@ -1,7 +1,9 @@
 import os
 import json
 import pandas as pd
-import datetime
+import threading
+from typing import Dict, List, Any
+from datetime import datetime, timedelta
 from .data_types import WorkloadRecommendation
 
 from .util import (
@@ -9,12 +11,173 @@ from .util import (
     format_message,
     OUTPUT_DIR,
     ENGINE_LOG_DIR,
+    load_config,
 )
 from .agents import label_workloads
 from .data_processor import process_monitoring_data
 
 logger = get_logger("main")
 CURRENT_BATCH_ID = 1
+
+
+def _filter_and_fill_workloads(
+    latest_workloads: Dict[str, Any],
+    cluster_data: Dict[str, Any],
+    timestamp_lookback_seconds: int,
+) -> List[Dict[str, Any]]:
+    """Filter workloads with non-zero resources and fills them with cluster
+    information.
+
+    Args:
+        latest_workloads: Mapping of workload_id to latest workload dict.
+        cluster_data: Mapping of cluster labels to load/capacity data.
+        timestamp_lookback_seconds: Window size for logging context.
+
+    Returns:
+        List of filled workload dicts.
+    """
+    workloads: List[Dict[str, Any]] = []
+
+    # Backwards-compat: if a list of snapshots was passed, convert it into
+    # a mapping workload_id -> latest snapshot (by timestamp) so the body of
+    # this function can remain unchanged and operate on a dict as before.
+    if isinstance(latest_workloads, list):
+        tmp: Dict[str, Any] = {}
+        for w in latest_workloads:
+            wid = w.get("workload_id") or w.get("id")
+            if not wid:
+                logger.debug("Skipping workload without workload_id")
+                continue
+            existing = tmp.get(wid)
+            if existing is None or w.get("timestamp", 0) > existing.get("timestamp", 0):
+                tmp[wid] = w
+        latest_workloads = tmp
+
+    for workload_id, w in latest_workloads.items():
+        # Skip workloads with zero requested resources
+        cpu = w.get("resources", {}).get("cpu", "0")
+        memory = w.get("resources", {}).get("memory", "0")
+        if cpu == "0m" and memory == "0Mi":
+            logger.debug(f"Skipping workload {workload_id} with zero resources")
+            continue
+
+        # Fill cluster details if available
+        cluster_label = w.get("cluster_label")
+        if cluster_label and cluster_label in cluster_data:
+            w["cluster_load"] = cluster_data[cluster_label]["cpu_load"]
+            w["cluster_cpu_capacity"] = cluster_data[cluster_label]["cpu_capacity"]
+            w["cluster_memory_capacity"] = cluster_data[cluster_label][
+                "memory_capacity"
+            ]
+
+        workloads.append(w)
+
+    # Summary log
+    logger.info(
+        format_message(
+            f"Filtered to {len(workloads)} unique workloads with non-zero resources \n"
+            f"from the last {timestamp_lookback_seconds} seconds",
+            icon="🔄",
+            color="GREEN",
+        )
+    )
+    return workloads
+
+
+def process_monitoring_data(data, timestamp_lookback_seconds=None):
+    """
+    Process monitoring data from different formats and extract workloads.
+    Processes data from the last timestamp_lookback_seconds seconds of timestamps.
+
+    Parses timestamps in "%Y-%m-%d %H:%M:%S" format into datetime objects.
+
+    Args:
+        data: JSON monitoring data in one of the supported formats
+        timestamp_lookback_seconds: Number of seconds to look back
+            (defaults to config value)
+
+    Returns:
+        dict with:
+            - "workloads": list of workload dicts enriched with cluster info
+            - "cluster_info": latest cluster information extracted from data
+    """
+    config = load_config()
+    if timestamp_lookback_seconds is None:
+        timestamp_lookback_seconds = config.get("ai", {}).get(
+            "timestamp_lookback_seconds", 30
+        )
+
+    preserve_history = bool(config.get("ai", {}).get("preserve_history", False))
+
+    if isinstance(data, dict) and all(
+        isinstance(value, dict) and "workloads" in value for value in data.values()
+    ):
+        try:
+            timestamps = sorted(
+                data.keys(),
+                key=lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"),
+                reverse=True,
+            )
+        except Exception as e:
+            logger.error(f"Error parsing timestamps: {e}")
+            return {"workloads": [], "cluster_info": []}
+
+        if not timestamps:
+            return {"workloads": [], "cluster_info": []}
+
+        latest_timestamp = timestamps[0]
+        latest_dt = datetime.strptime(latest_timestamp, "%Y-%m-%d %H:%M:%S")
+        cutoff_dt = latest_dt - timedelta(seconds=timestamp_lookback_seconds)
+        cutoff_ts = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        recent_timestamps = [ts for ts in timestamps if ts >= cutoff_ts]
+
+        latest_data = data[latest_timestamp]
+        cluster_info = latest_data.get("cluster_info", [])
+
+        # Prepare cluster mapping
+        cluster_data = {}
+        for cluster in cluster_info:
+            label = cluster.get("cluster_label")
+            if not label:
+                continue
+            cluster_data[label] = {
+                "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
+                "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
+                "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
+                "memory_capacity": cluster.get("cluster_memory_capacity", "16384Mi"),
+            }
+
+        # Build list of snapshots
+        all_workloads = []
+        for ts in recent_timestamps:
+            ts_data = data[ts]
+            for w in ts_data.get("workloads", []):
+                w["timestamp"] = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp()
+                all_workloads.append(w)
+
+        latest_workloads = {}
+        for w in all_workloads:
+            wid = w.get("workload_id") or w.get("id")
+            if not wid:
+                continue
+            prev = latest_workloads.get(wid)
+            if prev is None or w["timestamp"] > prev["timestamp"]:
+                latest_workloads[wid] = w
+
+        filled = _filter_and_fill_workloads(
+            latest_workloads, cluster_data, timestamp_lookback_seconds
+        )
+
+        return {
+            "workloads": filled,
+            "cluster_info": cluster_info,
+        }
+
+    return {
+        "workloads": data,
+        "cluster_info": [],
+    }
 
 
 def write_recommendations(result_df, output_dir=OUTPUT_DIR):
@@ -72,15 +235,17 @@ def write_recommendations(result_df, output_dir=OUTPUT_DIR):
         )
     logger.info(
         format_message(
-            f" Workloads to be migrated to public cluster: {migrated_count} ({migrated_count/total_workloads*100:.1f}%)",
+            f" Workloads to be migrated to public cluster: {migrated_count}",
             icon="☁️",
             color="BLUE",
             bold=True,
         )
     )
+    pct = (non_migrated_count / total_workloads * 100) if total_workloads else 0.0
+
     logger.info(
         format_message(
-            f"Workloads remaining in private cluster: {non_migrated_count} ({non_migrated_count/total_workloads*100:.1f}%)",
+            f"Workloads remaining in private cluster: {non_migrated_count} ({pct:.1f}%)",
             icon="🔁",
             color="GREEN",
             bold=True,
@@ -163,7 +328,7 @@ def load_monitoring_data(config):
         processed_data = process_monitoring_data(data)
         return processed_data
     except Exception as e:
-        logger.error(f"❌ Error loading monitoring data: {str(e)}")
+        logger.error(f"❌ Error loading monitoring data: {e}")
         return None
 
 
@@ -244,7 +409,9 @@ def save_and_log_explanations(
         explanations: Dictionary with explanations
         workloads: Optional original workloads list to infer origin_cluster
     """
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Ensure we have a batch_id; if not provided, increment global counter
+
     global CURRENT_BATCH_ID
 
     if batch_id is None:
@@ -283,7 +450,8 @@ def save_and_log_explanations(
             explanations_list[idx]
             if idx < len(explanations_list)
             else (
-                f"Recommended to {'public' if destination_cluster == 1 else 'private'} cluster based on resource analysis"
+                f"Recommended to {'public' if destination_cluster == 1 else 'private'} "
+                f"cluster based on resource analysis"
             )
         )
 
