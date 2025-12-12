@@ -177,17 +177,16 @@ def label_workloads_with_llm(
     workloads: Union[list, "pd.DataFrame"],
     model: str = "google/gemini-2.0-flash-001",
     client: OpenRouterClient = None,
-) -> Tuple[List[str], Dict[str, Any]]:
+) -> Tuple[List[int], Dict[str, Any]]:
     """
     Uses LLM API to decide workload labels with explanations.
-    Each label is now a cluster ID (e.g., "private-cluster-1", "aws-3241").
-    
+    Each label: 0 = private, 1 = public.
     Args:
         workloads: list of dicts or DataFrame with workload fields.
         model: Model to use via Provider (default: google/gemini-2.0-flash-001)
     Returns:
         Tuple containing:
-        - List of cluster IDs (strings) in the same order as workloads
+        - List of labels (0 or 1) in the same order
         - Dictionary with explanations for each workload
     """
     global REQUEST_COUNTER, TOKEN_TOTALS
@@ -201,26 +200,8 @@ def label_workloads_with_llm(
 
     # Data preparation
     df = _normalize_workloads_to_dataframe(workloads)
-    
-    cluster_manager = get_cluster_manager()
-    all_clusters = cluster_manager.get_all_clusters()
-    listed_clusters = build_cluster_selection_from_config()
-    
-    if listed_clusters:
-        clusters = [
-            c for c in all_clusters 
-            if c.cluster_label in listed_clusters or c.cluster_id in listed_clusters
-        ]
-    else:
-        clusters = all_clusters
-    
-    cluster_list_str = _get_cluster_list_for_prompt()
-    
     user_prompt = get_prompt(
-        "label_workloads", 
-        workloads_json=df.to_json(orient="records", indent=2),
-        cluster_list=cluster_list_str,
-        num_clusters=len(clusters)
+        "label_workloads", workloads_json=df.to_json(orient="records", indent=2)
     )
 
     # Initialize to avoid UnboundLocalError if exception raised before assignment
@@ -271,101 +252,43 @@ def label_workloads_with_llm(
                 )
                 logger.info(f"Truncated decisions to match {len(df)} workloads")
             else:
-                # Too few decisions - pad with binary 0 (stay in first cluster - no migration)
+                # Too few decisions - pad with original cluster labels (no migration)
                 missing_count = len(df) - len(decisions)
-                for i in range(missing_count):
-                    decisions.append(0)  # Binary 0 = stay (will be converted to first cluster)
+
+                # Get original cluster labels for missing decisions
+                for i in range(len(decisions), len(df)):
+                    workload_row = df.iloc[i]
+                    original_cluster = workload_row.get('cluster_label', 'private')
+                    # Convert cluster label to decision: private=0, public=1
+                    original_decision = 0 if original_cluster == 'private' else 1
+                    decisions.append(original_decision)
                     explanations.append(
-                        f"Maintaining current cluster due to missing AI decision"
+                        f"Maintaining original cluster ({original_cluster}) due to missing AI decision"
                     )
+
                 logger.info(
-                    f"Padded {missing_count} missing decisions with 0 (no migration)"
+                    f"Padded {missing_count} missing decisions with original cluster assignments (no migration)"
                 )
 
-        # Convert binary indices (0, 1, 2, ...) to actual cluster IDs (strings)
-        labels = _convert_binary_decisions_to_cluster_ids(decisions, workloads)
-        logger.info(f"Converted binary decisions {decisions} to cluster IDs: {labels}")
+        # Convert to integers and create output
+        labels = [int(decision) for decision in decisions]
+        logger.info("Migration decisions extracted from JSON response")
 
-        explanation_output = _create_explanation_output(labels, explanations, df, cluster_manager)
+        explanation_output = _create_explanation_output(labels, explanations, df)
         return labels, explanation_output
 
     except Exception as e:
-        logger.warning(f"Error parsing JSON response: {e}")
-
-        # Fallback: try to extract just the cluster indices/IDs
-        # Pattern to match cluster indices or IDs
-        pattern = r"\d+"
-        matches = re.findall(pattern, text_response)
-
-        if matches and len(matches) >= len(df):
-            logger.info(f"Cluster indices identified in response")
-            # Convert indices to cluster IDs
-            labels = []
-            for match in matches[:len(df)]:
-                idx = int(match)
-                if 0 <= idx < len(clusters):
-                    labels.append(clusters[idx].cluster_id)
-                else:
-                    # Fallback to original cluster
-                    labels.append(df.iloc[len(labels)].get('cluster_label', 'private'))
-
-            # Create a basic explanation output
-            explanation_output = {
-                "explanation": "Migration decisions based on resource usage patterns",
-                "workload_explanations": [],
-            }
-
-            # Log the decision for each workload
-            for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-                workload_id = workload[1].get("workload_id", f"workload-{idx}")
-                kind = workload[1].get("kind", "unknown")
-                logger.info(
-                    f"Decision for {workload_id} ({kind}): Cluster {label}"
-                )
-
-                # Add a generic explanation
-                explanation = f"Workload {workload_id} ({kind}) recommended for {label} cluster based on resource requirements"
-                explanation_output["workload_explanations"].append(explanation)
-
-            return labels, explanation_output
-
-        logger.warning(f"Could not extract labels from LLM, response: {text_response}")
-        labels = _label_workloads_with_heuristics(workloads)
-
-        # Create a fallback explanation output
-        explanation_output = {
-            "explanation": "Migration decisions based on heuristic rules (fallback)",
-            "workload_explanations": [],
-        }
-
-        # Add generic explanations
-        for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get("workload_id", f"workload-{idx}")
-            kind = workload[1].get("kind", "unknown")
-
-            explanation = f"Workload {workload_id} ({kind}) recommended for {label} cluster based on resource analysis"
-            explanation_output["workload_explanations"].append(explanation)
-
-        return labels, explanation_output
+        logger.error(f"Error parsing JSON response: {e}")
+        try:
+            logger.error(f"Raw LLM response (first 500 chars): {text_response[:500]}")
+        except Exception:
+            logger.error("No LLM response available (error occurred before API call)")
+        logger.error("LLM failed to generate recommendations, skipping this cycle")
+        return [], {}
     except Exception as e:
-        logger.warning(f"Error using {client} API: {e}")
-        labels = _label_workloads_with_heuristics(workloads)
-
-        # Create a fallback explanation output
-        explanation_output = {
-            "explanation": f"Migration decisions based on heuristic rules due to API error: {str(e)}",
-            "workload_explanations": [],
-        }
-
-        # Add generic explanations
-        for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
-            workload_id = workload[1].get("workload_id", f"workload-{idx}")
-            kind = workload[1].get("kind", "unknown")
-
-            explanation = f"Workload {workload_id} ({kind}) recommended for {label} cluster based on resource analysis"
-            explanation_output["workload_explanations"].append(explanation)
-
-        return labels, explanation_output
+        logger.error(f"Error using {client} API: {e}")
+        logger.error("LLM failed to generate recommendations, skipping this cycle")
+        return [], {}
     
 
 # ---------------------------------------------------------------------------
