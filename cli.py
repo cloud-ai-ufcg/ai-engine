@@ -45,7 +45,6 @@ def cli():
 
     result, explanations = analyze_workloads(workloads, config, cluster_info=cluster_info)
 
-
     save_and_log_explanations(result, explanations, workloads)
 
     global current_batch_id
