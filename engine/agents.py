@@ -3,13 +3,21 @@ import pandas as pd
 import re
 import json
 import uuid
-from .ai_config import get_prompt, PROMPTS, build_system_prompt_from_config, get_agent_mode, get_agent_config
-from .util import get_logger, load_config
+from .ai_config import (
+    get_prompt,
+    PROMPTS,
+    build_system_prompt_from_config,
+    get_agent_mode,
+    get_agent_config,
+    build_cluster_selection_from_config,
+)
 from .cluster_config import get_cluster_manager
 from engine.langgraph_agents.nodes.agents_tools import _convert_binary_decisions_to_cluster_ids
-from .ai_config import build_cluster_selection_from_config
+from .util import get_logger, load_config
+
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph
+from .langgraph_agents.graph.vote_system_graph import create_vote_system_migration_graph
 from .client import OpenRouterClient
 
 logger = get_logger("agents")
@@ -188,10 +196,8 @@ def label_workloads_with_llm(
 
     # Dependency validation - early return if not available
     if not HAS_OPENROUTER or not openrouter_client:
-        logger.warning(
-            "OpenRouter client not available. Using traditional model as fallback."
-        )
-        return _label_workloads_with_heuristics(workloads)
+        logger.error("OpenRouter client not available, skipping this cycle")
+        return [], {}
 
     # Data preparation
     df = _normalize_workloads_to_dataframe(workloads)
@@ -217,13 +223,14 @@ def label_workloads_with_llm(
         num_clusters=len(clusters)
     )
 
-
     # Initialize to avoid UnboundLocalError if exception raised before assignment
     text_response = ""
 
     try:
         config = load_config()
-        model = config.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
+        model = config.get("ai", {}).get(
+            "selected_model", "google/gemini-2.0-flash-001"
+        )
 
         model_config = config.get("ai", {}).get("default_config", {})
         system_prompt = build_system_prompt_from_config()
@@ -359,7 +366,7 @@ def label_workloads_with_llm(
             explanation_output["workload_explanations"].append(explanation)
 
         return labels, explanation_output
-
+    
 
 # ---------------------------------------------------------------------------
 # MultiAgent implementation
@@ -368,13 +375,13 @@ def label_workloads_multiagent(
     workloads: List[dict], cluster_info: List[dict], interval_duration: str = None
 ) -> Tuple[List[str], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
-    
+
     # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
     # so they only appear in the graph output (not in the input trace).
     state = {
         "workloads": df.to_dict(orient="records"),
         "cluster_info": cluster_info,
-        "interval_duration": interval_duration
+        "interval_duration": interval_duration,
     }
 
     graph = create_tool_system_migration_graph()
@@ -385,13 +392,31 @@ def label_workloads_multiagent(
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
 
     recommendations_dict = final_state.get("explanations", {})
-
     final_decisions = final_state.get("decisions", [])
     workload_explanations = recommendations_dict.get("workload_explanations", [])
 
     if not final_decisions or len(final_decisions) != len(workloads):
-        logger.warning("Final decisions missing or length mismatch. Applying existing recommendations ")
-        labels = final_decisions
+        logger.warning(
+            f"Number of decisions ({len(final_decisions)}) does not match number of workloads ({len(workloads)}). "
+            "Filling missing recommendations with -1."
+        )
+
+        corrected_decisions = []
+        missing_workloads = []
+
+        for i, wl in enumerate(workloads):
+            if i < len(final_decisions):
+                corrected_decisions.append(final_decisions[i])
+            else:
+                corrected_decisions.append(-1)
+                missing_workloads.append(wl.get("workload_id", f"workload_{i}"))
+
+        if missing_workloads:
+            logger.warning(
+                f"No response from LLM for workloads: {', '.join(missing_workloads)}"
+            )
+
+        labels = corrected_decisions
     else:
         labels = _convert_binary_decisions_to_cluster_ids(final_decisions, workloads)
 
@@ -418,7 +443,7 @@ def label_workloads_multiagent_votes(workloads, provider="langgraph"):
         "explanations": {},
     }
 
-    graph = create_migration_graph()
+    graph = create_vote_system_migration_graph()
 
     thread_id = str(uuid.uuid4())
 
@@ -452,7 +477,7 @@ def label_workloads(
         cluster_info: List of cluster information dictionaries (optional)
         provider: Override the configured provider (optional)
         multiagent: Override the configured mode (optional, legacy parameter)
-    
+
     Returns:
         Tuple of (cluster_ids, explanations) where cluster_ids are now strings
     """
@@ -465,16 +490,16 @@ def label_workloads(
         logger.info(f"Using legacy multiagent parameter: mode={mode}")
     else:
         mode = get_agent_mode()
-    
+
     # Get mode-specific configuration
     agent_config = get_agent_config(mode)
-    
+
     # Determine provider
     if provider is None:
         provider = agent_config.get("provider", "openrouter")
-    
+
     provider = provider.lower()
-    
+
     try:
         model = cfg.get("ai", {}).get("selected_model", "google/gemini-2.0-flash-001")
         generation_config = agent_config.get("generation_config", {})
@@ -485,22 +510,24 @@ def label_workloads(
         logger.info(f"CONFIG: Using generation config: {generation_config}")
     except Exception as e:
         logger.warning(f"Could not log model configuration: {e}")
-        
+
     labels = []
     explanations = {}
-    
     # Route to appropriate labeling function based on mode
     if mode == "multi_agent":
         # Use provided cluster_info or default to empty list
         if cluster_info is None:
             cluster_info = []
-            logger.warning("No cluster_info provided to label_workloads, using empty list")
-        labels, explanations = label_workloads_multiagent(workloads, cluster_info, interval_duration)
+            logger.warning(
+                "No cluster_info provided to label_workloads, using empty list"
+            )
+        labels, explanations = label_workloads_multiagent(
+            workloads, cluster_info, interval_duration
+        )
     elif provider in {"gemini", "google", "openrouter"}:
         labels, explanations = label_workloads_with_llm(workloads)
     else:
-        logger.warning(f"Unknown provider '{provider}'. Falling back to heuristics.")
-        labels = _label_workloads_with_heuristics(workloads)
+        logger.warning(f"Unknown provider '{provider}'. skipping this cycle.")
         explanations = {
             "workload_explanations": [],
         }
@@ -513,79 +540,3 @@ def label_workloads(
         }
 
     return labels, explanations
-
-
-def _label_workloads_with_heuristics(
-    workloads: Union[list, "pd.DataFrame"],
-) -> List[str]:
-    """
-    Fallback: uses simple heuristics to decide cluster assignments when AI is not available.
-    Returns cluster IDs instead of binary decisions.
-    """
-    
-    logger.info("Using heuristics as fallback for migration decision")
-    cluster_manager = get_cluster_manager()
-    clusters = cluster_manager.get_all_clusters()
-    
-    if not clusters:
-        logger.warning("No clusters configured. Using default assignment.")
-        clusters_for_assignment = [("private", "private"), ("public", "public")]
-    else:
-        clusters_for_assignment = [(c.cluster_id, c.cluster_label) for c in clusters]
-    
-    if isinstance(workloads, list):
-        df = pd.DataFrame(workloads)
-    else:
-        df = workloads.copy()
-
-    def cpu_to_float(cpu):
-        if isinstance(cpu, str) and cpu.endswith("m"):
-            return float(cpu[:-1]) / 1000.0
-        return float(cpu) if cpu else 0.0
-
-    def mem_to_float(mem):
-        if isinstance(mem, str) and mem.endswith("Mi"):
-            return float(mem[:-2])
-        return float(mem) if mem else 0.0
-
-    # Extract and convert resources
-    try:
-        cpu_values = df["resources"].apply(
-            lambda x: cpu_to_float(x.get("cpu", 0)) if isinstance(x, dict) else 0.0
-        )
-        mem_values = df["resources"].apply(
-            lambda x: mem_to_float(x.get("memory", 0)) if isinstance(x, dict) else 0.0
-        )
-    except:
-        # Alternative if the format is different
-        cpu_values = df.get("resources.cpu", df.get("cpu", 0)).apply(cpu_to_float)
-        mem_values = df.get("resources.memory", df.get("memory", 0)).apply(mem_to_float)
-
-    # Rules heuristics:
-    # 1. If CPU > 0.5 or memory > 1024Mi: use first cluster (often public/scaling)
-    # 2. If percent_pending > 20%: use first cluster
-    try:
-        percent_pending = df["percent_pending"].fillna(0)
-    except:
-        percent_pending = pd.Series([0] * len(df))
-
-    # Combine rules to decide: high requirements go to first cluster, others to current cluster
-    high_resource_mask = (cpu_values > 0.5) | (mem_values > 1024) | (percent_pending > 50)
-    
-    # If we have multiple clusters, assign high-resource workloads to the first one
-    # Otherwise, keep workloads in their current cluster
-    labels = []
-    for idx, row in df.iterrows():
-        if high_resource_mask.iloc[idx] and len(clusters_for_assignment) > 1:
-            labels.append(clusters_for_assignment[0][0])
-        else:
-            current_cluster_label = row.get('cluster_label', 'private')
-            cluster_id = cluster_manager.resolve_cluster_label_to_id(current_cluster_label)
-            labels.append(cluster_id if cluster_id else current_cluster_label)
-
-    return labels
-
-
-# Get metrics of token usage and requests
-def get_usage_metrics() -> Dict[str, Any]:
-    return {"total_requests": REQUEST_COUNTER, "total_tokens": TOKEN_TOTALS}
