@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 import datetime
+from time import strptime
 from .cluster_config import get_cluster_manager
 from typing import Dict, List, Any
 
@@ -116,7 +117,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         try:
             timestamps = sorted(
                 data.keys(),
-                key=lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"),
+                key=lambda x: strptime(x, "%Y-%m-%d %H:%M:%S"),
                 reverse=True,
             )
         except Exception as e:
@@ -127,7 +128,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             return {"workloads": [], "cluster_info": []}
 
         latest_timestamp = timestamps[0]
-        latest_dt = datetime.strptime(latest_timestamp, "%Y-%m-%d %H:%M:%S")
+        latest_dt = strptime(latest_timestamp, "%Y-%m-%d %H:%M:%S")
         cutoff_dt = latest_dt - datetime.timedelta(seconds=timestamp_lookback_seconds)
         cutoff_ts = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
 
