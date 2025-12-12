@@ -14,6 +14,8 @@ from ..tools import (
     workload_pricing,
     infra_pricing,
 )
+
+from ..nodes.agents_tools import recommendations_node
 from ..nodes.history_context_node import fetch_history_context_node
 from ..nodes.agents_tools import recommendations_node, cost_agent_node, performance_agent_node, consolidator_node
 class MigrationStateToolsGraph(TypedDict):
