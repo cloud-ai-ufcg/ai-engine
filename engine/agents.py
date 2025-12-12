@@ -244,8 +244,16 @@ def label_workloads_multiagent(
         "interval_duration": interval_duration,
     }
 
-    graph = create_tool_system_migration_graph_v2()
-    logger.info("Using LangGraph for workload recommendations")
+    # Select graph version from config
+    config = load_config()
+    graph_version = config.get("ai", {}).get("multi_agent", {}).get("graph_version", "v2")
+    
+    if graph_version == "v1":
+        graph = create_tool_system_migration_graph()
+        logger.info("Using LangGraph v1 (tool_system) for workload recommendations")
+    else:
+        graph = create_tool_system_migration_graph_v2()
+        logger.info("Using LangGraph v2 (performance+cost+consolidator) for workload recommendations")
 
     thread_id = str(uuid.uuid4())
 
