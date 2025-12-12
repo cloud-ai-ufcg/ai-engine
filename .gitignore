@@ -32,4 +32,11 @@ go.work.sum
 .DS_Store
 
 # logs
-logs
+logs/
+
+# Test files
+.pytest_cache/
+__pycache__/
+
+# Windsurf configuration
+.windsurf/
