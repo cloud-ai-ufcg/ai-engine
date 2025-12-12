@@ -4,7 +4,8 @@ AI Configuration Module
 
 import os
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from .util import load_config
 from .data_types import WorkloadLabelOutput
