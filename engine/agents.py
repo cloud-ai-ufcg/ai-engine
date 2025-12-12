@@ -259,11 +259,18 @@ def label_workloads_multiagent(
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
 
-    # Get consolidated decisions and explanations from consolidator node
-    # (use final_* keys which are output from consolidator_node)
-    final_decisions = final_state.get("final_decisions", [])
-    recommendations_dict = final_state.get("final_explanations", {})
-    workload_explanations = recommendations_dict.get("workload_explanations", [])
+    # Get decisions and explanations based on graph version
+    # v1 uses 'decisions' and 'explanations' from recommendations_node
+    # v2 uses 'final_decisions' and 'final_explanations' from consolidator_node
+    if graph_version == "v1":
+        final_decisions = final_state.get("decisions", [])
+        recommendations_dict = final_state.get("explanations", {})
+        workload_explanations = recommendations_dict.get("workload_explanations", [])
+    else:
+        # v2: use final_* keys from consolidator_node
+        final_decisions = final_state.get("final_decisions", [])
+        recommendations_dict = final_state.get("final_explanations", {})
+        workload_explanations = recommendations_dict.get("workload_explanations", [])
 
     if not final_decisions or len(final_decisions) != len(workloads):
         logger.warning(
