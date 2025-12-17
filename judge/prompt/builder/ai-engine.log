@@ -1,0 +1,685 @@
+[32m[2026-01-13 23:37:21] [1mINFO[0m[32m [ai_engine] - [1m================================================================================[0m[0m
+[32m[2026-01-13 23:37:21] [1mINFO[0m[32m [ai_engine] - [1m🚀 AI ENGINE STARTING[0m[0m
+[32m[2026-01-13 23:37:21] [1mINFO[0m[32m [ai_engine] - [1m================================================================================[0m[0m
+[32m[2026-01-13 23:37:22] [1mINFO[0m[32m [ai_engine] - Loaded AI Engine configuration from central config: /app/simulator_config.yaml[0m
+[34m[2026-01-13 23:37:22] [1mDEBUG[0m[34m [ai_engine] - Using config file: /app/simulator_config.yaml[0m
+[34m[2026-01-13 23:37:22] [1mDEBUG[0m[34m [ai_engine] - Using base directory: /[0m
+[34m[2026-01-13 23:37:22] [1mDEBUG[0m[34m [ai_engine] - Using output directory: /ai-engine/data/output[0m
+[34m[2026-01-13 23:37:22] [1mDEBUG[0m[34m [ai_engine] - Using log directory: /ai-engine/logs[0m
+[32m[2026-01-13 23:37:22] [1mINFO[0m[32m [engine.ai_config] - Loaded multi_agent prompt from file: prompts/multi_agent_v3.txt[0m
+/app/engine/agents.py:32: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  import google.generativeai as genai
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8083 (Press CTRL+C to quit)
+[32m[2026-01-13 23:37:26] [1mINFO[0m[32m [ai_engine.api] - 🚀 [32mRecommendations are running[0m[0m
+INFO:     127.0.0.1:44962 - "POST /start HTTP/1.1" 200 OK
+[34m[2026-01-13 23:42:26] [1mDEBUG[0m[34m [ai_engine.api] - Fetching metrics from MONITOR: http://0.0.0.0:8082/metrics[0m
+[32m[2026-01-13 23:42:26] [1mINFO[0m[32m [ai_engine.api] - 📊 [32mSuccessfully fetched metrics from MONITOR[0m[0m
+[32m[2026-01-13 23:42:26] [1mINFO[0m[32m [ai_engine.main] - 🔄 [32mFiltered to 80 unique workloads with non-zero resources 
+from the last 600 seconds[0m[0m
+[32m[2026-01-13 23:42:26] [1mINFO[0m[32m [ai_engine.main] - 🧠 [35m[1mUsing openrouter platform for workload analysis[0m[0m
+[32m[2026-01-13 23:42:26] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using agent mode: multi_agent[0m
+[32m[2026-01-13 23:42:26] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using provider: openrouter[0m
+[32m[2026-01-13 23:42:26] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using model: anthropic/claude-haiku-4.5[0m
+[32m[2026-01-13 23:42:26] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using generation config: {'temperature': 0.5, 'max_output_tokens': 18000}[0m
+[32m[2026-01-13 23:42:26] [1mINFO[0m[32m [ai_engine.agents] - Using LangGraph v2 (performance+cost+consolidator) for workload recommendations[0m
+[34m[2026-01-13 23:42:26] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/cost_agent.txt[0m
+[34m[2026-01-13 23:42:26] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/performance_agent.txt[0m
+[32m[2026-01-13 23:42:30] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[32m[2026-01-13 23:42:30] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-13 23:42:40] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 10482[0m
+[31m[2026-01-13 23:42:40] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  ],
+  "explanations": [
+    "Keep on private cluster: workload already deployed; no cost benefit to migrate despite pending pods",
+    "Keep on private cluster: workload already deployed; no cost benefit to migrate despite pendin[0m
+[33m[2026-01-13 23:42:40] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-13 23:42:40] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-13 23:42:40] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-13 23:42:42] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 11010[0m
+[31m[2026-01-13 23:42:42] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  "explanations": [
+    "Workload has 2 pending pods. Private cluster at 91.5% load (exceeds 80% threshold). Migrate to public cluster with 0% load.",
+    "Workload has 2 pending pods. Private cluster at 91.5% load (exceeds 80% thres[0m
+[33m[2026-01-13 23:42:42] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-13 23:42:42] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-13 23:42:42] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-13 23:42:42] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/consolidator_agent.txt[0m
+[32m[2026-01-13 23:42:45] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-13 23:42:52] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 10161[0m
+[31m[2026-01-13 23:42:52] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  "explanations": [
+    "Performance prioritized: public cluster recommended. Cost analysis favors private, but performance constraints override.",
+    "Performance prioritized: public cluster recommended. Cost analysis favors privat[0m
+[33m[2026-01-13 23:42:52] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~0[0m
+[34m[2026-01-13 23:42:52] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.langgraph_agents] - Consolidation complete: 80 workload decisions finalized[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - Explanations written to /ai-engine/logs/recommendations_explanations_20260113_234252.json[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - [1mDetailed explanations for each workload:[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/73 (deployment) → public: Decision 0[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/69 (deployment) → public: Decision 1[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/63 (deployment) → public: Decision 2[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/79 (deployment) → public: Decision 3[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/75 (deployment) → public: Decision 4[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/44 (deployment) → public: Decision 5[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/54 (deployment) → public: Decision 6[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/37 (deployment) → public: Decision 7[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/1 (deployment) → private: Decision 8[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/52 (deployment) → public: Decision 9[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/70 (deployment) → public: Decision 10[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/76 (deployment) → private: Decision 11[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/23 (deployment) → private: Decision 12[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/27 (deployment) → public: Decision 13[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/65 (deployment) → private: Decision 14[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/29 (deployment) → private: Decision 15[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/34 (deployment) → public: Decision 16[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/9 (deployment) → private: Decision 17[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/2 (deployment) → private: Decision 18[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/20 (deployment) → public: Decision 19[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/15 (deployment) → private: Decision 20[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/17 (deployment) → public: Decision 21[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/56 (deployment) → private: Decision 22[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/12 (deployment) → private: Decision 23[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/16 (deployment) → public: Decision 24[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/41 (deployment) → private: Decision 25[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/24 (deployment) → private: Decision 26[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/21 (deployment) → private: Decision 27[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/58 (deployment) → public: Decision 28[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/77 (deployment) → private: Decision 29[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/25 (deployment) → private: Decision 30[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/38 (deployment) → private: Decision 31[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/40 (deployment) → public: Decision 32[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/33 (deployment) → public: Decision 33[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/55 (deployment) → public: Decision 34[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/6 (deployment) → public: Decision 35[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/14 (deployment) → public: Decision 36[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/51 (deployment) → public: Decision 37[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/68 (deployment) → public: Decision 38[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/53 (deployment) → public: Decision 39[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/3 (deployment) → public: Decision 40[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/67 (deployment) → public: Decision 41[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/32 (deployment) → public: Decision 42[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/64 (deployment) → private: Decision 43[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/72 (deployment) → public: Decision 44[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/61 (deployment) → public: Decision 45[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/66 (deployment) → public: Decision 46[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/57 (deployment) → public: Decision 47[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/8 (deployment) → public: Decision 48[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/19 (deployment) → public: Decision 49[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/18 (deployment) → public: Decision 50[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/47 (deployment) → private: Decision 51[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/26 (deployment) → public: Decision 52[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/11 (deployment) → public: Decision 53[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/78 (deployment) → public: Decision 54[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/62 (deployment) → public: Decision 55[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/28 (deployment) → public: Decision 56[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/43 (deployment) → public: Decision 57[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/35 (deployment) → public: Decision 58[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/39 (deployment) → public: Decision 59[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/50 (deployment) → public: Decision 60[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/42 (deployment) → public: Decision 61[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/49 (deployment) → public: Decision 62[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/7 (deployment) → public: Decision 63[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/59 (deployment) → public: Decision 64[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/36 (deployment) → public: Decision 65[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/31 (deployment) → public: Decision 66[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/71 (deployment) → public: Decision 67[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/45 (deployment) → public: Decision 68[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/46 (deployment) → public: Decision 69[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/4 (deployment) → public: Decision 70[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/30 (deployment) → public: Decision 71[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/10 (deployment) → public: Decision 72[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/5 (deployment) → public: Decision 73[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/74 (deployment) → public: Decision 74[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/22 (deployment) → public: Decision 75[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/48 (deployment) → public: Decision 76[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/13 (deployment) → public: Decision 77[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/80 (deployment) → public: Decision 78[0m[0m
+[32m[2026-01-13 23:42:52] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/60 (deployment) → public: Decision 79[0m[0m
+[32m[2026-01-13 23:43:18] [1mINFO[0m[32m [ai_engine.api] - ✅ [32mSuccessfully applied recommendations[0m[0m
+[34m[2026-01-13 23:48:18] [1mDEBUG[0m[34m [ai_engine.api] - Fetching metrics from MONITOR: http://0.0.0.0:8082/metrics[0m
+[32m[2026-01-13 23:48:18] [1mINFO[0m[32m [ai_engine.api] - 📊 [32mSuccessfully fetched metrics from MONITOR[0m[0m
+[32m[2026-01-13 23:48:18] [1mINFO[0m[32m [ai_engine.main] - 🔄 [32mFiltered to 80 unique workloads with non-zero resources 
+from the last 600 seconds[0m[0m
+[32m[2026-01-13 23:48:18] [1mINFO[0m[32m [ai_engine.main] - 🧠 [35m[1mUsing openrouter platform for workload analysis[0m[0m
+[32m[2026-01-13 23:48:18] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using agent mode: multi_agent[0m
+[32m[2026-01-13 23:48:18] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using provider: openrouter[0m
+[32m[2026-01-13 23:48:18] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using model: anthropic/claude-haiku-4.5[0m
+[32m[2026-01-13 23:48:18] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using generation config: {'temperature': 0.5, 'max_output_tokens': 18000}[0m
+[32m[2026-01-13 23:48:18] [1mINFO[0m[32m [ai_engine.agents] - Using LangGraph v2 (performance+cost+consolidator) for workload recommendations[0m
+[34m[2026-01-13 23:48:18] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/cost_agent.txt[0m
+[34m[2026-01-13 23:48:18] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/performance_agent.txt[0m
+[32m[2026-01-13 23:48:22] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[32m[2026-01-13 23:48:22] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-13 23:48:32] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 12924[0m
+[31m[2026-01-13 23:48:32] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  "explanations": [
+    "Keep on private cluster: workload already placed there with 0% pending; private cluster has sufficient capacity at 47% load",
+    "Keep on private cluster: workload already placed there with 0% pending; pr[0m
+[33m[2026-01-13 23:48:32] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 81 decisions out of ~80[0m
+[34m[2026-01-13 23:48:32] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 81 decisions, 81 explanations[0m
+[32m[2026-01-13 23:48:32] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 81 valid decisions[0m
+[34m[2026-01-13 23:48:33] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 10543[0m
+[31m[2026-01-13 23:48:33] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "explanations": [
+    "Private cluster at 47% load; public at 95.3% (exceeds 80% threshold). Migrate from public to private to rebalance.",
+    "Private cluster at 47% load; public at 95.3% (exceeds 80% threshold). Migrate from pub[0m
+[33m[2026-01-13 23:48:33] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-13 23:48:33] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-13 23:48:33] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-13 23:48:33] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/consolidator_agent.txt[0m
+[32m[2026-01-13 23:48:34] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-13 23:48:44] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 12463[0m
+[31m[2026-01-13 23:48:44] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "explanations": [
+    "Performance analysis mandates private cluster (0). Cost analysis recommends private (0). Full agreement: keep on private cluster.",
+    "Performance analysis mandates private cluster (0). Cost analysis recomm[0m
+[33m[2026-01-13 23:48:44] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~0[0m
+[34m[2026-01-13 23:48:44] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.langgraph_agents] - Consolidation complete: 80 workload decisions finalized[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - Explanations written to /ai-engine/logs/recommendations_explanations_20260113_234844.json[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - [1mDetailed explanations for each workload:[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/1 (deployment) → private: Decision 0[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/76 (deployment) → private: Decision 1[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/23 (deployment) → private: Decision 2[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/65 (deployment) → private: Decision 3[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/29 (deployment) → private: Decision 4[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/9 (deployment) → private: Decision 5[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/2 (deployment) → private: Decision 6[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/15 (deployment) → private: Decision 7[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/56 (deployment) → private: Decision 8[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/12 (deployment) → private: Decision 9[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/41 (deployment) → private: Decision 10[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/24 (deployment) → private: Decision 11[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/21 (deployment) → private: Decision 12[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/77 (deployment) → private: Decision 13[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/25 (deployment) → private: Decision 14[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/38 (deployment) → private: Decision 15[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/64 (deployment) → private: Decision 16[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/47 (deployment) → private: Decision 17[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/73 (deployment) → private: Decision 18[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/71 (deployment) → private: Decision 19[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/27 (deployment) → private: Decision 20[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/61 (deployment) → private: Decision 21[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/18 (deployment) → private: Decision 22[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/20 (deployment) → private: Decision 23[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/78 (deployment) → private: Decision 24[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/26 (deployment) → private: Decision 25[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/55 (deployment) → private: Decision 26[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/52 (deployment) → private: Decision 27[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/75 (deployment) → private: Decision 28[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/79 (deployment) → private: Decision 29[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/54 (deployment) → private: Decision 30[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/35 (deployment) → private: Decision 31[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/43 (deployment) → private: Decision 32[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/37 (deployment) → private: Decision 33[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/4 (deployment) → private: Decision 34[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/8 (deployment) → private: Decision 35[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/33 (deployment) → private: Decision 36[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/49 (deployment) → private: Decision 37[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/66 (deployment) → private: Decision 38[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/42 (deployment) → private: Decision 39[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/69 (deployment) → private: Decision 40[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/36 (deployment) → private: Decision 41[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/45 (deployment) → private: Decision 42[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/7 (deployment) → private: Decision 43[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/68 (deployment) → private: Decision 44[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/67 (deployment) → private: Decision 45[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/53 (deployment) → private: Decision 46[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/32 (deployment) → private: Decision 47[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/46 (deployment) → private: Decision 48[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/28 (deployment) → private: Decision 49[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/62 (deployment) → private: Decision 50[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/16 (deployment) → private: Decision 51[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/11 (deployment) → private: Decision 52[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/14 (deployment) → private: Decision 53[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/6 (deployment) → private: Decision 54[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/44 (deployment) → private: Decision 55[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/40 (deployment) → private: Decision 56[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/19 (deployment) → private: Decision 57[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/63 (deployment) → private: Decision 58[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/17 (deployment) → private: Decision 59[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/50 (deployment) → private: Decision 60[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/51 (deployment) → private: Decision 61[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/31 (deployment) → private: Decision 62[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/72 (deployment) → private: Decision 63[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/70 (deployment) → private: Decision 64[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/3 (deployment) → private: Decision 65[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/59 (deployment) → private: Decision 66[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/34 (deployment) → private: Decision 67[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/57 (deployment) → private: Decision 68[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/58 (deployment) → private: Decision 69[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/39 (deployment) → private: Decision 70[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/22 (deployment) → private: Decision 71[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/10 (deployment) → private: Decision 72[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/74 (deployment) → private: Decision 73[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/60 (deployment) → private: Decision 74[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/13 (deployment) → private: Decision 75[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/5 (deployment) → private: Decision 76[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/80 (deployment) → private: Decision 77[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/48 (deployment) → private: Decision 78[0m[0m
+[32m[2026-01-13 23:48:44] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/30 (deployment) → private: Decision 79[0m[0m
+[32m[2026-01-13 23:49:10] [1mINFO[0m[32m [ai_engine.api] - ✅ [32mSuccessfully applied recommendations[0m[0m
+[34m[2026-01-13 23:54:10] [1mDEBUG[0m[34m [ai_engine.api] - Fetching metrics from MONITOR: http://0.0.0.0:8082/metrics[0m
+[32m[2026-01-13 23:54:10] [1mINFO[0m[32m [ai_engine.api] - 📊 [32mSuccessfully fetched metrics from MONITOR[0m[0m
+[32m[2026-01-13 23:54:10] [1mINFO[0m[32m [ai_engine.main] - 🔄 [32mFiltered to 80 unique workloads with non-zero resources 
+from the last 600 seconds[0m[0m
+[32m[2026-01-13 23:54:10] [1mINFO[0m[32m [ai_engine.main] - 🧠 [35m[1mUsing openrouter platform for workload analysis[0m[0m
+[32m[2026-01-13 23:54:10] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using agent mode: multi_agent[0m
+[32m[2026-01-13 23:54:10] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using provider: openrouter[0m
+[32m[2026-01-13 23:54:10] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using model: anthropic/claude-haiku-4.5[0m
+[32m[2026-01-13 23:54:10] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using generation config: {'temperature': 0.5, 'max_output_tokens': 18000}[0m
+[32m[2026-01-13 23:54:10] [1mINFO[0m[32m [ai_engine.agents] - Using LangGraph v2 (performance+cost+consolidator) for workload recommendations[0m
+[34m[2026-01-13 23:54:10] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/cost_agent.txt[0m
+[34m[2026-01-13 23:54:10] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/performance_agent.txt[0m
+[32m[2026-01-13 23:54:13] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[32m[2026-01-13 23:54:14] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-13 23:54:25] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 13008[0m
+[31m[2026-01-13 23:54:25] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+  ],
+  "explanations": [
+    "Workload has 2 pending pods. Private cluster at 91.5% load; public cluster empty. Migrate to public to resolve pending pods and reduce private cluster pressure.",
+    "Workload has 2 pending pods. Pri[0m
+[33m[2026-01-13 23:54:25] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-13 23:54:25] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-13 23:54:25] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-13 23:54:32] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 13177[0m
+[31m[2026-01-13 23:54:32] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+  ],
+  "explanations": [
+    "Private cluster at 91.5% load exceeds 80% threshold. Migrate to public cluster (0% load) to restore capacity headroom and prevent cascading failures.",
+    "Private cluster at 91.5% load exceeds 80% t[0m
+[33m[2026-01-13 23:54:32] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-13 23:54:32] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-13 23:54:32] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-13 23:54:32] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/consolidator_agent.txt[0m
+[32m[2026-01-13 23:54:33] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-13 23:54:39] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 8695[0m
+[31m[2026-01-13 23:54:39] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  "explanations": [
+    "Both Performance and Cost analysts agree on public cluster placement. No trade-off conflict.",
+    "Both Performance and Cost analysts agree on public cluster placement. No trade-off conflict.",
+    "Both Per[0m
+[33m[2026-01-13 23:54:39] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~0[0m
+[34m[2026-01-13 23:54:39] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.langgraph_agents] - Consolidation complete: 80 workload decisions finalized[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - Explanations written to /ai-engine/logs/recommendations_explanations_20260113_235439.json[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - [1mDetailed explanations for each workload:[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/73 (deployment) → public: Decision 0[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/69 (deployment) → public: Decision 1[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/63 (deployment) → public: Decision 2[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/79 (deployment) → public: Decision 3[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/75 (deployment) → public: Decision 4[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/44 (deployment) → public: Decision 5[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/54 (deployment) → public: Decision 6[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/37 (deployment) → public: Decision 7[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/1 (deployment) → public: Decision 8[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/52 (deployment) → public: Decision 9[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/70 (deployment) → public: Decision 10[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/76 (deployment) → public: Decision 11[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/23 (deployment) → public: Decision 12[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/27 (deployment) → public: Decision 13[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/65 (deployment) → public: Decision 14[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/29 (deployment) → public: Decision 15[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/34 (deployment) → public: Decision 16[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/9 (deployment) → public: Decision 17[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/2 (deployment) → public: Decision 18[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/20 (deployment) → public: Decision 19[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/15 (deployment) → public: Decision 20[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/17 (deployment) → public: Decision 21[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/56 (deployment) → public: Decision 22[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/12 (deployment) → public: Decision 23[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/16 (deployment) → public: Decision 24[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/41 (deployment) → public: Decision 25[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/24 (deployment) → public: Decision 26[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/21 (deployment) → public: Decision 27[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/58 (deployment) → public: Decision 28[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/77 (deployment) → public: Decision 29[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/25 (deployment) → public: Decision 30[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/38 (deployment) → public: Decision 31[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/40 (deployment) → public: Decision 32[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/33 (deployment) → public: Decision 33[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/55 (deployment) → public: Decision 34[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/6 (deployment) → public: Decision 35[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/14 (deployment) → public: Decision 36[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/51 (deployment) → public: Decision 37[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/68 (deployment) → public: Decision 38[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/53 (deployment) → public: Decision 39[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/3 (deployment) → public: Decision 40[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/67 (deployment) → public: Decision 41[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/32 (deployment) → public: Decision 42[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/64 (deployment) → public: Decision 43[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/72 (deployment) → public: Decision 44[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/61 (deployment) → public: Decision 45[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/66 (deployment) → public: Decision 46[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/57 (deployment) → public: Decision 47[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/8 (deployment) → public: Decision 48[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/19 (deployment) → public: Decision 49[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/18 (deployment) → public: Decision 50[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/47 (deployment) → public: Decision 51[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/26 (deployment) → public: Decision 52[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/11 (deployment) → public: Decision 53[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/78 (deployment) → public: Decision 54[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/62 (deployment) → public: Decision 55[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/28 (deployment) → public: Decision 56[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/43 (deployment) → public: Decision 57[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/35 (deployment) → public: Decision 58[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/39 (deployment) → public: Decision 59[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/50 (deployment) → public: Decision 60[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/42 (deployment) → public: Decision 61[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/49 (deployment) → public: Decision 62[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/7 (deployment) → public: Decision 63[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/59 (deployment) → public: Decision 64[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/36 (deployment) → public: Decision 65[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/31 (deployment) → public: Decision 66[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/71 (deployment) → public: Decision 67[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/45 (deployment) → public: Decision 68[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/46 (deployment) → public: Decision 69[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/4 (deployment) → public: Decision 70[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/30 (deployment) → public: Decision 71[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/10 (deployment) → public: Decision 72[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/5 (deployment) → public: Decision 73[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/74 (deployment) → public: Decision 74[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/22 (deployment) → public: Decision 75[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/48 (deployment) → public: Decision 76[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/13 (deployment) → public: Decision 77[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/80 (deployment) → public: Decision 78[0m[0m
+[32m[2026-01-13 23:54:39] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/60 (deployment) → public: Decision 79[0m[0m
+[32m[2026-01-13 23:55:09] [1mINFO[0m[32m [ai_engine.api] - ✅ [32mSuccessfully applied recommendations[0m[0m
+[34m[2026-01-14 00:00:09] [1mDEBUG[0m[34m [ai_engine.api] - Fetching metrics from MONITOR: http://0.0.0.0:8082/metrics[0m
+[32m[2026-01-14 00:00:09] [1mINFO[0m[32m [ai_engine.api] - 📊 [32mSuccessfully fetched metrics from MONITOR[0m[0m
+[32m[2026-01-14 00:00:09] [1mINFO[0m[32m [ai_engine.main] - 🔄 [32mFiltered to 80 unique workloads with non-zero resources 
+from the last 600 seconds[0m[0m
+[32m[2026-01-14 00:00:09] [1mINFO[0m[32m [ai_engine.main] - 🧠 [35m[1mUsing openrouter platform for workload analysis[0m[0m
+[32m[2026-01-14 00:00:09] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using agent mode: multi_agent[0m
+[32m[2026-01-14 00:00:09] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using provider: openrouter[0m
+[32m[2026-01-14 00:00:09] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using model: anthropic/claude-haiku-4.5[0m
+[32m[2026-01-14 00:00:09] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using generation config: {'temperature': 0.5, 'max_output_tokens': 18000}[0m
+[32m[2026-01-14 00:00:09] [1mINFO[0m[32m [ai_engine.agents] - Using LangGraph v2 (performance+cost+consolidator) for workload recommendations[0m
+[34m[2026-01-14 00:00:09] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/cost_agent.txt[0m
+[34m[2026-01-14 00:00:09] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/performance_agent.txt[0m
+[32m[2026-01-14 00:00:12] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[32m[2026-01-14 00:00:13] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-14 00:00:24] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 10501[0m
+[31m[2026-01-14 00:00:24] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "explanations": [
+    "Public cluster at 90.9% load exceeds 80% threshold. Migrate to private cluster (0% load, 76.5 CPU capacity available).",
+    "Public cluster at 90.9% load exceeds 80% threshold. Migrate to private cluster (0%[0m
+[33m[2026-01-14 00:00:24] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-14 00:00:24] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-14 00:00:24] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-14 00:00:35] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 25687[0m
+[31m[2026-01-14 00:00:35] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "explanations": [
+    "Migrate to private cluster: Private cluster has 0% utilization with ample capacity (76.5 CPU, 158.2GB memory available). Public cluster is at 90.9% CPU and 90% memory utilization, indicating high cost from au[0m
+[33m[2026-01-14 00:00:35] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-14 00:00:35] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-14 00:00:35] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-14 00:00:35] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/consolidator_agent.txt[0m
+[32m[2026-01-14 00:00:37] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-14 00:00:43] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 8615[0m
+[31m[2026-01-14 00:00:43] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "explanations": [
+    "Both Performance and Cost analysts recommend private cluster placement. Full consensus achieved.",
+    "Both Performance and Cost analysts recommend private cluster placement. Full consensus achieved.",
+    "[0m
+[33m[2026-01-14 00:00:43] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~0[0m
+[34m[2026-01-14 00:00:43] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.langgraph_agents] - Consolidation complete: 80 workload decisions finalized[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - Explanations written to /ai-engine/logs/recommendations_explanations_20260114_000043.json[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - [1mDetailed explanations for each workload:[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/73 (deployment) → private: Decision 0[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/71 (deployment) → private: Decision 1[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/27 (deployment) → private: Decision 2[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/61 (deployment) → private: Decision 3[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/18 (deployment) → private: Decision 4[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/20 (deployment) → private: Decision 5[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/78 (deployment) → private: Decision 6[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/26 (deployment) → private: Decision 7[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/55 (deployment) → private: Decision 8[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/52 (deployment) → private: Decision 9[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/75 (deployment) → private: Decision 10[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/79 (deployment) → private: Decision 11[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/54 (deployment) → private: Decision 12[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/35 (deployment) → private: Decision 13[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/43 (deployment) → private: Decision 14[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/37 (deployment) → private: Decision 15[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/4 (deployment) → private: Decision 16[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/8 (deployment) → private: Decision 17[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/33 (deployment) → private: Decision 18[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/49 (deployment) → private: Decision 19[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/66 (deployment) → private: Decision 20[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/42 (deployment) → private: Decision 21[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/69 (deployment) → private: Decision 22[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/36 (deployment) → private: Decision 23[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/45 (deployment) → private: Decision 24[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/7 (deployment) → private: Decision 25[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/68 (deployment) → private: Decision 26[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/67 (deployment) → private: Decision 27[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/53 (deployment) → private: Decision 28[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/32 (deployment) → private: Decision 29[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/46 (deployment) → private: Decision 30[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/28 (deployment) → private: Decision 31[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/62 (deployment) → private: Decision 32[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/16 (deployment) → private: Decision 33[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/11 (deployment) → private: Decision 34[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/14 (deployment) → private: Decision 35[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/6 (deployment) → private: Decision 36[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/44 (deployment) → private: Decision 37[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/40 (deployment) → private: Decision 38[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/19 (deployment) → private: Decision 39[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/63 (deployment) → private: Decision 40[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/17 (deployment) → private: Decision 41[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/50 (deployment) → private: Decision 42[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/51 (deployment) → private: Decision 43[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/31 (deployment) → private: Decision 44[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/72 (deployment) → private: Decision 45[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/70 (deployment) → private: Decision 46[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/3 (deployment) → private: Decision 47[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/59 (deployment) → private: Decision 48[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/34 (deployment) → private: Decision 49[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/57 (deployment) → private: Decision 50[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/58 (deployment) → private: Decision 51[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/39 (deployment) → private: Decision 52[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/22 (deployment) → private: Decision 53[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/10 (deployment) → private: Decision 54[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/74 (deployment) → private: Decision 55[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/60 (deployment) → private: Decision 56[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/13 (deployment) → private: Decision 57[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/5 (deployment) → private: Decision 58[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/80 (deployment) → private: Decision 59[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/48 (deployment) → private: Decision 60[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/30 (deployment) → private: Decision 61[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/23 (deployment) → private: Decision 62[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/2 (deployment) → private: Decision 63[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/65 (deployment) → private: Decision 64[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/1 (deployment) → private: Decision 65[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/29 (deployment) → private: Decision 66[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/9 (deployment) → private: Decision 67[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/76 (deployment) → private: Decision 68[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/47 (deployment) → private: Decision 69[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/77 (deployment) → private: Decision 70[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/41 (deployment) → private: Decision 71[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/38 (deployment) → private: Decision 72[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/24 (deployment) → private: Decision 73[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/15 (deployment) → private: Decision 74[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/64 (deployment) → private: Decision 75[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/21 (deployment) → private: Decision 76[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/56 (deployment) → private: Decision 77[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/25 (deployment) → private: Decision 78[0m[0m
+[32m[2026-01-14 00:00:43] [1mINFO[0m[32m [ai_engine.main] - 💡 [32mWorkload default/12 (deployment) → private: Decision 79[0m[0m
+[32m[2026-01-14 00:01:13] [1mINFO[0m[32m [ai_engine.api] - ✅ [32mSuccessfully applied recommendations[0m[0m
+[34m[2026-01-14 00:06:13] [1mDEBUG[0m[34m [ai_engine.api] - Fetching metrics from MONITOR: http://0.0.0.0:8082/metrics[0m
+[32m[2026-01-14 00:06:13] [1mINFO[0m[32m [ai_engine.api] - 📊 [32mSuccessfully fetched metrics from MONITOR[0m[0m
+[32m[2026-01-14 00:06:13] [1mINFO[0m[32m [ai_engine.main] - 🔄 [32mFiltered to 80 unique workloads with non-zero resources 
+from the last 600 seconds[0m[0m
+[32m[2026-01-14 00:06:13] [1mINFO[0m[32m [ai_engine.main] - 🧠 [35m[1mUsing openrouter platform for workload analysis[0m[0m
+[32m[2026-01-14 00:06:13] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using agent mode: multi_agent[0m
+[32m[2026-01-14 00:06:13] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using provider: openrouter[0m
+[32m[2026-01-14 00:06:13] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using model: anthropic/claude-haiku-4.5[0m
+[32m[2026-01-14 00:06:13] [1mINFO[0m[32m [ai_engine.agents] - CONFIG: Using generation config: {'temperature': 0.5, 'max_output_tokens': 18000}[0m
+[32m[2026-01-14 00:06:13] [1mINFO[0m[32m [ai_engine.agents] - Using LangGraph v2 (performance+cost+consolidator) for workload recommendations[0m
+[34m[2026-01-14 00:06:13] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/cost_agent.txt[0m
+[34m[2026-01-14 00:06:13] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/performance_agent.txt[0m
+[32m[2026-01-14 00:06:16] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[32m[2026-01-14 00:06:16] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-14 00:06:25] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 12463[0m
+[31m[2026-01-14 00:06:25] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+  ],
+  "explanations": [
+    "Workload has 2 pending pods; migrate to public cluster with available capacity to resolve scheduling constraint and reduce operational overhead.",
+    "Workload has 2 pending pods; migrate to public c[0m
+[33m[2026-01-14 00:06:25] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-14 00:06:25] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-14 00:06:25] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-14 00:06:28] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 11864[0m
+[31m[2026-01-14 00:06:28] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  "explanations": [
+    "Private cluster at 91.5% load (exceeds 80% threshold). Workload has 2 pending pods. Migrate to public cluster (0% load) to relieve pressure and resolve pending pods.",
+    "Private cluster at 91.5% load (exce[0m
+[33m[2026-01-14 00:06:28] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~80[0m
+[34m[2026-01-14 00:06:28] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-14 00:06:28] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[34m[2026-01-14 00:06:28] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Loaded prompt from prompts/consolidator_agent.txt[0m
+[32m[2026-01-14 00:06:30] [1mINFO[0m[32m [httpx] - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"[0m
+[34m[2026-01-14 00:06:37] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - Raw LLM response type: <class 'str'>, length: 10455[0m
+[31m[2026-01-14 00:06:37] [1mERROR[0m[31m [ai_engine.langgraph_agents] - LLM failed to generate a valid WorkloadLabelOutput: Expecting value: line 1 column 1 (char 0). Raw response preview: ```json
+{
+  "decisions": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  "explanations": [
+    "Both Performance and Cost analysts agree on public cluster placement. Consolidated decision: migrate to public cluster.",
+    "Both Performance and Cost analysts agree on public cluster placement. Consolidate[0m
+[33m[2026-01-14 00:06:37] [1mWARNING[0m[33m [ai_engine.langgraph_agents] - Recovered truncated JSON with 80 decisions out of ~0[0m
+[34m[2026-01-14 00:06:37] [1mDEBUG[0m[34m [ai_engine.langgraph_agents] - _error_handling input: 80 decisions, 80 explanations[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.langgraph_agents] - _error_handling output: 80 valid decisions[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.langgraph_agents] - Consolidation complete: 80 workload decisions finalized[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - Explanations written to /ai-engine/logs/recommendations_explanations_20260114_000637.json[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - [1mDetailed explanations for each workload:[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/73 (deployment) → public: Decision 0[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/69 (deployment) → public: Decision 1[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/63 (deployment) → public: Decision 2[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/79 (deployment) → public: Decision 3[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/75 (deployment) → public: Decision 4[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/44 (deployment) → public: Decision 5[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/54 (deployment) → public: Decision 6[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/37 (deployment) → public: Decision 7[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/1 (deployment) → public: Decision 8[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/52 (deployment) → public: Decision 9[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/70 (deployment) → public: Decision 10[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/76 (deployment) → public: Decision 11[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/23 (deployment) → public: Decision 12[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/27 (deployment) → public: Decision 13[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/65 (deployment) → public: Decision 14[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/29 (deployment) → public: Decision 15[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/34 (deployment) → public: Decision 16[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/9 (deployment) → public: Decision 17[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/2 (deployment) → public: Decision 18[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/20 (deployment) → public: Decision 19[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/15 (deployment) → public: Decision 20[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/17 (deployment) → public: Decision 21[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/56 (deployment) → public: Decision 22[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/12 (deployment) → public: Decision 23[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/16 (deployment) → public: Decision 24[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/41 (deployment) → public: Decision 25[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/24 (deployment) → public: Decision 26[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/21 (deployment) → public: Decision 27[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/58 (deployment) → public: Decision 28[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/77 (deployment) → public: Decision 29[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/25 (deployment) → public: Decision 30[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/38 (deployment) → public: Decision 31[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/40 (deployment) → public: Decision 32[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/33 (deployment) → public: Decision 33[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/55 (deployment) → public: Decision 34[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/6 (deployment) → public: Decision 35[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/14 (deployment) → public: Decision 36[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/51 (deployment) → public: Decision 37[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/68 (deployment) → public: Decision 38[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/53 (deployment) → public: Decision 39[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/3 (deployment) → public: Decision 40[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/67 (deployment) → public: Decision 41[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/32 (deployment) → public: Decision 42[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/64 (deployment) → public: Decision 43[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/72 (deployment) → public: Decision 44[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/61 (deployment) → public: Decision 45[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/66 (deployment) → public: Decision 46[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/57 (deployment) → public: Decision 47[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/8 (deployment) → public: Decision 48[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/19 (deployment) → public: Decision 49[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/18 (deployment) → public: Decision 50[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/47 (deployment) → public: Decision 51[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/26 (deployment) → public: Decision 52[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/11 (deployment) → public: Decision 53[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/78 (deployment) → public: Decision 54[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/62 (deployment) → public: Decision 55[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/28 (deployment) → public: Decision 56[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/43 (deployment) → public: Decision 57[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/35 (deployment) → public: Decision 58[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/39 (deployment) → public: Decision 59[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/50 (deployment) → public: Decision 60[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/42 (deployment) → public: Decision 61[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/49 (deployment) → public: Decision 62[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/7 (deployment) → public: Decision 63[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/59 (deployment) → public: Decision 64[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/36 (deployment) → public: Decision 65[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/31 (deployment) → public: Decision 66[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/71 (deployment) → public: Decision 67[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/45 (deployment) → public: Decision 68[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/46 (deployment) → public: Decision 69[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/4 (deployment) → public: Decision 70[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/30 (deployment) → public: Decision 71[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/10 (deployment) → public: Decision 72[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/5 (deployment) → public: Decision 73[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/74 (deployment) → public: Decision 74[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/22 (deployment) → public: Decision 75[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/48 (deployment) → public: Decision 76[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/13 (deployment) → public: Decision 77[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/80 (deployment) → public: Decision 78[0m[0m
+[32m[2026-01-14 00:06:37] [1mINFO[0m[32m [ai_engine.main] - 💡 [34mWorkload default/60 (deployment) → public: Decision 79[0m[0m
+[32m[2026-01-14 00:07:07] [1mINFO[0m[32m [ai_engine.api] - ✅ [32mSuccessfully applied recommendations[0m[0m
+[32m[2026-01-14 00:07:40] [1mINFO[0m[32m [ai_engine.api] - 🛑 [31mRecommendations stopped[0m[0m
+INFO:     127.0.0.1:39106 - "POST /stop HTTP/1.1" 200 OK
