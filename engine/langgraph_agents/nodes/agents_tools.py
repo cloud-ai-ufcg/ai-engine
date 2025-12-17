@@ -88,108 +88,36 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Invokes the LLM to generate migration recommendations and explanations.
     Now includes historical context if available.
+    Uses the same error handling and JSON recovery as other agent nodes.
     """
     workloads = state.get("workloads", [])
     clusters = state.get("cluster_info", [])
-    historical_context = state.get("historical_context", "")  # Get from state
+    historical_context = state.get("historical_context", "")
 
     pending_percentage_result_all_timestamps = state.get("pending_percentage", {})
 
-    valid_timestamps = [
-        key for key in pending_percentage_result_all_timestamps.keys() if key.isdigit()
-    ]
-    if valid_timestamps:
-        latest_timestamp = max(valid_timestamps, key=int)
-        pending_percentage_result_latest = pending_percentage_result_all_timestamps.get(
-            latest_timestamp, {}
-        )
-    else:
-        pending_percentage_result_latest = {}
-
-    for w in workloads:
-        workload_id = w.get("workload_id")
-        w["percent_pending"] = pending_percentage_result_latest.get(workload_id, "0%")
+    _validation_timestamps(pending_percentage_result_all_timestamps, workloads)
 
     prompt_data = {
         "workloads_json": json.dumps(workloads, indent=2),
         "clusters_json": json.dumps(clusters, indent=2),
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
-        "historical_context": historical_context,  # Pass to prompt
+        "historical_context": historical_context,
     }
 
     user_prompt = json.dumps(prompt_data, separators=(',', ':'))
 
     resp = model.invoke(user_prompt)
 
-    try:
-        # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
-        parsed = resp if isinstance(resp, dict) else json.loads(resp)
-        wl_output = WorkloadLabelOutput.from_dict(parsed)
-        decisions_list = wl_output.decisions
-        explanations_list = wl_output.explanations
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
-        # Log a small snippet of the raw response (if available) to aid debugging
-        try:
-            raw_preview = resp[:500] if isinstance(resp, str) else str(resp)[:500]
-            logger.error(
-                "LLM failed to generate a valid WorkloadLabelOutput: %s. Raw response preview: %s",
-                exc,
-                raw_preview,
-            )
-        except Exception:
-            logger.error(
-                "LLM failed to generate a valid WorkloadLabelOutput and raw response could not be logged: %s",
-                exc,
-            )
+    # Use shared parsing logic with truncation recovery
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp, workloads)
 
-        # Instead of marking all workloads as invalid (-1), preserve the original
-        # cluster assignment when available. This avoids treating the entire batch
-        # as ignored just because the LLM output was slightly malformed.
-        decisions_list = []
-        explanations_list = []
-
-        for w in workloads:
-            original_cluster_label = w.get("cluster_label", "private")
-            if original_cluster_label == "public":
-                decision_val = 1
-            elif original_cluster_label == "private":
-                decision_val = 0
-            else:
-                # Unknown/absent label - fall back to -1 for this workload only
-                decision_val = -1
-
-            decisions_list.append(decision_val)
-            explanations_list.append(
-                f"Maintaining original cluster ({original_cluster_label}) due to invalid LLM response"
-            )
-
-    final_decisions: list[int] = []
-    workload_explanations: list[str] = []
-
-    for label, expl in zip(decisions_list, explanations_list):
-        label_int = -1
-
-        try:
-            val = int(label)
-
-            if val in (0, 1, -1):
-                label_int = val
-            else:
-                logger.warning(
-                    "Label value %s outside of expected range [0, 1, -1]. Setting to -1.",
-                    val,
-                )
-        except (ValueError, TypeError):
-            logger.warning(
-                "Non-numeric label received: %s. Setting to -1.",
-                label,
-            )
-
-        final_decisions.append(label_int)
-        workload_explanations.append(expl)
+    # Use shared error handling logic
+    final_decisions, workload_explanations = _error_handling(decisions_list, explanations_list)
 
     state["decisions"] = final_decisions
     state["explanations"] = {
+        "overall_explanation": overall_explanation,
         "workload_explanations": workload_explanations,
     }
 
@@ -401,6 +329,10 @@ def _parse_response(resp: Any, workloads: Any):
     overall_explanation = ""
     parsed = None
     wl_output = None
+    
+    # Log the raw response for debugging
+    logger.debug(f"Raw LLM response type: {type(resp)}, length: {len(str(resp)) if resp else 0}")
+    
     try:
         # `chat_structured` may already return a parsed dict; fall back to JSON parse otherwise
         parsed = resp if isinstance(resp, dict) else json.loads(resp)
@@ -413,6 +345,8 @@ def _parse_response(resp: Any, workloads: Any):
         # As a fallback, try attribute access on the pydantic model (if available)
         if not overall_explanation and wl_output is not None:
             overall_explanation = getattr(wl_output, "overall_explanation", "")
+        
+        logger.info(f"Successfully parsed {len(decisions_list)} decisions from LLM response")
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         # Log a small snippet of the raw response (if available) to aid debugging
         try:
@@ -473,8 +407,11 @@ def _error_handling(decisions_list: Any, explanations_list: Any):
     """Handle errors in LLM output and ensure valid decisions and explanations."""
     final_decisions: list[int] = []
     workload_explanations: list[str] = []
+    
+    # Log the input for debugging
+    logger.debug(f"_error_handling input: {len(decisions_list)} decisions, {len(explanations_list)} explanations")
 
-    for label, expl in zip(decisions_list, explanations_list):
+    for idx, (label, expl) in enumerate(zip(decisions_list, explanations_list)):
         label_int = -1
 
         try:
@@ -483,11 +420,15 @@ def _error_handling(decisions_list: Any, explanations_list: Any):
             if val in (0, 1, -1):
                 label_int = val
             else:
+                if idx < 3:  # Log first few invalid values for debugging
+                    logger.debug(f"Decision {idx}: Invalid value {val}, setting to -1")
                 logger.warning(
                     "Label value %s outside of expected range [0, 1, -1]. Setting to -1.",
                     val,
                 )
         except (ValueError, TypeError):
+            if idx < 3:  # Log first few conversion errors for debugging
+                logger.debug(f"Decision {idx}: Cannot convert {label} (type: {type(label).__name__}) to int, setting to -1")
             logger.warning(
                 "Non-numeric label received: %s. Setting to -1.",
                 label,
@@ -496,4 +437,5 @@ def _error_handling(decisions_list: Any, explanations_list: Any):
         final_decisions.append(label_int)
         workload_explanations.append(expl)
 
+    logger.info(f"_error_handling output: {len(final_decisions)} valid decisions")
     return final_decisions, workload_explanations
