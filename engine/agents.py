@@ -267,7 +267,7 @@ def label_workloads_multiagent(
         recommendations_dict = final_state.get("explanations", {})
         workload_explanations = recommendations_dict.get("workload_explanations", [])
     else:
-        # v2: use final_* keys from consolidator_node
+        # v2 returns 'final_decisions' from consolidator_node
         final_decisions = final_state.get("final_decisions", [])
         recommendations_dict = final_state.get("final_explanations", {})
         workload_explanations = recommendations_dict.get("workload_explanations", [])
