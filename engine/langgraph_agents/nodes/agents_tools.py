@@ -11,6 +11,7 @@ from engine.ai_config import build_system_prompt_from_config
 from engine.data_types import WorkloadLabelOutput
 from engine.client import OpenRouterClient
 from engine.util import get_logger, load_config
+import os
 
 logger = get_logger("langgraph_agents")
 
@@ -81,6 +82,47 @@ model = get_llm()
 
 
 # -----------------------
+# Helper Functions
+# -----------------------
+def _load_agent_prompt(prompt_file_key: str) -> str:
+    """
+    Load a specific agent prompt from configuration.
+    
+    Args:
+        prompt_file_key: Config key like 'performance_prompt_file', 'cost_prompt_file', etc.
+    
+    Returns:
+        str: The prompt content, or empty string if not found
+    """
+    try:
+        config = load_config()
+        multi_agent_config = config.get("ai", {}).get("multi_agent", {})
+        prompts_config = multi_agent_config.get("prompts", {})
+        
+        prompt_name = prompts_config.get(prompt_file_key, "")
+        
+        if not prompt_name:
+            logger.warning(f"No prompt file configured for {prompt_file_key}")
+            return ""
+        
+        prompt_file = f"prompts/{prompt_name}.txt"
+        
+        if not os.path.exists(prompt_file):
+            logger.warning(f"Prompt file not found: {prompt_file}")
+            return ""
+        
+        with open(prompt_file, 'r', encoding='utf-8') as f:
+            prompt_content = f.read().strip()
+        
+        logger.debug(f"Loaded prompt from {prompt_file}")
+        return prompt_content
+        
+    except Exception as e:
+        logger.error(f"Failed to load agent prompt {prompt_file_key}: {e}")
+        return ""
+
+
+# -----------------------
 # Langraph agents
 # -----------------------
 @traceable(name="recommendations_node")
@@ -127,6 +169,7 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
 def performance_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Performance agent analyzes workloads based on performance metrics.
+    Uses the performance_agent prompt from configuration.
     Returns ONLY the keys it modifies (decisions, explanations).
     """
     workloads = state.get("workloads", [])
@@ -144,7 +187,17 @@ def performance_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     }
     user_prompt = json.dumps(prompt_data, separators=(',', ':'))
 
-    resp = model.invoke(user_prompt)
+    # Load performance-specific system prompt
+    performance_system_prompt = _load_agent_prompt("performance_prompt_file")
+    if performance_system_prompt:
+        client = OpenRouterClient()
+        config = load_config()
+        selected_model = config["ai"].get("selected_model", "gemini")
+        generation_config = config["ai"]["multi_agent"].get("generation_config", {})
+        temp_model = OpenRouterInvokeModel(client, selected_model, performance_system_prompt, **generation_config)
+        resp = temp_model.invoke(user_prompt)
+    else:
+        resp = model.invoke(user_prompt)
 
     decisions_list, explanations_list, overall_explanation = _parse_response(resp, workloads)
 
@@ -163,6 +216,7 @@ def performance_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
 def cost_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Cost agent analyzes workloads based on pricing and cost metrics.
+    Uses the cost_agent prompt from configuration.
     Returns ONLY the keys it modifies (cost_decisions, cost_explanations).
     """
     workloads = state.get("workloads", [])
@@ -181,7 +235,17 @@ def cost_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     user_prompt = json.dumps(prompt_data, separators=(',', ':'))
 
-    resp = model.invoke(user_prompt)
+    # Load cost-specific system prompt
+    cost_system_prompt = _load_agent_prompt("cost_prompt_file")
+    if cost_system_prompt:
+        client = OpenRouterClient()
+        config = load_config()
+        selected_model = config["ai"].get("selected_model", "gemini")
+        generation_config = config["ai"]["multi_agent"].get("generation_config", {})
+        temp_model = OpenRouterInvokeModel(client, selected_model, cost_system_prompt, **generation_config)
+        resp = temp_model.invoke(user_prompt)
+    else:
+        resp = model.invoke(user_prompt)
 
     decisions_list, explanations_list, overall_explanation = _parse_response(resp, workloads)
 
@@ -201,6 +265,7 @@ def cost_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
 def consolidator_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Consolidate decisions from performance_agent and cost_agent using LLM.
+    Uses the consolidator_agent prompt from configuration.
     
     The consolidator receives decisions and explanations from two agents:
     - performance_agent (considers CPU, memory, pending pods)
@@ -217,10 +282,7 @@ def consolidator_node(state: Dict[str, Any]) -> Dict[str, Any]:
     cost_decisions = state.get("cost_decisions", [])
     cost_explanations = state.get("cost_explanations", {}).get("workload_explanations", [])
 
-    # Build prompt with both agents' outputs for LLM to
-    # consolidate Note: consolidator doesn't need
-    # workloads - only the decisions
-    # and explanations from prior agents
+    # Build prompt with both agents' outputs for LLM to consolidate
     prompt_data = {
         "performance_decisions": performance_decisions,
         "performance_explanations": performance_explanations,
@@ -230,7 +292,17 @@ def consolidator_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     user_prompt = json.dumps(prompt_data, separators=(',', ':'))
     
-    resp = model.invoke(user_prompt)
+    # Load consolidator-specific system prompt
+    consolidator_system_prompt = _load_agent_prompt("consolidator_prompt_file")
+    if consolidator_system_prompt:
+        client = OpenRouterClient()
+        config = load_config()
+        selected_model = config["ai"].get("selected_model", "gemini")
+        generation_config = config["ai"]["multi_agent"].get("generation_config", {})
+        temp_model = OpenRouterInvokeModel(client, selected_model, consolidator_system_prompt, **generation_config)
+        resp = temp_model.invoke(user_prompt)
+    else:
+        resp = model.invoke(user_prompt)
 
     # Pass empty list for fallback since we don't have workloads in consolidator
     decisions_list, explanations_list, overall_explanation = _parse_response(resp, [])
