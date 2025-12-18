@@ -317,29 +317,15 @@ def label_workloads_multiagent(
     recommendations_dict = final_state.get("explanations", {})
     final_decisions = final_state.get("decisions", [])
     workload_explanations = recommendations_dict.get("workload_explanations", [])
+    
+    logger.debug(f"Final decisions: {final_decisions}")
 
     if not final_decisions or len(final_decisions) != len(workloads):
         logger.warning(
             f"Number of decisions ({len(final_decisions)}) does not match number of workloads ({len(workloads)}). "
             "Filling missing recommendations with -1."
         )
-
-        corrected_decisions = []
-        missing_workloads = []
-
-        for i, wl in enumerate(workloads):
-            if i < len(final_decisions):
-                corrected_decisions.append(final_decisions[i])
-            else:
-                corrected_decisions.append(-1)
-                missing_workloads.append(wl.get("workload_id", f"workload_{i}"))
-
-        if missing_workloads:
-            logger.warning(
-                f"No response from LLM for workloads: {', '.join(missing_workloads)}"
-            )
-
-        labels = corrected_decisions
+        labels = _convert_binary_decisions_to_cluster_ids(final_decisions, workloads)
     else:
         labels = _convert_binary_decisions_to_cluster_ids(final_decisions, workloads)
 
@@ -348,7 +334,6 @@ def label_workloads_multiagent(
     }
 
     return labels, final_explanations
-
 
 def label_workloads_multiagent_votes(workloads, provider="langgraph"):
     """
