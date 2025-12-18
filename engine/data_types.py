@@ -70,6 +70,6 @@ class WorkloadRecommendation(BaseModel):
     batch_id: int | None = None
     workload_id: str
     kind: str
-    origin_cluster: int
-    destination_cluster: int
+    origin_cluster: str
+    destination_cluster: str
     reason: str  # Explanation for the decision
