@@ -127,6 +127,8 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     user_prompt = json.dumps(prompt_data, separators=(',', ':'))
 
+    logger.debug("User prompt for recommendations_node: %s", user_prompt)
+
     resp = model.invoke(user_prompt)
 
     try:

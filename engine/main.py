@@ -1,8 +1,7 @@
 import os
 import json
 import pandas as pd
-import datetime
-from time import strptime
+from datetime import datetime, timedelta
 from .cluster_config import get_cluster_manager
 from typing import Dict, List, Any
 
@@ -117,7 +116,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         try:
             timestamps = sorted(
                 data.keys(),
-                key=lambda x: strptime(x, "%Y-%m-%d %H:%M:%S"),
+                key=lambda x: datetime.strptime(x, "%Y-%m-%d %H:%M:%S"),
                 reverse=True,
             )
         except Exception as e:
@@ -128,8 +127,8 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             return {"workloads": [], "cluster_info": []}
 
         latest_timestamp = timestamps[0]
-        latest_dt = strptime(latest_timestamp, "%Y-%m-%d %H:%M:%S")
-        cutoff_dt = latest_dt - datetime.timedelta(seconds=timestamp_lookback_seconds)
+        latest_dt = datetime.strptime(latest_timestamp, "%Y-%m-%d %H:%M:%S")
+        cutoff_dt = latest_dt - timedelta(seconds=timestamp_lookback_seconds)
         cutoff_ts = cutoff_dt.strftime("%Y-%m-%d %H:%M:%S")
 
         recent_timestamps = [ts for ts in timestamps if ts >= cutoff_ts]
@@ -435,7 +434,7 @@ def save_and_log_explanations(
         workloads: Optional original workloads list to infer origin_cluster
         batch_id: Optional batch ID; incremented if not provided
     """
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     global CURRENT_BATCH_ID
 
     if batch_id is None:
