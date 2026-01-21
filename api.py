@@ -12,6 +12,7 @@ Endpoints:
 
 import asyncio
 import threading
+import time
 import json
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, List
@@ -29,14 +30,15 @@ from engine.main import (
 )
 
 
-from engine.data_types import *  # pylint: disable=wildcard-import, unused-wildcard-import
-
+from engine.data_types import WorkloadRecommendation
+from engine.history_batch_manager import get_history_batch_manager
+from engine.recommendation_history_db import save_history_batch_recommendations
 from engine.util import (
     get_logger,
     load_config,
     format_message,
+    build_workload_recommendations,
 )
-from engine.util import build_workload_recommendations
 
 logger = get_logger("api")
 
@@ -46,9 +48,8 @@ class AppState:
     Application state to hold configuration and runtime variables.
     """
 
-    def __init__(self):
-        self.models = {}
-        self.config = None
+    def __init__(self) -> None:
+        self.config: Optional[Dict[str, Any]] = None
         self.running: bool = False
         self.stop_event: threading.Event = threading.Event()
         self.scheduler_thread: Optional[threading.Thread] = None
@@ -59,6 +60,43 @@ class AppState:
 app_state = AppState()
 
 
+def _save_recommendations_to_history(
+    recommendations: List[WorkloadRecommendation],
+    history_batch_id: int,
+) -> None:
+    """
+    Save recommendations to history database if feature is enabled.
+    """
+    assert app_state.config is not None
+    history_config = app_state.config.get('recommendation_history', {})
+    if not history_config.get('enabled', False):
+        return
+    try:
+        save_history_batch_recommendations(
+            history_config.get('mongodb'),
+            history_batch_id,
+            recommendations
+        )
+        logger.info(f"Saved recommendations to history batch {history_batch_id}")
+    except Exception as e:
+        logger.error(f"Failed to save history batch recommendations: {e}")
+
+
+def _start_history_batch_if_enabled() -> Optional[int]:
+    """
+    Start a new history batch if the feature is enabled.
+    Returns the batch ID or None if disabled.
+    """
+    assert app_state.config is not None
+    history_config = app_state.config.get('recommendation_history', {})
+    if not history_config.get('enabled', False):
+        return None
+    history_batch_mgr = get_history_batch_manager(app_state.config)
+    batch_id = history_batch_mgr.start_new_batch()
+    logger.info(f"Started history batch {batch_id}")
+    return batch_id
+
+
 # Define lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -66,7 +104,6 @@ async def lifespan(app: FastAPI):
     Lifespan context manager for FastAPI.
     Loads configuration and models at startup.
     """
-    # Load configuration and models at startup
     app_state.config = load_config()
 
     # Initialize scheduler interval
@@ -110,6 +147,7 @@ async def apply_recommendations(
     Returns:
         None
     """
+    assert app_state.config is not None
     try:
         # Apply recommendations
         payload = []
@@ -158,6 +196,10 @@ async def apply_recommendations(
 @app.post("/start")
 async def start():
     """Start the AI Engine"""
+    assert app_state.config is not None
+    if app_state.scheduler_thread is not None and app_state.scheduler_thread.is_alive():
+        return {"status": "Recommendations are already running"}
+
     # Mark the engine as running and clear any previous stop signal
     app_state.running = True
     if app_state.stop_event.is_set():
@@ -209,17 +251,8 @@ async def start():
         interval_duration = processed_data.get("interval_duration", "unknown")
 
         if workloads:
+            history_batch_id = _start_history_batch_if_enabled()
 
-            # Start new history batch if feature enabled
-            history_config = app_state.config.get('recommendation_history', {})
-            if history_config.get('enabled', False):
-                from engine.history_batch_manager import get_history_batch_manager
-                from engine.recommendation_history_db import save_history_batch_recommendations
-                
-                history_batch_mgr = get_history_batch_manager(app_state.config)
-                current_history_batch_id = history_batch_mgr.start_new_batch()
-                logger.info(f"Started history batch {current_history_batch_id}")
-            
             result_df, explanations = analyze_workloads(
                 workloads,
                 app_state.config,
@@ -229,38 +262,39 @@ async def start():
 
             save_and_log_explanations(result_df, explanations, workloads)
 
-            # Transform into WorkloadRecommendation-shaped list[dict]
             app_state.current_batch_id += 1
             recommendations = build_workload_recommendations(
                 result_df, explanations, workloads, app_state.current_batch_id
             )
-            
-            # Save to history database if feature enabled
-            if history_config.get('enabled', False):
-                try:
-                    save_history_batch_recommendations(
-                        history_config.get('mongodb'),
-                        current_history_batch_id,
-                        recommendations
-                    )
-                    logger.info(f"Saved recommendations to history batch {current_history_batch_id}")
-                except Exception as e:
-                    logger.error(f"Failed to save history batch recommendations: {e}")
+
+            if history_batch_id is not None:
+                _save_recommendations_to_history(recommendations, history_batch_id)
 
             await apply_recommendations(recommendations)
+
+    def trigger_fetch_metrics():
+        threading.Thread(
+            target=lambda: asyncio.run(fetch_metrics()),
+            name="metrics-job-thread",
+            daemon=True,
+        ).start()
 
     # run the scheduler in a separate thread
     def run_scheduler():
         while not app_state.stop_event.is_set():
             schedule.run_pending()
+            idle_seconds = schedule.idle_seconds()
+            sleep_for = 1 if idle_seconds is None else max(1, min(int(idle_seconds), 60))
+            time.sleep(sleep_for)
 
     # Run fetch_metrics immediately if configured
     if app_state.config["ai"].get("fetch_metrics_immediately", False):
         await fetch_metrics()
 
     # Start the scheduler to run every SCHEDULER_INTERVAL seconds after the first execution
+    schedule.clear()
     schedule.every(app_state.scheduler_interval).seconds.do(
-        lambda: asyncio.run(fetch_metrics())
+        trigger_fetch_metrics
     )
     app_state.scheduler_thread = threading.Thread(
         target=run_scheduler, name="scheduler-thread", daemon=True
@@ -276,6 +310,7 @@ async def stop():
     """Stop the AI Engine"""
     app_state.running = False
     app_state.stop_event.set()
+    schedule.clear()
 
     # Wait for the background thread to finish in a non-blocking way
     if app_state.scheduler_thread is not None and app_state.scheduler_thread.is_alive():
@@ -308,6 +343,7 @@ async def analyze_workloads_direct(request: AnalyzeRequest):
         Dictionary with analysis results and status
     """
     try:
+        assert app_state.config is not None
         # Determine source of workload data
         workloads: Optional[list] = None
         if request.input_json:
@@ -326,33 +362,17 @@ async def analyze_workloads_direct(request: AnalyzeRequest):
         if not workloads:
             return {"status": "error", "message": "No workload data provided"}
 
-        # Start new history batch if feature enabled
-        history_config = app_state.config.get('recommendation_history', {})
-        if history_config.get('enabled', False):
-            from engine.history_batch_manager import get_history_batch_manager
-            from engine.recommendation_history_db import save_history_batch_recommendations
-            
-            history_batch_mgr = get_history_batch_manager(app_state.config)
-            current_history_batch_id = history_batch_mgr.start_new_batch()
-            logger.info(f"Started history batch {current_history_batch_id}")
+        history_batch_id = _start_history_batch_if_enabled()
 
         result_df, explanations = analyze_workloads(workloads, app_state.config)
         save_and_log_explanations(result_df, explanations, workloads)
-        
-        # Save to history database if feature enabled
-        if history_config.get('enabled', False):
-            try:
-                recommendations = _build_workload_recommendations(
-                    result_df, explanations, workloads
-                )
-                save_history_batch_recommendations(
-                    history_config.get('mongodb'),
-                    current_history_batch_id,
-                    recommendations
-                )
-                logger.info(f"Saved recommendations to history batch {current_history_batch_id}")
-            except Exception as e:
-                logger.error(f"Failed to save history batch recommendations: {e}")
+
+        if history_batch_id is not None:
+            app_state.current_batch_id += 1
+            recommendations = build_workload_recommendations(
+                result_df, explanations, workloads, app_state.current_batch_id
+            )
+            _save_recommendations_to_history(recommendations, history_batch_id)
 
         return {
             "status": "success",
