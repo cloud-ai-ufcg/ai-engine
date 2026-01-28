@@ -1,60 +1,47 @@
-from .log_parser import LogParser
 import json
 import yaml # type: ignore
 from datetime import datetime
 import re
 class PromptBuilder:
-    def __init__(self):
-        self.log_parser = LogParser()
-        self.prompt = ""
+    def __init__(self,recomendations:list,metrics:dict,cluster_info:list) -> list:
+        self.recomendations = recomendations
+        self.metrics = metrics
+        self.cluster_info = cluster_info
 
     
     def build_prompt(self) -> str:
-
-        metrics = self.open_metrics()
-        recomendations = self.open_recomendations()
-        all_prompts = []
-        for key in recomendations.keys():
-
-            current_recomendation = recomendations[key]
-            current_recomendation = self.recomendations_to_yaml(current_recomendation)
-            
-            nearest_key = self.get_nearest_key(key,metrics.keys())
-            current_metrics = metrics[nearest_key]
-
-            cluster_state = {
-                             "state_private":current_metrics["cluster_info"][0],
-                             "state_public":current_metrics["cluster_info"][1]
-                             }
-            del current_metrics["cluster_info"]
-
-            current_metrics = self.clean_metrics(current_metrics)
-            current_metrics = self.dict_to_yaml(current_metrics)
-            cluster_state = self.dict_to_yaml(cluster_state)
-
-            criteria_evaluation = "You must prioritize the cost-benefit ratio between performance and migration costs."
-            all_prompts.append(self.make_prompt(current_metrics,cluster_state,current_recomendation,criteria_evaluation))
-
-        return all_prompts
-
-    def get_nearest_key(self,key:str,metric_keys:list) -> str:
-        copy_metric_keys = list(metric_keys)
-        for i in range(len(copy_metric_keys)):
-            copy_metric_keys[i] = self.transform_str_to_date(copy_metric_keys[i])
         
-        copy_metric_keys.sort()
-        key =  self.transform_str_to_date(key)
-        for i in range(len(copy_metric_keys)):
-            if copy_metric_keys[i] > key:
-                return f"{copy_metric_keys[i - 1]}"
+        formated_recomendations = []
+        current_metrics = self.metrics
+        for recomendation in self.recomendations:
+            recomendation_formated = self.format_recomendation(recomendation,current_metrics)
+            formated_recomendations.append(recomendation_formated)
+
+        cluster_state = self.cluster_info
+        
+        current_metrics = self.clean_metrics(current_metrics)
+        current_metrics = self.to_yaml(current_metrics)
+        cluster_state = self.to_yaml(cluster_state)
+        formated_recomendations = self.to_yaml(formated_recomendations)
+
+        prompt = self.make_prompt(current_metrics,cluster_state,formated_recomendations)
+
+        return prompt
     
     def clean_metrics(self,metrics:dict) -> dict:
-        metrics.pop("interval_duration")
-        workloads = metrics["workloads"]
+        workloads = metrics
         for i in range(len(workloads)):
             workloads[i].pop("kind")
             workloads[i].pop("resources")
             workloads[i].pop("pods_total")
+            workloads[i].pop("percent_pending")
+            workloads[i].pop("timestamp")
+            workloads[i].pop("cluster_load")
+            workloads[i].pop("cluster_cpu_capacity")
+            workloads[i].pop("cluster_memory_capacity")
+
+
+
 
         default_configs = {
             "workloads_configs_default":{
@@ -67,108 +54,82 @@ class PromptBuilder:
             }
         }
         workloads.insert(0,default_configs)
-        metrics["workloads"] = workloads
+        metrics = workloads
         return metrics
-            
-    def recomendations_to_yaml(self,recomendations:list) -> str:
-        formated_recomendations = {
-            "recomendations":[]
-        }
-        for recomendation in recomendations:
-            dict_recomendation = self.recomendation_to_dict(recomendation)
-            formated_recomendations["recomendations"].append(dict_recomendation)
-        
-        return yaml.dump(formated_recomendations,sort_keys=False)
-        
     
-    def recomendation_to_dict(self,recomendation:str) -> dict:
-        id_workload = int(re.sub(r'\D',"",recomendation.split("deployment")[0]))
-        start_private = recomendation.find("private")
-        start_public = recomendation.find("public")
-        cluster_destination = "public"
+    def format_recomendation(self,workload:dict,metrics:dict) -> dict:
+        if workload["label"] == -1: return {}
+        labels = {"public":"private","private":"public"}
+        workload_aux = workload.copy()
+        del workload_aux["kind"]
+        workload_aux.pop("reason")
 
-        if start_public == -1:
-            cluster_destination = "private"
-        elif start_public > 0 and start_private > 0:
-            dict_aux = {start_public:"public",start_private:"private"}
-            cluster_destination = dict_aux[min(start_private,start_public)]
+        for workload_metrics in metrics:
+            if workload_metrics["workload_id"] != workload_aux["workload_id"]:
+                continue
 
-        return {"id_workload":id_workload,"migrate_to":cluster_destination}
-
+            workload_aux["migrate_to"] = labels[workload_metrics["cluster_label"]]
         
+        del workload_aux["label"]
 
+        return workload_aux 
+
+    def to_yaml(self,recomendations:list) -> str:
+        return yaml.dump(recomendations,sort_keys=False,indent=4)
+        
 
     def transform_str_to_date(self, date:str):
         format_date = "%Y-%m-%d %H:%M:%S"
         return datetime.strptime(date,format_date)
-        
-    def dict_to_yaml(self,metrics:dict) -> str:
-        return yaml.dump(metrics,sort_keys=False)
-
-    def open_metrics(self) -> dict:
-        dados = {}
-        with open("./prompt/builder/metrics.json","r",encoding="utf-8") as data:
-            dados = json.load(data)
-        return dados
-    
-    def open_recomendations(self) -> dict:
-        dados = {}
-        with open("./prompt/builder/recomendations.json","r",encoding="utf-8") as data:
-            dados = json.load(data)
-        return dados
-    
-    def make_prompt(self,workloads:str,cluster_state:str,migrations:str,criteria:str) -> str:
+         
+    def make_prompt(self,workloads:str,cluster_state:str,migrations:str) -> str:
         WORKLOADS_YAML = workloads
         CLUSTER_STATE_YAML = cluster_state
-        MIGRATIONS_YAML_OR_TEXT = migrations
-        CRITERIA_TEXT = criteria
+        MIGRATIONS_YAML = migrations
 
         prompt = f"""
-        # ROLE
-        You are a Senior Kubernetes Reliability Engineer (SRE) specializing in capacity planning and multi-cluster workload migration.
-        # OBJECTIVE
-        Your task is to audit and validate a set of migration decisions made by another system. You must determine if each proposed migration is viable and efficient based on resource constraints (CPU/Memory) and specific evaluation criteria.
-        # INPUT DATA
-        I will provide the following data in YAML format for efficiency:
+       
+        You are a Senior Kubernetes Reliability Engineer (SRE) specializing in cmulti-cluster workload migration.
+        Your task is to audit and validate a set of migration decisions made by another system. You must determine if each proposed migration is viable based on analysis of resources such as CPU/memory of the clusters.
+        I will provide the following data:
 
         <workloads_data>
-        {WORKLOADS_YAML}
+            {WORKLOADS_YAML}
         </workloads_data>
 
         <cluster_state>
-        {CLUSTER_STATE_YAML}
+            {CLUSTER_STATE_YAML}
         </cluster_state>
 
         <proposed_migrations>
-        {MIGRATIONS_YAML_OR_TEXT}
+            {MIGRATIONS_YAML}
         </proposed_migrations>
 
         <evaluation_criteria>
-        {CRITERIA_TEXT}
+            You should prioritize cost-effectiveness between performance and migration cost. Do not approve migrations that worsen cluster performance even if they offer good value for money
         </evaluation_criteria>
 
         # INSTRUCTIONS
         1. Analyze the resource requirements (CPU/Memory) of each workload in `<workloads_data>`.
         2. Compare them against the available capacity in the destination cluster defined in `<cluster_state>`.
         3. Apply the rules found in `<evaluation_criteria>`.
-        4. Validate if the move suggested in `<proposed_migrations>` is a "GO" or "NO-GO".
-        5. You must priorize the benefit-cost between performance and cost of migration
+        4. Validate if the move suggested in `<proposed_migrations>` is good or bad migration.
 
-        # OUTPUT FORMAT
-        Return **ONLY** a valid JSON object. Do not include markdown formatting (like ```json) or conversational text. The JSON must follow this exact schema:
+        You must return **ONLY** a valid JSON object.
+        Do not include markdown formatting (like ```json) or conversational text. The JSON must follow this exact schema:
 
         {{
         "validated_recommendations": [
             {{
             "workload_id": "string (The ID of the workload)",
-            "destination_cluster": "string (The target cluster name)",
-            "llm_score": number (0.0 to 1.0, where 1.0 is a perfect decision),
-            "llm_status": "string ('APPROVED' or 'REJECTED')",
-            "llm_reasoning": "string (Concise technical explanation of why the decision is good or bad, citing specific resource metrics)",
+            "destination_cluster": "cluster to which the recommendation wanna transfer workload will be transferred. int (return 0 if it will be transfered to private cluster, return 0 if it will be transfered to public cluster)",
+            "origin_cluster":"cluster where the workload is located int (0 = private, 1 = public)"
+            "llm_status": "Status of recomendation, int (0 = REJECTED, 1 = APPROVED)",
+            "llm_reasoning": "string (Concise technical explanation of why the decision is good or bad, citing specific resource metrics,remember, you must be concise on your answer)",
             }}
         ]
         }}
 
-        You should not truncate the output!
+        "The recommendations must be listed by priority, with the most important migration appearing first."
         """
         return prompt

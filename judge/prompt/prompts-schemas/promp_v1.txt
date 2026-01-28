@@ -38,7 +38,6 @@
             {{
             "workload_id": "string (The ID of the workload)",
             "destination_cluster": "string (The target cluster name)",
-            "llm_score": number (0.0 to 1.0, where 1.0 is a perfect decision),
             "llm_status": "string ('APPROVED' or 'REJECTED')",
             "llm_reasoning": "string (Concise technical explanation of why the decision is good or bad, citing specific resource metrics)",
             "original_recommendation": "string (The original migration decision text)"

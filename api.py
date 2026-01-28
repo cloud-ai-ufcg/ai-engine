@@ -15,7 +15,6 @@ import threading
 import json
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, List
-
 import aiohttp
 import schedule
 import uvicorn
@@ -183,13 +182,14 @@ async def start():
                 async with session.get(url, json=json_payload) as response:
                     if response.status == 200:
                         data = await response.json()
+
                         logger.info(
                             format_message(
                                 "Successfully fetched metrics from MONITOR",
                                 icon="📊",
                                 color="GREEN",
                             )
-                        )
+                        )   
                     else:
                         logger.error(
                             "Failed to fetch metrics from MONITOR: %s", response.status
@@ -198,7 +198,7 @@ async def start():
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Error fetching metrics from MONITOR: %s", e)
             return
-
+        
         processed_data = process_monitoring_data(data)
 
         if not processed_data:

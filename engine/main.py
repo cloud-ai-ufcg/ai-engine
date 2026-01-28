@@ -5,6 +5,8 @@ import threading
 from typing import Dict, List, Any
 from datetime import datetime, timedelta
 from .data_types import WorkloadRecommendation
+from judge.main import judge_recomendations
+import requests
 
 from .util import (
     get_logger,
@@ -333,6 +335,7 @@ def load_monitoring_data(config):
 
 
 def analyze_workloads(workloads, config, cluster_info=None, interval_duration=None):
+    metrics = workloads.copy()
     """
     Analyze workloads using the configured AI model.
 
@@ -342,7 +345,7 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
         cluster_info: List of cluster information dictionaries (optional)
 
     Returns:
-        Tuple containing (DataFrame with results, explanations dictionary)
+        Tuple containing (DataFrame with results, explanations dictionaryanalyze)
     """
     provider = (
         config.get("ai", {}).get("default_config", {}).get("provider", "openrouter")
@@ -394,6 +397,8 @@ def analyze_workloads(workloads, config, cluster_info=None, interval_duration=No
             result["reason"] = padded
     else:
         result["reason"] = "No explanation provided"
+
+    result = judge_recomendations(result,metrics,cluster_info)
 
     return result, explanations
 
