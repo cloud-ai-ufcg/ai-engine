@@ -1,72 +1,41 @@
-# ai-engine
-This is a FastAPI and CLI AI Engine that uses machine learning and LLMs to analyze workloads and generate recommendations with explanations for efficient workload migration between private and public clouds.
+# AI Engine
 
-## Installation
+The AI Engine is the intelligence layer of the cloud simulator that analyzes workload metrics and generates migration recommendations using Large Language Models (LLMs). It processes real-time cluster and workload data from the Monitor and produces optimized placement decisions based on performance, cost, and resource availability.
 
-```bash
-make setup
-```
+## Overview
 
-## Usage
+The AI Engine serves as the decision-making core of the simulator, leveraging LLMs to analyze complex multi-cluster scenarios and recommend optimal workload placements. It can operate with different AI models and agent architectures, providing flexibility in decision-making strategies from simple single-agent analysis to sophisticated multi-agent consensus systems.
 
-### API
+### Operating Modes
 
-Run API
-```bash
-make api
-```
+The AI Engine supports two primary agent architectures:
 
-Run Fake Monitor
-```bash
-make fake-monitor
-```
+**1. Single Agent Mode**
+- Uses a single LLM to analyze all workloads and make migration decisions
+- Simpler architecture with faster decision cycles
+- Considers performance, cost, and resource constraints holistically
+- Suitable for straightforward workload placement scenarios
+- Configurable prompts for different optimization strategies
 
-Run Fake Actuator
-```bash
-make fake-actuator
-```
+**2. Multi-Agent Mode**
+- Employs multiple specialized agents with distinct perspectives:
+  - **Performance Agent**: Focuses on resource utilization and cluster load
+  - **Cost Agent**: Optimizes for infrastructure costs and cloud pricing
+  - **Consolidator Agent**: Synthesizes recommendations from other agents
+- Uses LangGraph for orchestrated multi-agent workflows
+- Provides more nuanced decision-making with diverse viewpoints
+- Suitable for complex scenarios requiring balanced trade-offs
 
-Turn on recommendations
-```bash
-curl -X POST http://0.0.0.0:8083/start
-```
+## Prerequisites
 
-Turn off recommendations
-```bash
-curl -X POST http://0.0.0.0:8083/stop
-```
+- Python 3.12 or higher
+- OpenRouter API key (or API keys for supported LLM providers: Google Gemini, OpenAI, Anthropic, NVIDIA)
+- MongoDB (for API mode with recommendation history)
+- Docker and Docker Compose (for containerized deployment)
 
-Analyze a single time
-```bash
-curl -X POST http://0.0.0.0:8083/analyze --data @monitor_outputs.json
-```
+## How to Run
 
-### CLI
+> **Note:** For detailed setup and execution instructions, including infrastructure setup and complete workflow, please refer to the [main simulator README](../README.md).
 
-Run CLI Mode
-```bash
-make cli
-```
-
-### Docker
-
-Build API
-```bash
-make build-docker-api
-```
-
-Build CLI
-```bash
-make build-docker-cli
-```
-
-Run API
-```bash
-make run-docker-api
-```
-
-Run CLI
-```bash
-make run-docker-cli
-```
+When running as part of the simulator, the AI Engine API is accessible at `http://localhost:8083` and automatically fetches metrics from the Monitor and sends recommendations to the Actuator.
 
