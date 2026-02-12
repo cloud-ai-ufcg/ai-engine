@@ -144,10 +144,6 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     _validation_timestamps(pending_percentage_result_all_timestamps, workloads)
 
-
-    # Use shared parsing logic with truncation recovery
-    decisions_list, explanations_list, overall_explanation = _parse_response(resp, workloads) ## <<<
-
     # Build the cluster list for the prompt
     cluster_list = _get_cluster_list_for_langgraph_prompt()
 
@@ -164,6 +160,9 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
     logger.debug("User prompt for recommendations_node: %s", user_prompt)
 
     resp = model.invoke(user_prompt)
+
+    # Use shared parsing logic with truncation recovery
+    decisions_list, explanations_list, overall_explanation = _parse_response(resp, workloads)
 
     # Use shared error handling logic
     final_decisions, workload_explanations = _error_handling(decisions_list, explanations_list)
