@@ -1,10 +1,10 @@
 # AI Engine
 
-The AI Engine is the intelligence layer of the cloud simulator that analyzes workload metrics and generates migration recommendations using Large Language Models (LLMs). It processes real-time cluster and workload data from the Monitor and produces optimized placement decisions based on performance, cost, and resource availability.
+The AI Engine is the intelligence layer of the cloud simulator that analyzes workload metrics and generates migration recommendations using Large Language Models (LLMs). It processes real-time cluster and workload data from the Monitor and produces optimized placement decisions.
 
 ## Overview
 
-The AI Engine serves as the decision-making core of the simulator, leveraging LLMs to analyze complex multi-cluster scenarios and recommend optimal workload placements. It can operate with different AI models and agent architectures, providing flexibility in decision-making strategies from simple single-agent analysis to sophisticated multi-agent consensus systems.
+The AI Engine serves as the decision-making core of the simulator, leveraging LLMs to analyze complex multi-cluster scenarios and recommend optimal workload placements. It can operate with different AI models, providing flexibility in decision-making strategies from simple single-agent analysis to sophisticated multi-agent consensus systems.
 
 ### Operating Modes
 
@@ -35,7 +35,7 @@ The AI Engine supports two primary agent architectures:
 
 ## How to Run
 
-> **Note:** For detailed setup and execution instructions, including infrastructure setup and complete workflow, please refer to the [main simulator README](../README.md).
+> **Note:** For detailed setup and execution instructions, including infrastructure setup and complete workflow, please refer to the [main simulator README](https://github.com/cloud-ai-ufcg/simulator/blob/sbrc/README.md).
 
 When running as part of the simulator, the AI Engine API is accessible at `http://localhost:8083` and automatically fetches metrics from the Monitor and sends recommendations to the Actuator.
 
