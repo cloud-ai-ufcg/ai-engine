@@ -4,7 +4,8 @@ AI Configuration Module
 
 import os
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from .util import load_config
 from .data_types import WorkloadLabelOutput
@@ -14,26 +15,64 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 
+class WorkloadLabelOutput(BaseModel):
+    """Structured output for workload labeling"""
+
+    decisions: List[int] = Field(
+        description="Array of decisions where 0=private, 1=public for each workload"
+    )
+    explanations: List[str] = Field(
+        description="Array of explanations for each decision"
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation"""
+        return self.model_dump()
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "WorkloadLabelOutput":
+        """Create instance from dictionary"""
+        return cls(**data)
+
+    def validate_output(self) -> bool:
+        """Validate that decisions and explanations have matching lengths"""
+        return len(self.decisions) == len(self.explanations)
+
+
+class WorkloadRecommendation(BaseModel):
+    """Structured output for workload recommendations"""
+
+    batch_id: int | None = None
+    workload_id: str
+    kind: str
+    origin_cluster: str
+    destination_cluster: str
+    reason: str  # Explanation for the decision
+    origin_cluster_profile: str | None = None  
+    destination_cluster_profile: str | None = None
+
+
 MODEL_CONFIGS: Dict[str, Any] = {}  # Deprecated placeholder
 
 PROMPTS = {
     "label_workloads": {
         "version": "1.0",
         "output_schema": WorkloadLabelOutput,
-        "template": """You are a Kubernetes orchestrator. For each workload, decide if it should run in the 'private' cluster (0) or 'public' cluster (1).
+        "template": """You are a Kubernetes orchestrator. For each workload, decide which cluster it should run in.
 
-{historical_context}
+Available clusters:
+{cluster_list}
 
 Rules:
-- If private is overloaded or workload needs high resources, prefer public (1).
-- If workload is in public and private has capacity, allow migrating back to private (0).
-- Use percent_pending and cluster_load to guide decisions.
-- Consider the historical migration patterns to maintain consistency and avoid unnecessary migrations.
-- If a workload was recently migrated, prefer stability unless there's a compelling reason to migrate again.
+- Recommend the cluster that best matches the workload's resource needs
+- Consider cluster load, available capacity, and workload requirements
+- Use cluster indices (0, 1, 2, etc.) in your decisions to match the cluster list above
+- Use percent_pending and cluster_load to guide decisions
+- Minimize migrations when cluster is stable
 
 Respond with JSON:
 {{
-  "decisions": [0, 1, ...],
+  "decisions": [0, 1, 0, ...],
   "explanations": [
     "Short explanation for workload 1",
     "Short explanation for workload 2",

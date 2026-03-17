@@ -547,11 +547,8 @@ def build_workload_recommendations(
     for idx, row in result_df.iterrows():
         wid = row.get("workload_id")
         kind = row.get("kind")
-        label = int(row.get("label", 0))
-
-        origin_label = origin_by_id.get(wid, "private")
-        origin_cluster = 0 if origin_label == "private" else 1
-        destination_cluster = label
+        origin_cluster = row.get("origin_cluster")
+        destination_cluster = row.get("destination_cluster")
 
         # Skip invalid entries if necessary, or handle them.
         # The original code in api.py skipped if destination_cluster == -1,

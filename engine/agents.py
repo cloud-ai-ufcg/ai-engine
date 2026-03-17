@@ -9,11 +9,13 @@ from .ai_config import (
     build_system_prompt_from_config,
     get_agent_mode,
     get_agent_config,
+    build_cluster_selection_from_config,
 )
+from .cluster_config import get_cluster_manager
+from engine.langgraph_agents.nodes.agents_tools import _convert_binary_decisions_to_cluster_ids
 from .util import get_logger, load_config
 
 from .langgraph_agents.graph.tool_system_graph import create_tool_system_migration_graph, create_tool_system_migration_graph_v2
-from .langgraph_agents.graph.vote_system_graph import create_vote_system_migration_graph
 from .client import OpenRouterClient
 
 logger = get_logger("agents")
@@ -47,6 +49,42 @@ def _normalize_workloads_to_dataframe(
 ) -> "pd.DataFrame":
     """Convert workloads input to DataFrame format."""
     return pd.DataFrame(workloads) if isinstance(workloads, list) else workloads
+
+
+def _get_cluster_list_for_prompt() -> str:
+    """
+    Build a formatted list of available clusters for use in prompts.
+    
+    Returns:
+        A formatted string describing available clusters and their indices
+    """
+    
+    cluster_manager = get_cluster_manager()
+    all_clusters = cluster_manager.get_all_clusters()
+    listed_clusters = build_cluster_selection_from_config()
+    
+    # Filter clusters based on listed_clusters config
+    if listed_clusters:
+        clusters = [
+            c for c in all_clusters 
+            if c.cluster_label in listed_clusters or c.cluster_id in listed_clusters
+        ]
+        logger.info(f"Filtered clusters for LLM prompt: {[c.cluster_label for c in clusters]}")
+    else:
+        clusters = all_clusters
+        logger.info(f"Using all clusters for LLM prompt (no filter configured)")
+    
+    if not clusters:
+        logger.warning("No clusters available after filtering. Using default private/public clusters.")
+        return "(0) private cluster, (1) public cluster"
+    
+    cluster_descriptions = []
+    for idx, cluster in enumerate(clusters):
+        cluster_descriptions.append(
+            f"({idx}) {cluster.cluster_id} [Profile: {cluster.cluster_profile}] - {cluster.cluster_description}"
+        )
+    
+    return ", ".join(cluster_descriptions)
 
 
 def _extract_json_from_response(text_response: str) -> Dict[str, Any]:
@@ -84,9 +122,12 @@ def _validate_and_extract_decisions(
 
 
 def _create_explanation_output(
-    labels: List[int], explanations: List[str], df: "pd.DataFrame"
+    labels: List[str], explanations: List[str], df: "pd.DataFrame", cluster_manager=None
 ) -> Dict[str, Any]:
     """Create structured explanation output and log decisions."""
+    if cluster_manager is None:
+        cluster_manager = get_cluster_manager()
+    
     explanation_output = {
         "workload_explanations": [],
     }
@@ -94,18 +135,38 @@ def _create_explanation_output(
     for idx, (label, workload) in enumerate(zip(labels, df.iterrows())):
         workload_id = workload[1].get("workload_id", f"workload-{idx}")
         kind = workload[1].get("kind", "unknown")
-        destination = "public" if label == 1 else "private"
+        current_cluster = workload[1].get("cluster_label", "unknown")
+        destination_cluster = label
 
-        # Log the decision
-        logger.info(f"Decision for {workload_id} ({kind}): Cluster {destination}")
+        dest_cluster_config = cluster_manager.get_cluster_by_id(destination_cluster)
+        dest_cluster_label = dest_cluster_config.cluster_label if dest_cluster_config else destination_cluster
+        
+        is_staying = (
+            current_cluster == destination_cluster or 
+            current_cluster == dest_cluster_label
+        )
+        logger.info(
+            f"Decision for {workload_id} ({kind}): {current_cluster} → {destination_cluster} "
+            f"[Staying: {is_staying}]"
+        )
 
-        # Add explanation for this workload
-        explanation = (
+        llm_explanation = (
             explanations[idx]
             if idx < len(explanations)
-            else f"Workload {workload_id} recommended for {destination} cluster based on resource requirements"
+            else f"Workload {workload_id} recommended for {destination_cluster} cluster based on resource requirements"
         )
-        explanation_output["workload_explanations"].append(explanation)
+        
+        # Check for potential hallucinations (explanation contradicts decision)
+        if llm_explanation and is_staying:
+            migration_keywords = ["migrate", "move", "transfer", "relocate", "shift", "should go"]
+            if any(keyword in llm_explanation.lower() for keyword in migration_keywords):
+                logger.warning(
+                    f"⚠️  POTENTIAL LLM HALLUCINATION - {workload_id}: "
+                    f"Explanation mentions migration but workload stays in {current_cluster}. "
+                    f"Explanation: \"{llm_explanation}\""
+                )
+        
+        explanation_output["workload_explanations"].append(llm_explanation)
 
     return explanation_output
 
@@ -226,14 +287,14 @@ def label_workloads_with_llm(
         logger.error(f"Error using {client} API: {e}")
         logger.error("LLM failed to generate recommendations, skipping this cycle")
         return [], {}
-
+    
 
 # ---------------------------------------------------------------------------
 # MultiAgent implementation
 # ---------------------------------------------------------------------------
 def label_workloads_multiagent(
     workloads: List[dict], cluster_info: List[dict], interval_duration: str = None
-) -> Tuple[List[int], Dict[str, Any]]:
+) -> Tuple[List[str], Dict[str, Any]]:
     df = _normalize_workloads_to_dataframe(workloads)
 
     # Build initial state WITHOUT pre-populating 'decisions' or 'explanations'
@@ -272,37 +333,22 @@ def label_workloads_multiagent(
         recommendations_dict = final_state.get("final_explanations", {})
         workload_explanations = recommendations_dict.get("workload_explanations", [])
 
+    logger.debug(f"Final decisions: {final_decisions}")
+    
     if not final_decisions or len(final_decisions) != len(workloads):
         logger.warning(
             f"Number of decisions ({len(final_decisions)}) does not match number of workloads ({len(workloads)}). "
             "Filling missing recommendations with -1."
         )
-
-        corrected_decisions = []
-        missing_workloads = []
-
-        for i, wl in enumerate(workloads):
-            if i < len(final_decisions):
-                corrected_decisions.append(final_decisions[i])
-            else:
-                corrected_decisions.append(-1)
-                missing_workloads.append(wl.get("workload_id", f"workload_{i}"))
-
-        if missing_workloads:
-            logger.warning(
-                f"No response from LLM for workloads: {', '.join(missing_workloads)}"
-            )
-
-        labels = corrected_decisions
+        labels = _convert_binary_decisions_to_cluster_ids(final_decisions, workloads)
     else:
-        labels = final_decisions
+        labels = _convert_binary_decisions_to_cluster_ids(final_decisions, workloads)
 
     final_explanations = {
         "workload_explanations": workload_explanations,
     }
 
     return labels, final_explanations
-
 
 def label_workloads_multiagent_votes(workloads, provider="langgraph"):
     """
@@ -326,7 +372,9 @@ def label_workloads_multiagent_votes(workloads, provider="langgraph"):
 
     final_state = graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
 
-    labels = final_state.get("final_decisions", [])
+    final_decisions = final_state.get("final_decisions", [])
+    
+    labels = _convert_binary_decisions_to_cluster_ids(final_decisions, workloads)
 
     explanations = final_state.get("explanations", {})
 
@@ -342,10 +390,11 @@ def label_workloads(
     interval_duration: str = None,
     provider: str | None = None,
     multiagent: bool | None = None,
-) -> Tuple[List[int], Dict[str, Any]]:
+) -> Tuple[List[str], Dict[str, Any]]:
     """
     Public API to label workloads with the configured AI provider.
-
+    Now returns cluster IDs (strings) instead of binary decisions.
+    
     Args:
         workloads: List of workloads or DataFrame
         cluster_info: List of cluster information dictionaries (optional)
@@ -353,7 +402,7 @@ def label_workloads(
         multiagent: Override the configured mode (optional, legacy parameter)
 
     Returns:
-        Tuple of (labels, explanations)
+        Tuple of (cluster_ids, explanations) where cluster_ids are now strings
     """
     cfg = load_config()
 

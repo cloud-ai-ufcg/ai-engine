@@ -3,8 +3,8 @@ data:
 
 ai:
   mode: multi_agent                 # Agent mode: 'single_agent' or 'multi_agent'
-  selected_model: x-ai/grok-4-fast  # Selected model to be used
-  scheduler_interval: 300           # Number of seconds between scheduler runs
+  selected_model: x-ai/grok-4-fast  # Selected model to be used 
+  scheduler_interval: 30           # Number of seconds between scheduler runs
   timestamp_lookback_seconds: 600   # Number of seconds to look back for metrics
   fetch_metrics_immediately: false   # Whether to fetch metrics immediately or wait for the scheduler
 
@@ -18,7 +18,7 @@ ai:
 
   # Multi-Agent Configuration
   multi_agent:
-    selected_prompt: multi_agent
+    selected_prompt: multi_agent_v2
     provider: openrouter
     graph_version: v2  # Options: 'v1' (tool_system) or 'v2' (performance+cost+consolidator)
     generation_config:
@@ -76,6 +76,18 @@ ai:
   cluster_selection: # Configuration for selecting clusters to analyze
     listed_clusters: [] # List of specific cluster labels to include. Empty means all clusters.
 
+clusters: # Multi-cluster configuration
+  enabled: true # Enable multi-cluster support
+  definitions: # List of cluster definitions
+    - cluster_id: "member1"
+      cluster_profile: "private"
+      cluster_label: "private" # Used for backward compatibility with monitoring data
+      cluster_description: "Private cluster for internal workloads"
+    - cluster_id: "member2"
+      cluster_profile: "public"
+      cluster_label: "public" # Used for backward compatibility with monitoring data
+      cluster_description: "Public cloud cluster for external/scalable workloads"
+      
 recommendation_history:
   enabled: false                    # Toggle feature on/off
   lookback_count: 3                 # Number of past history batches to consider

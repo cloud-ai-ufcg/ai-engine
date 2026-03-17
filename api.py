@@ -28,8 +28,8 @@ from engine.main import (
     analyze_workloads,
 )
 
-
-from engine.data_types import *  # pylint: disable=wildcard-import, unused-wildcard-import
+from engine.data_types import *
+from engine.cluster_config import get_cluster_manager
 
 from engine.util import (
     get_logger,
@@ -151,8 +151,64 @@ async def apply_recommendations(
                 else:
                     logger.error("Failed to apply recommendations: %s", response.status)
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("Error applying recommendations: %s", e)
+    except Exception as e:
+        logger.error(f"Error applying recommendations: {e}")
+        # raise HTTPException(status_code=500, detail=str(e))
+
+
+def _build_workload_recommendations(result_df, explanations, workloads):
+    """
+    Transform analysis outputs into WorkloadRecommendation-shaped dictionaries.
+
+    WorkloadRecommendation fields:
+      - workload_id: str
+      - kind: str
+      - origin_cluster: str (cluster ID)
+      - destination_cluster: str (cluster ID)
+      - reason: str
+      - origin_cluster_profile: str (optional, e.g., "private", "public")
+      - destination_cluster_profile: str (optional, e.g., "private", "public")
+    """
+    # Map workload_id -> origin cluster from original workloads
+    origin_by_id = {w.get("workload_id"): w.get("cluster_id") for w in workloads if w.get("workload_id")}
+
+    cluster_manager = get_cluster_manager()
+    explanations_list = (explanations or {}).get("workload_explanations", [])
+    global CURRENT_BATCH_ID
+    CURRENT_BATCH_ID += 1
+    
+    def _get_cluster_profile(cluster_id):
+        """Helper to get cluster profile, checking by ID first then by label."""
+        config = cluster_manager.get_cluster_by_id(cluster_id) or cluster_manager.get_cluster_by_label(cluster_id)
+        return config.cluster_profile if config else None
+
+    recs = []
+    for idx, row in result_df.iterrows():
+        wid = row.get("workload_id")
+        kind = row.get("kind")
+        origin_cluster = origin_by_id.get(wid)
+        destination_cluster = str(row.get("destination_cluster", row.get("label")))
+        
+        reason = (
+            explanations_list[idx]
+            if idx < len(explanations_list)
+            else f"Recommended to {destination_cluster} cluster based on resource analysis"
+        )
+
+        recs.append(
+            WorkloadRecommendation(
+                batch_id=CURRENT_BATCH_ID,
+                workload_id=wid,
+                kind=kind,
+                origin_cluster=origin_cluster,
+                destination_cluster=destination_cluster,
+                reason=reason,
+                origin_cluster_profile=_get_cluster_profile(origin_cluster),
+                destination_cluster_profile=_get_cluster_profile(destination_cluster),
+            )
+        )
+
+    return recs
 
 
 @app.post("/start")
