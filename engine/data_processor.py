@@ -5,10 +5,9 @@ This module handles the transformation of raw monitoring data into normalized
 workload structures, independent of AI agent functionality.
 """
 
-import os
-import json
 from typing import Dict, List, Any
 from .ai_config import build_cluster_selection_from_config
+from .cluster_config import get_cluster_manager
 
 from .util import (
     get_logger,
@@ -45,11 +44,11 @@ def _filter_and_fill_workloads(
             continue
 
         # Fill cluster details if available
-        cluster_label = w.get("cluster_label")
-        if cluster_label and cluster_label in cluster_data:
-            w["cluster_load"] = cluster_data[cluster_label]["cpu_load"]
-            w["cluster_cpu_capacity"] = cluster_data[cluster_label]["cpu_capacity"]
-            w["cluster_memory_capacity"] = cluster_data[cluster_label][
+        cluster_id = w.get("cluster_id")
+        if cluster_id and cluster_id in cluster_data:
+            w["cluster_load"] = cluster_data[cluster_id]["cpu_load"]
+            w["cluster_cpu_capacity"] = cluster_data[cluster_id]["cpu_capacity"]
+            w["cluster_memory_capacity"] = cluster_data[cluster_id][
                 "memory_capacity"
             ]
 
@@ -76,13 +75,16 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         timestamp_lookback_seconds: Number of seconds to look back in time (defaults to config value)
 
     Returns:
-        List of workload objects with relevant cluster information
+        Dict with workloads, cluster_info, and interval_duration
     """
     if timestamp_lookback_seconds is None:
         config = load_config()
         timestamp_lookback_seconds = config.get("ai", {}).get(
             "timestamp_lookback_seconds", 30
         )
+
+    cluster_manager = get_cluster_manager()
+    cluster_ids = cluster_manager.get_cluster_ids()
 
     # Handle different data structures
     if isinstance(data, dict) and all(
@@ -93,7 +95,7 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
         if not timestamps:
             logger.error("No valid timestamps found in data")
-            return []
+            return {"workloads": [], "cluster_info": [], "interval_duration": "30s"}
 
         latest_timestamp = str(timestamps[0])
         logger.info(
@@ -112,13 +114,21 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
             )
         )
 
-        # Get the cluster selection from config
+        # Get the cluster selection from config (legacy support)
         listed_clusters = build_cluster_selection_from_config()
 
         if listed_clusters:
             logger.info(
                 format_message(
                     f"Using listed clusters from config: {', '.join(listed_clusters)}",
+                    icon="🔍",
+                    color="CYAN",
+                )
+            )
+        elif cluster_ids:
+            logger.info(
+                format_message(
+                    f"Using configured clusters: {', '.join(cluster_ids)}",
                     icon="🔍",
                     color="CYAN",
                 )
@@ -131,14 +141,16 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
         # Create a dictionary of cluster information for easy lookup
         cluster_data = {}
         for cluster in cluster_info:
-            if "cluster_label" in cluster:
-                cluster_label = cluster["cluster_label"]
+            if "cluster_id" in cluster:
+                cluster_id = cluster["cluster_id"]
 
-                if listed_clusters and (cluster_label not in listed_clusters):
-                    # Skip clusters that are not in the listed clusters
-                    continue
+                # Filter by listed_clusters if specified (from config.yaml)
+                # Otherwise, include all clusters from the data
+                if listed_clusters:
+                    if cluster_id not in listed_clusters:
+                        continue
 
-                cluster_data[cluster_label] = {
+                cluster_data[cluster_id] = {
                     "cpu_load": cluster.get("cluster_load", {}).get("cpu", 0),
                     "memory_load": cluster.get("cluster_load", {}).get("memory", 0),
                     "cpu_capacity": cluster.get("cluster_cpu_capacity", "8000m"),
@@ -163,7 +175,14 @@ def process_monitoring_data(data, timestamp_lookback_seconds=None):
 
             # Add timestamp to each workload
             for w in raw_workloads:
-                if not listed_clusters or (w.get("cluster_label") in listed_clusters):
+                cluster_id = w.get("cluster_id")
+                # Filter by listed_clusters if specified (from config.yaml)
+                # Otherwise, include all workloads from the data
+                include_workload = True
+                if listed_clusters:
+                    include_workload = cluster_id in listed_clusters
+                
+                if include_workload:
                     w["timestamp"] = int(ts)
                     all_workloads.append(w)
 

@@ -381,8 +381,8 @@
                 "workload_id": "default/75",
                 "kind": "deployment",
                 "resources": {
-                    "cpu": "6000m",
-                    "memory": "12288Mi"
+                    "cpu": "2000m",
+                    "memory": "4096Mi"
                 },
                 "pods_total": 6,
                 "pods_pending": 0,
@@ -791,12 +791,18 @@
             {
                 "workload_id": "default/80",
                 "kind": "deployment",
+                "percent_pending": 0,
+                "pods_pending": 0,
+                "pods_total": 2,
                 "resources": {
-                    "cpu": "6000m",
-                    "memory": "12288Mi"
+                    "cpu": "2000m",
+                    "memory": "4096Mi"
                 },
-                "pods_total": 6,
-                "pods_pending": 6,
+                "workload_id": "default/1"
+            },
+            {
+                "cluster_label": "private",
+                "kind": "deployment",
                 "percent_pending": 100,
                 "cluster_label": "private"
             },
@@ -8507,12 +8513,6 @@
             {
                 "workload_id": "default/28",
                 "kind": "deployment",
-                "resources": {
-                    "cpu": "6000m",
-                    "memory": "12288Mi"
-                },
-                "pods_total": 6,
-                "pods_pending": 0,
                 "percent_pending": 0,
                 "cluster_label": "private"
             },
@@ -8532,8 +8532,8 @@
                 "workload_id": "default/98",
                 "kind": "deployment",
                 "resources": {
-                    "cpu": "6000m",
-                    "memory": "12288Mi"
+                    "cpu": "2000m",
+                    "memory": "4096Mi"
                 },
                 "pods_total": 6,
                 "pods_pending": 0,
@@ -8664,8 +8664,8 @@
                 "workload_id": "default/71",
                 "kind": "deployment",
                 "resources": {
-                    "cpu": "6000m",
-                    "memory": "12288Mi"
+                    "cpu": "2000m",
+                    "memory": "4096Mi"
                 },
                 "pods_total": 6,
                 "pods_pending": 6,
@@ -15716,25 +15716,15 @@
             {
                 "workload_id": "default/81",
                 "kind": "deployment",
-                "resources": {
-                    "cpu": "0m",
-                    "memory": "0Mi"
-                },
-                "pods_total": 0,
-                "pods_pending": 0,
                 "percent_pending": 0,
+                "pods_pending": 0,
                 "cluster_label": "private"
             },
             {
                 "workload_id": "default/68",
                 "kind": "deployment",
-                "resources": {
-                    "cpu": "0m",
-                    "memory": "0Mi"
-                },
-                "pods_total": 0,
-                "pods_pending": 0,
                 "percent_pending": 0,
+                "pods_pending": 0,
                 "cluster_label": "private"
             },
             {
@@ -22001,12 +21991,6 @@
             {
                 "workload_id": "default/37",
                 "kind": "deployment",
-                "resources": {
-                    "cpu": "6000m",
-                    "memory": "12288Mi"
-                },
-                "pods_total": 6,
-                "pods_pending": 0,
                 "percent_pending": 0,
                 "cluster_label": "private"
             },

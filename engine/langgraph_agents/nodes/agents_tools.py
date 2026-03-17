@@ -5,9 +5,13 @@ import json
 from typing import Any, Dict
 
 from dotenv import load_dotenv
+from engine.cluster_config import get_cluster_manager
 from langsmith import traceable
 
-from engine.ai_config import build_system_prompt_from_config
+from engine.ai_config import (
+    build_system_prompt_from_config,
+    build_cluster_selection_from_config,
+)
 from engine.data_types import WorkloadLabelOutput
 from engine.client import OpenRouterClient
 from engine.util import get_logger, load_config
@@ -140,14 +144,20 @@ def recommendations_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     _validation_timestamps(pending_percentage_result_all_timestamps, workloads)
 
+    # Build the cluster list for the prompt
+    cluster_list = _get_cluster_list_for_langgraph_prompt()
+
     prompt_data = {
         "workloads_json": json.dumps(workloads, indent=2),
         "clusters_json": json.dumps(clusters, indent=2),
         "pending_json": json.dumps(pending_percentage_result_all_timestamps, indent=2),
-        "historical_context": historical_context,
+        "cluster_list": cluster_list,
+        "historical_context": historical_context,  # Pass to prompt
     }
 
     user_prompt = json.dumps(prompt_data, separators=(',', ':'))
+
+    logger.debug("User prompt for recommendations_node: %s", user_prompt)
 
     resp = model.invoke(user_prompt)
 
@@ -511,3 +521,106 @@ def _error_handling(decisions_list: Any, explanations_list: Any):
 
     logger.info(f"_error_handling output: {len(final_decisions)} valid decisions")
     return final_decisions, workload_explanations
+
+
+# -----------------------
+# Multi-Cluster Support Helpers 
+# -----------------------
+def _get_cluster_list_for_langgraph_prompt() -> str:
+    """
+    Build a formatted list of available clusters for use in LangGraph prompts.
+    
+    Note: This is a helper for future multi-cluster LangGraph integration.
+    Currently LangGraph agents still use binary (0/1) decisions.
+    
+    Returns:
+        A formatted string describing available clusters and their indices
+    """
+    
+    cluster_manager = get_cluster_manager()
+    all_clusters = cluster_manager.get_all_clusters()
+    listed_clusters = build_cluster_selection_from_config()
+    
+    # Filter clusters based on listed_clusters config
+    if listed_clusters:
+        clusters = [
+            c for c in all_clusters 
+            if c.cluster_label in listed_clusters or c.cluster_id in listed_clusters
+        ]
+        logger.info(f"Filtered clusters for LangGraph prompt: {[c.cluster_label for c in clusters]}")
+    else:
+        clusters = all_clusters
+        logger.info(f"Using all clusters for LangGraph prompt (no filter configured)")
+    
+    if not clusters:
+        logger.warning("No clusters available after filtering. Using default private/public clusters.")
+        return "(0) private cluster, (1) public cluster"
+    
+    cluster_descriptions = []
+    for idx, cluster in enumerate(clusters):
+        cluster_descriptions.append(
+            f"({idx}) {cluster.cluster_id} [Profile: {cluster.cluster_profile}] - {cluster.cluster_description}"
+        )
+    
+    return ", ".join(cluster_descriptions)
+
+
+def _convert_binary_decisions_to_cluster_ids(decisions: list, workloads: list = None) -> list:
+    """
+    Convert cluster indices (0, 1, 2, ...) to cluster IDs.
+    
+    The LLM returns indices that correspond to the cluster list shown in the prompt.
+    This function maps those indices to actual cluster IDs.
+    
+    Examples:
+    - If 3 clusters: [0, 1, 2] means [private-cluster, private-1, public-cluster-aws]
+    - If 2 clusters: [0, 1] means [private-cluster, public-cluster-aws]
+    
+    Args:
+        decisions: List of cluster indices (integers: 0, 1, 2, ...)
+        workloads: Optional list of workloads (not used but kept for compatibility)
+    
+    Returns:
+        List of cluster IDs (strings)
+    """
+    
+    cluster_manager = get_cluster_manager()
+    all_clusters = cluster_manager.get_all_clusters()
+    listed_clusters = build_cluster_selection_from_config()
+    
+    if listed_clusters:
+        clusters = [
+            c for c in all_clusters 
+            if c.cluster_label in listed_clusters or c.cluster_id in listed_clusters
+        ]
+        logger.info(f"Using filtered clusters for decision conversion: {[c.cluster_label for c in clusters]}")
+    else:
+        clusters = all_clusters
+        logger.info(f"Using all clusters for decision conversion (no filter configured)")
+    
+    if not clusters:
+        # Fallback: no clusters configured
+        logger.warning("No clusters configured, returning generic cluster names")
+        return ["private" if d == 0 else "public" for d in decisions]
+    
+    # Map each index to the corresponding cluster ID
+    cluster_ids = []
+    for idx, decision in enumerate(decisions):
+        try:
+            cluster_index = int(decision)
+        except (ValueError, TypeError):
+            if isinstance(decision, str):
+                cluster_ids.append(decision)
+                continue
+            cluster_index = 0
+        
+        if cluster_index >= len(clusters):
+            logger.warning(
+                f"Cluster index {cluster_index} out of bounds (only {len(clusters)} clusters). "
+                f"Using last cluster: {clusters[-1].cluster_id}"
+            )
+            cluster_ids.append(clusters[-1].cluster_id)
+        else:
+            cluster_ids.append(clusters[cluster_index].cluster_id)
+    
+    return cluster_ids
