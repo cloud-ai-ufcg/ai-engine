@@ -87,8 +87,9 @@ class Client(ABC):
         if response_format and response_format.get("type") == "json_object":
             try:
                 return json.loads(response.choices[0].message.content)
-            except json.JSONDecodeError:
-                # Fallback to raw content if JSON parsing fails
+            except (json.JSONDecodeError, TypeError):
+                # Fallback to raw content if JSON parsing fails, or if the
+                # API returned no content at all (content=None).
                 return response.choices[0].message.content
 
         return response.choices[0].message.content
